@@ -1,6 +1,3 @@
-#ifndef _CS8900_INC_
-#define _CS8900_INC_
-
 ; Memory Map
 
 .equ	CS8900_BASE		= 0x8000
@@ -62,4 +59,3 @@
 .equ	RESETE			= 0x80
 
 
-#endif  /* _CS8900_INC_ */

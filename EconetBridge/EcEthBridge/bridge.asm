@@ -1,5 +1,4 @@
 .include "m162def.inc"
-.device	ATmega162
 
 .include "cs8900.inc"
 
