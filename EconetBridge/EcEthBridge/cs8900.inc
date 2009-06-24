@@ -59,3 +59,115 @@
 .equ	RESETE			= 0x80
 
 
+
+; =======================================================================
+; == CS8900==============================================================
+; =======================================================================
+;
+; CS8900 has 16bit registers. Both bytes should be used when reading or writing
+
+
+; -----------------------------------------------------------------------------------------
+; CS8900 cs_init
+; -----------------------------------------------------------------------------------------
+;
+; initialise CS8900 Ethernet interface
+;
+cs_init:
+
+
+    // Take CS8900 out of reset and wait for internal reset to complete
+;#ifdef NUT_CS8900_OLD
+;    outp(inp(PORTD) & ~RESETE, PORTD);
+
+
+	;wait for reset to complete
+
+
+	; check for chip
+	lds r18, CS_PP_DATA0			; read the Packet Page Data Port
+	lds r19, CS_PP_DATA0+1
+
+
+	mov r16, r18
+	rcall serial_tx_hex
+
+	mov r16, r19
+	rcall serial_tx_hex
+
+	ldi	r16, 0x63					; expected values
+	cp	r18, r16
+	brne cs8900_not_found			; didn't find it						;
+	ldi r17, 0x0E 
+	cp r19, r17
+	brne cs8900_not_found			; didn't find it						;
+
+
+cs8900_not_found:
+	ret
+
+
+/*
+
+
+    if (CSReadPP16(CS_PROD_ID) != 0x630E)
+        return -1;
+
+    //
+    //  Copy our MAC address to the NIC
+    // 
+    for (i = 0; i < 6; i += 2) {
+        j = ifn->if_mac[i] << 8;
+        j |= ifn->if_mac[i + 1];
+        CSWritePP16(CS_IEEE_ADDR + i, j);
+        j = CSReadPP16(CS_IEEE_ADDR + i);
+#if 0
+        if (tcp_trace) {
+            NutPrintFormat_P(dev_debug, PSTR("ADDR = %x\r\n"), j);
+            NutPrintFlush(dev_debug);
+        }
+#endif
+    }
+
+    //
+    // Enable the Transmitter and Receiver
+    //
+    CSWritePP16(CS_LINE_CTRL, 0x00C0);
+    //i = CSReadPP16(CS_LINE_CTRL);
+    //NutPrintFormat_P(dev_debug,PSTR("CS_LINE_CTRL = %x\r\n"), i);
+
+    CSWritePP16(CS_RX_CTL, 0x0F40);
+    //i = CSReadPP16(CS_RX_CTL);
+    //NutPrintFormat_P(dev_debug,PSTR("CS_RX_CTL = %x\r\n"), i);
+
+
+*/
+
+; -----------------------------------------------------------------------------------------
+; CS8900 cs_write_pp
+; -----------------------------------------------------------------------------------------
+
+; r16/r17 = address
+; r18/r19 = data
+
+cs_write_pp:
+	sts	CS_PP_PTR, 		r16
+	sts	CS_PP_PTR+1,	r17
+	sts	CS_PP_DATA0, 	r18
+	sts	CS_PP_DATA0+1,	r19
+	ret
+
+; -----------------------------------------------------------------------------------------
+; CS8900 cs_read_pp
+; -----------------------------------------------------------------------------------------
+
+; r16/r17 = address
+; r18/r19 = data
+
+cs_read_pp:
+	sts	CS_PP_PTR, r16
+	sts	CS_PP_PTR+1, r17
+	lds	r18, CS_PP_DATA0
+	lds	r19, CS_PP_DATA0+1
+	ret
+
