@@ -1,7 +1,5 @@
 .include "m162def.inc"
 
-.include "cs8900.inc"
-
 ; =======================================================================
 ; == ATmega162 I/O pins =================================================
 ; =======================================================================
@@ -197,11 +195,7 @@ nop
 ; =======================================================================
 
 reset:
-
-	; First set up some of the I/O Registers
-
 	; select 8MHz clock
-	; CLKPR is Memory mapped and cannot be used with in/out instructions
 	ldi	r16, 0x80
 	sts	CLKPR, r16
 	clr	r16
@@ -228,7 +222,6 @@ reset:
 	sbi	DDRE, ADLC_nCE			; set PortE data direction register ADLC_nCE to ouput
 	sbi	PORTE, ADLC_nCE			; output 1 on ADLC_nCE
 
-	
 	; set up timer 0 to generate ADLC clock waveform
 	; select divide-by-10 for nominal 800kHz at 8MHz in
 	ldi	r16, 4
@@ -253,8 +246,6 @@ reset:
 														; CS10	= 0	; Clock Select1 bit 0
 	out	TCCR1B, r16										; TCCR1B - Timer/Counter1 Control Register B
 
-
-
 	; set up external memory interface and interrupts
 	; select 1 wait state for upper region at 0x8000-0xffff
 	ldi r16, 1 << SRL2			; SRL2	= 6	; Wait State Sector Limit Bit 2
@@ -274,8 +265,10 @@ reset:
 
 	out	MCUCR, r16				; set the MicroController Control Register
 
-	rcall egpio_init
-	rcall cs_init
+	rcall	egpio_init
+
+	rcall	cs_init
+
 
 	; zero sram from 0x5000 to 0xFFFF
 	ldi	ZH, 0x5					; High byte Z 0x5
@@ -296,10 +289,6 @@ zero1:							; start loop around SRAM locations
 	out	GICR, r18				; clear the General Interrupt Control Register
 
 	sei							; set interrupts
-
-	; unreset ethernet chip by setting the reset line low
-	ldi	r16, EGPIO_ETHER_RESET
-	rcall	egpio_write			; set to 0
 
 	; initialise the ADLC
 	rcall	adlc_init
@@ -1120,3 +1109,5 @@ CkDone1:
 	mov     valueH,chksumM
 	com	valueH
 	ret
+
+.include "cs8900.inc"
