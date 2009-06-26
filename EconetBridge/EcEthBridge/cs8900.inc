@@ -76,13 +76,24 @@
 cs_init:
 
 
-    // Take CS8900 out of reset and wait for internal reset to complete
+; Take CS8900 out of reset and wait for internal reset to complete
 ;#ifdef NUT_CS8900_OLD
 ;    outp(inp(PORTD) & ~RESETE, PORTD);
 
 
-	;wait for reset to complete
+	; unreset ethernet chip by setting the reset line low
+	ldi	r16, EGPIO_ETHER_RESET
+	rcall	egpio_write			; set to 0
 
+	;wait for reset to complete
+	ldi	r16, 0xff
+wait1:
+	ldi	r17, 0xff
+wait:
+	dec	r17
+	brne	wait
+	dec	r16
+	brne	wait1
 
 	; check for chip
 	lds r18, CS_PP_DATA0			; read the Packet Page Data Port
@@ -106,42 +117,6 @@ cs_init:
 cs8900_not_found:
 	ret
 
-
-/*
-
-
-    if (CSReadPP16(CS_PROD_ID) != 0x630E)
-        return -1;
-
-    //
-    //  Copy our MAC address to the NIC
-    // 
-    for (i = 0; i < 6; i += 2) {
-        j = ifn->if_mac[i] << 8;
-        j |= ifn->if_mac[i + 1];
-        CSWritePP16(CS_IEEE_ADDR + i, j);
-        j = CSReadPP16(CS_IEEE_ADDR + i);
-#if 0
-        if (tcp_trace) {
-            NutPrintFormat_P(dev_debug, PSTR("ADDR = %x\r\n"), j);
-            NutPrintFlush(dev_debug);
-        }
-#endif
-    }
-
-    //
-    // Enable the Transmitter and Receiver
-    //
-    CSWritePP16(CS_LINE_CTRL, 0x00C0);
-    //i = CSReadPP16(CS_LINE_CTRL);
-    //NutPrintFormat_P(dev_debug,PSTR("CS_LINE_CTRL = %x\r\n"), i);
-
-    CSWritePP16(CS_RX_CTL, 0x0F40);
-    //i = CSReadPP16(CS_RX_CTL);
-    //NutPrintFormat_P(dev_debug,PSTR("CS_RX_CTL = %x\r\n"), i);
-
-
-*/
 
 ; -----------------------------------------------------------------------------------------
 ; CS8900 cs_write_pp
