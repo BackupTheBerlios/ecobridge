@@ -75,6 +75,40 @@
 .equ	CS_TX_FR_LOC	= 0x0A00	;						Transmit Frame Location
 
 
+
+; Register 13, LineCTL
+.equ CS_LCTL_SerRxON	= 0x40		;>bit 6 SerRxON When set, reception enabled.
+.equ CS_LCTL_SerTxON	= 0x80		;>bit 7
+.equ CS_LCTL_AUIonly	= 0x01		; bit 8 AUIonly When set, AUI selected (takes precedence over 
+									; AutoAUI/10BT).
+.equ CS_LCTL_AutoAUI	= 0x02		; bit 9 AutoAUI/10BT When set, automatic interface selection 
+									; enabled. When both bits 8 and 9 are clear, 10BASE-T selected.
+.equ CS_LCTL_ModBackoffE= 0x08		; bit B When set, the modified backoff algorithm is used. When clear,
+									; the standard backoff algorithm is used.
+.equ CS_LCTL_PolarityDis= 0x10		; bit C
+.equ CS_LCTL_2PartDefDis= 0x20		; bit D When set, two-part deferral is disabled.
+.equ CS_LCTL_LoRx		= 0x40		; bit E LoRx Squelch When set, receiver squelch level reduced 
+									; by approximately 6 dB.
+
+; Register 5, RxCTL
+.equ CS_RX_IAHashA		= 0x40		;>bit 6 IAHashA When set, Individual Address frames that 
+									; pass the hash filter are accepted
+.equ CS_RX_PromiscuousA = 0x80		; bit 7 PromiscuousA When set, all frames are accepted *
+.equ CS_RX_RxOKA		= 0x01		;>bit 8 RxOKA When set, frames with valid length and CRC 
+									; and that pass the DA filter are accepted.
+.equ CS_RX_MulticastA	= 0x02		;>bit 9 MulticastA When set, Multicast frames that pass 
+									; the hash filter are accepted *
+.equ CS_RX_IndividualA	= 0x04		;>bit A IndividualA When set, frames with DA that matches 
+									; the IA at PacketPage base+ 0158h are accepted *
+.equ CS_RX_BroadcastA	= 0x08		;>bit B BroadcastA When set, all broadcast frames are accepted. *
+.equ CS_RX_CRCerrorA	= 0x10		; bit C CRCerrorA When set, frames with bad CRC that pass 
+									; the DA filter are accepted.
+.equ CS_RX_RuntA		= 0x20		; bit D RuntA When set, frames shorter than 64 bytes that 
+									; pass the DA filter are accepted.	
+.equ CS_RX_ExtradataA	= 0x40		; bit E ExtradataA When set, frames longer than 1518 bytes that 
+									; pass the DA filter are accepted (only the first 1518 bytes are buffered).	
+									; * 7,9,A,B must also meet the criteria programmed into bits 8,C,D,E
+
 ; =======================================================================
 ; == CS8900==============================================================
 ; =======================================================================
@@ -103,8 +137,8 @@ cs_init:
 	cp	r18, r16
 	brne cs8900_not_found			; didn't find it						;
 
-	ldi r17, 0x63 					; expected value
-	cp r19, r17
+	ldi r16, 0x63 					; expected value
+	cp r19, r16
 	brne cs8900_not_found			; didn't find it						;
 
 
@@ -119,8 +153,8 @@ cs_init:
 Initialising:
 
     ; Read Self Status register into r18 and r1
-    ldi r16,CS_SELF_STAT & 0xFF		; LSB
-	ldi r17,CS_SELF_STAT >> 8		; MSB
+    ldi r16,CS_SELF_STAT & 0xFF		; LSB register
+	ldi r17,CS_SELF_STAT >> 8		; MSB register
 	rcall cs_read_pp
 
 
@@ -133,11 +167,11 @@ Initialising:
 
 INIT_Complete:
 
-    ldi r16,CS_SELF_STAT & 0xFF		; LSB
-	ldi r17,CS_SELF_STAT >> 8		; MSB
+    ldi r16,CS_SELF_STAT & 0xFF		; LSB register
+	ldi r17,CS_SELF_STAT >> 8		; MSB register
 	rcall cs_read_pp
 
-	bst	r19, 1					; stores bit7 SiBusy of r19 in T flag 
+	bst	r19, 1					; stores bit1 SiBusy of r19 in T flag 
 	brbs 6, Init_Complete		; if set, still accessing the EEPROM
 
 	; check it responds by writing 0x0102 to Packet Page Pointer Port
@@ -155,8 +189,8 @@ INIT_Complete:
 	brne cs8900_no_response			; didn't find it						;
 
     ; Add the MAC address to the NIC
-	ldi r16, CS_IEEE_ADDR & 0xFF	; LSB
-    ldi r17, CS_IEEE_ADDR >> 8		; MSB
+	ldi r16, CS_IEEE_ADDR & 0xFF	; LSB register
+    ldi r17, CS_IEEE_ADDR >> 8		; MSB register
 	ldi r18, 0x00					; Octet 5 of IA
 	clr r19
 	rcall cs_write_pp
@@ -183,17 +217,22 @@ INIT_Complete:
 
 
     ; Enable Tx
-    ldi r16,CS_LINE_CTRL & 0xFF		; LSB
-	ldi r17,CS_LINE_CTRL >> 8		; MSB
-	ldi r18, 0xC0					; LSB
-	clr r19							; MSB
+    ldi r16,	CS_LINE_CTRL & 0xFF	; LSB register
+	ldi r17,	CS_LINE_CTRL >> 8	; MSB register
+	ldi r18, 	CS_LCTL_SerRxON | \
+				CS_LCTL_SerTxON		; LSB data
+	clr r19							; MSB data
 	rcall cs_write_pp
 
+
     ; Enable Rx
-	ldi r16,CS_RX_CTL & 0xFF		; LSB
-    ldi r17,CS_RX_CTL >> 8			; MSB
-	ldi r18, 0x40					; LSB
-	ldi r19, 0x0F					; MSB
+	ldi r16,	CS_RX_CTL & 0xFF	; LSB register
+    ldi r17,	CS_RX_CTL >> 8		; MSB register
+	ldi r18,	CS_RX_IAHashA		; LSB data
+	ldi r19, 	CS_RX_RxOKA | \
+				CS_RX_MulticastA | \
+				CS_RX_IndividualA | \
+				CS_RX_BroadcastA 	; MSB data
 	rcall cs_write_pp
 
 ; return codes
