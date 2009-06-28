@@ -75,20 +75,34 @@
 .equ	CS_TX_FR_LOC	= 0x0A00	;						Transmit Frame Location
 
 
+; Register 4, Receiver Event
+.equ	CS_RX_IAHash	= 0x040		; If the received frame's Destination Address is accepted by the hash filter, then
+									; this bit is set if, and only if IAHashA (Register 5, RxCTL, Bit 6) is set, and 
+									; Hashed (Bit 9) is set.
+.equ	CS_RX_Dribble	= 0x080		; If set, the received frame had from one to seven bits after the last received full 
+									; byte. An "Alignment Error" occurs when Dribblebits and CRCerror (Bit C) are both set.
+.equ	CS_RX_RxOK		= 0x01		; If set, the received frame had a good CRC and valid length (i.e., there is not a CRC 
+									; error, Runt error, or Extradata error). When RxOK is set, then the length of the 
+									; received frame is contained at PacketPage base + 0402h. If RxOKiE (Register 3, RxCFG, 
+									; Bit 8) is set, there is an interrupt.
+.equ	CS_RX_Hashed	= 0x02		; If set, the received frame had a Destination Address that was accepted by the hash 
+									; filter. If Hashed and RxOK (Bit 8) are set, Bits F through A of RxEvent become the Hash
+									; Table Index for this frame [See Section 5.2.10 on page 87 for an exception regarding 
+									; broadcast frames!].If Hashed and RxOK are not both set, then Bits F through A are 
+									; individual event bits as defined below.
+.equ	CS_RX_IndivAdr	= 0x04		; If the received frame had a Destination Address which matched the Individual Address found
+									; at PacketPage base + 0158h, then this bit is set if, and only if, RxOK (Bit 8) is set and 
+									; IndividualA (Register 5, RxCTL, Bit A) is set.
+.equ	CS_RX_Broadcast	= 0x08		; If the received frame had a Broadcast Address (FFFF FFFF FFFFh) as the Destination Address,
+									; then this bit is set if, and only if, RxOK is set and BroadcastA (Register 5, RxCTL, Bit B)
+									; is set.
+.equ	CS_RX_CRCError	= 0x10		; If set, the received frame had a bad CRC. If CRCerroriE (Register 3, RxCFG, Bit C) is set, there
+									; is an interrupt
+.equ	CS_RX_Run		= 0x20		; If set, the received frame was shorter than 64 bytes. If RuntiE (Register 3, RxCFG, Bit D) is set,
+									; there is an interrupt.
+.equ	CS_RX_Extradata	= 0x40		; If set, the received frame was longer than 1518 bytes. All bytes beyond 1518 are discarded. If
+									; ExtradataiE (Register 3, RxCFG, Bit E) is set, there is an interrupt.
 
-; Register 13, LineCTL
-.equ CS_LCTL_SerRxON	= 0x40		;>bit 6 SerRxON When set, reception enabled.
-.equ CS_LCTL_SerTxON	= 0x80		;>bit 7
-.equ CS_LCTL_AUIonly	= 0x01		; bit 8 AUIonly When set, AUI selected (takes precedence over 
-									; AutoAUI/10BT).
-.equ CS_LCTL_AutoAUI	= 0x02		; bit 9 AutoAUI/10BT When set, automatic interface selection 
-									; enabled. When both bits 8 and 9 are clear, 10BASE-T selected.
-.equ CS_LCTL_ModBackoffE= 0x08		; bit B When set, the modified backoff algorithm is used. When clear,
-									; the standard backoff algorithm is used.
-.equ CS_LCTL_PolarityDis= 0x10		; bit C
-.equ CS_LCTL_2PartDefDis= 0x20		; bit D When set, two-part deferral is disabled.
-.equ CS_LCTL_LoRx		= 0x40		; bit E LoRx Squelch When set, receiver squelch level reduced 
-									; by approximately 6 dB.
 
 ; Register 5, RxCTL
 .equ CS_RX_IAHashA		= 0x40		;>bit 6 IAHashA When set, Individual Address frames that 
@@ -108,6 +122,22 @@
 .equ CS_RX_ExtradataA	= 0x40		; bit E ExtradataA When set, frames longer than 1518 bytes that 
 									; pass the DA filter are accepted (only the first 1518 bytes are buffered).	
 									; * 7,9,A,B must also meet the criteria programmed into bits 8,C,D,E
+
+
+; Register 13, LineCTL
+.equ CS_LCTL_SerRxON	= 0x40		;>bit 6 SerRxON When set, reception enabled.
+.equ CS_LCTL_SerTxON	= 0x80		;>bit 7
+.equ CS_LCTL_AUIonly	= 0x01		; bit 8 AUIonly When set, AUI selected (takes precedence over 
+									; AutoAUI/10BT).
+.equ CS_LCTL_AutoAUI	= 0x02		; bit 9 AutoAUI/10BT When set, automatic interface selection 
+									; enabled. When both bits 8 and 9 are clear, 10BASE-T selected.
+.equ CS_LCTL_ModBackoffE= 0x08		; bit B When set, the modified backoff algorithm is used. When clear,
+									; the standard backoff algorithm is used.
+.equ CS_LCTL_PolarityDis= 0x10		; bit C
+.equ CS_LCTL_2PartDefDis= 0x20		; bit D When set, two-part deferral is disabled.
+.equ CS_LCTL_LoRx		= 0x40		; bit E LoRx Squelch When set, receiver squelch level reduced 
+									; by approximately 6 dB.
+
 
 ; =======================================================================
 ; == CS8900==============================================================
@@ -152,7 +182,7 @@ cs_init:
 
 Initialising:
 
-    ; Read Self Status register into r18 and r1
+    ; Read Self Status register into r18 and r19
     ldi r16,CS_SELF_STAT & 0xFF		; LSB register
 	ldi r17,CS_SELF_STAT >> 8		; MSB register
 	rcall cs_read_pp
@@ -244,53 +274,149 @@ cs8900_no_response:
 ;
 cs_poll:
 
-/* Psuedo code
+poll_until_no_events:
 
-#define EventMask = 0xFFC0
-#define RegisterMask = 0x003F
-#define RxEvent = 0x0004
-#define TxEvent = 0x0008
-#define BufEvent = 0x000C
+	rcall cs_Poll_Registers		; polls the Rx, Tx, Buff registers, returning with r18 & r19 the data else 0
+	
+	cpi r18, 0x0				; check if any events were returned
+	brne process_event
+	cpi r19, 0x0
+	breq poll_registers_ret
+	
+process_event:
+	mov r17, r18
+	andi r17, 0x3F				; find the register mask
+								; 0x04 = RxEvent
+								; 0x08 = TxEvent
+								; 0x0C = BuffEvent
 
-Poll Chip {
+	cpi r17, 0x04
+	breq CS_Process_RxEvent
+	cpi r17, 0x08
+	breq CS_Process_TxEvent
+	cpi r17, 0x0C	
+	breq CS_Process_BuffEvent
+				
+	rjmp poll_until_no_events
 
-	unsigned short Even;
-
-	Event = Poll_Registers()
-	While Event <> 0x0000 {
-		Switch (RegisterMask & Event) {
-			Case RxEvent:
-				result = Process - RxEvent(Event);
-				break;
-			Case TxEvent:
-				result = Process - TxEvent(Event);
-				break;
-			Case BufEvent:
-				result = Process - BufEvent(Event);
-				break:
-			} // End Switch
-			Even = Poll-Registers()
-	} // End While
-} // End Poll-Chip
-
-Poll-Registers {
-	unsigned short Event;
-
-	Event = Read - RxEventRegister();
-	If (EventMask & Event) {
-			return Event;}
-
-	Event = Read - TxEventRegister();
-	If (EventMask & Event) {
-			return Event;}
-
-	Return 0x0000
-// End Poll Registers
-}
-
-*/
-
+poll_registers_ret:
 	ret
+
+; -----------------------------------------------------------------------------------------
+; CS8900 cs_Process_RxEvent
+; -----------------------------------------------------------------------------------------
+;
+; entry : 	r18 = LSB
+;			r19 = MSB
+;
+CS_Process_RxEvent:
+	
+	ldi r16, 0x72 ; "r"
+	rcall serial_tx
+	ldi r16, 0x20 ; " "
+	rcall serial_tx
+
+	rcall output_r18_r19
+	rcall crlf
+
+	rjmp poll_until_no_events
+
+; -----------------------------------------------------------------------------------------
+; CS8900 cs_Process_TxEvent
+; -----------------------------------------------------------------------------------------
+;
+; entry : 	r18 = LSB
+;			r19 = MSB
+;
+CS_Process_TxEvent:
+	ldi r16, 0x74 ; "t"
+	rcall serial_tx
+	ldi r16, 0x20 ; " "
+	rcall serial_tx
+
+	rcall output_r18_r19
+	rcall crlf
+
+	rjmp poll_until_no_events
+	
+; -----------------------------------------------------------------------------------------
+; CS8900 cs_Process_BuffEvent
+; -----------------------------------------------------------------------------------------
+;
+; entry : 	r18 = LSB
+;			r19 = MSB
+;
+CS_Process_BuffEvent:
+	ldi r16, 0x62 ; "b"
+	rcall serial_tx
+	ldi r16, 0x20 ; " "
+	rcall serial_tx
+
+	rcall output_r18_r19
+	rcall crlf
+
+	rjmp poll_until_no_events
+
+; -----------------------------------------------------------------------------------------
+; CS8900 cs_Poll_Registers
+; -----------------------------------------------------------------------------------------
+;
+; exit : 	r18 = LSB
+;			r19 = MSB
+cs_Poll_Registers:
+	; Poll the Rx and Tx and Buffer event registers with Rx, Tx, Buffer taking proiority.
+
+
+	; EventMask = 0xFFC0		; mask out the register type
+    
+	; Read Rx Event register into r18 and r19
+    ldi r16,CS_RX_EVENT & 0xFF		; LSB register
+	ldi r17,CS_RX_EVENT >> 8		; MSB register
+	rcall cs_read_pp
+	mov r17, r18					; Keep original value in r18 and operate on r17
+	andi r17, 0xC0					; Event Register Mask
+	andi r19, 0xFF
+
+	cpi r17,0
+	brne poll_return
+	cpi r19,0
+	brne poll_return
+
+	; nothing was in rx so check tx
+
+    ; Read Tx Event register into r18 and r19
+    ldi r16,CS_TX_EVENT & 0xFF		; LSB register
+	ldi r17,CS_TX_EVENT >> 8		; MSB register
+	rcall cs_read_pp
+	mov r17, r18					; Keep original value in r18 and operate on r17
+	andi r17, 0xC0					; Event Register Mask
+	andi r19, 0xFF
+
+	cpi r17,0
+	brne poll_return
+	cpi r19,0
+	brne poll_return
+
+    ; Read Buffer Event register into r18 and r19
+    ldi r16,CS_BUF_EVENT & 0xFF		; LSB register
+	ldi r17,CS_BUF_EVENT >> 8		; MSB register
+	rcall cs_read_pp
+	mov r17, r18					; Keep original value in r18 and operate on r17
+	andi r17, 0xC0					; Event Register Mask
+	andi r19, 0xFF
+
+	cpi r17,0
+	brne poll_return
+	cpi r19,0
+	brne poll_return
+
+	clr r18
+	clr r19
+poll_return:
+	ret
+
+
+
 
 
 ; -----------------------------------------------------------------------------------------
@@ -329,8 +455,6 @@ cs_software_reset:
 ;
 cs_test_tx:
 
-	ldi r16,0x45
-	rcall serial_tx
 
 	; The host bids for frame storage by writing the Transmit Command to the TxCMD register
 	; (memory base+ 0144h in memory mode and I/O base + 0004h in I/O mode).
@@ -339,7 +463,7 @@ cs_test_tx:
     ldi r17,CS_PP_TX_CMD >> 8		; MSB
 	ldi r18, 0xC0					; LSB	write when all the packet is in the buffer
 	clr r19							; MSB
-	rcall cs_write_pp
+;	rcall cs_write_pp
 
 	; The host writes the transmit frame length to the TxLength register (memory base +
 	; 0146h in memory mode and I/O base + 0006h in I/O mode). If the transmit length is
@@ -351,7 +475,7 @@ cs_test_tx:
     ldi r17,CS_PP_TX_LEN >> 8		; MSB
 	mov r18, YH						; LSB	write packet length
 	mov r19, YL						; MSB
-	rcall cs_write_pp
+;	rcall cs_write_pp
 
 	; The host reads the BusST register. This read is performed in memory mode by
 	; reading Register 18, at memory base + 0138h. In I/O mode, the host must first set
@@ -362,14 +486,14 @@ cs_test_tx:
 wait_until_tx_ready:
 	ldi r16,CS_BUS_STAT & 0xFF		; LSB   CS_BUS_STAT
     ldi r17,CS_BUS_STAT >> 8		; MSB
-	rcall cs_read_pp
+;	rcall cs_read_pp
 
 	; After reading the register, the Rdy4TxNOW bit (Bit 8) is checked. If the bit is set, the
 	; frame can be written. If the bit is clear, the host must continue reading the BusST register
 	; (Register 18) and checking the Rdy4TxNOW bit (Bit 8) until the bit is set.
 
-	bst r19, 0	
-	brbc 6, wait_until_tx_ready
+;	bst r19, 0	
+;	brbc 6, wait_until_tx_ready
 
 	; When the CS8900A is ready to accept the frame, the host transfers the entire frame from
 	; host memory to CS8900A memory using "REP" instruction (REP MOVS starting at memory base 
@@ -391,36 +515,28 @@ create_tx_packet:
 	ldi	ZL, MAC_addr_DA & 0xff		; set ZL with the lowbyte of the MAC address
 	ldi	ZH, MAC_addr_DA >> 8		; set ZH with the highbyte of the MAC address
 
-	clr r19
 	ldi r17, 12						; loop count 12 for the 2 x 6 octets 5-0
 
 LoadMAC_DA_SA:							
-	ld r16, Z						; Octet 5 of IA
-	inc ZL
-	sts CS_DATA_P0, r16
+	ld r16, Z+						; Octet 5 of IA
+;	sts CS_DATA_P0, r16
 ;debug
-	rcall serial_tx_hex
-	ldi r16, 0x20
-	rcall serial_tx
+	rcall output_r16
 
 	dec r17
 	cpi r17, 0						; will have performed the loop 12 times
 	BRNE LoadMAC_DA_SA
 
 	; Y contains the length
-	sts CS_DATA_P0, YH
+;	sts CS_DATA_P0, YH
 ;debug
 	mov r16, YH
-	rcall serial_tx_hex
-	ldi r16, 0x20
-	rcall serial_tx
+	rcall output_r16
 	
-	sts CS_DATA_P0, YL
+;	sts CS_DATA_P0, YL
 ;debug
 	mov r16, YL
-	rcall serial_tx_hex
-	ldi r16, 0x20
-	rcall serial_tx
+	rcall output_r16
 
 	; now output the data
 	ldi	ZH, ECONET_RX_BUF >> 8		; set ZH with the highbyte of the Econet receive buffer
@@ -432,11 +548,9 @@ LoadMAC_DA_SA:
 	
 tx_data_loop:
 	ld	r16, Z+						; get byte from RxBuffer, and increment buffer address counter
-	sts CS_DATA_P0, r16
+;	sts CS_DATA_P0, r16
 ;debug
-	rcall serial_tx_hex
-	ldi r16, 0x20
-	rcall serial_tx
+	rcall output_r16
 	
 	cp	ZH, YH						; pointer = RxBuffer position high byte 
 	brne	tx_data_loop	 		; no, then continue and loop
@@ -445,6 +559,7 @@ tx_data_loop:
 	brne	tx_data_loop			; no, then continue and loop
 
 	rcall crlf
+
 	ret
 
 ; -----------------------------------------------------------------------------------------
@@ -482,18 +597,6 @@ cs_find_tx_length:
 	add YL, ZL
 	adc YH, ZH
 
-	ldi r16, 0x4c
-	rcall serial_tx
-
-	mov r16, YH
-	rcall serial_tx_hex
-	ldi r16, 0x20
-	rcall serial_tx
-
-	mov r16, YL
-	rcall serial_tx_hex
-	ldi r16, 0x20
-	rcall serial_tx
 
 ret
 
@@ -558,34 +661,38 @@ cs_debug_pp:
 
 output_r16:
 	rcall serial_tx_hex
+	ldi r16, 0x20
+	rcall serial_tx
 	ret
 
 output_r17:
 	mov r16,r17
 	rcall serial_tx_hex
+	ldi r16, 0x20
+	rcall serial_tx
 	ret
 
 output_r18:
 	mov r16, r18
 	rcall serial_tx_hex
+	ldi r16, 0x20
+	rcall serial_tx
 	ret
 
 output_r19:
 	mov r16, r19
 	rcall serial_tx_hex
+	ldi r16, 0x20
+	rcall serial_tx
 	ret
 
 output_r16_r17:
 	rcall output_r16			; output r16
-	ldi r16, 0x20				; ouput space
-	rcall serial_tx
 	rcall output_r17			; output r17
 	ret
 
 output_r18_r19:
 	rcall output_r18
-	ldi r16, 0x20				; ouput space
-	rcall serial_tx
 	rcall output_r19
 	ret
 
