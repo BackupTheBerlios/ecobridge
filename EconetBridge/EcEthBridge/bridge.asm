@@ -323,7 +323,7 @@ zero1:							; start loop around SRAM locations
 
 
 loop:
-	;rcall	cs8900_poll
+	rcall	cs_poll
 
 	lds	r16, adlc_state				; check the adlc_state
 	cpi	r16, FRAME_COMPLETE			; is the frame complete?
@@ -333,6 +333,7 @@ loop:
 
 adlc_frame:
 	rcall cs_test_tx				; send it out on ethernet
+	ret
 
 	ldi	ZH, ECONET_RX_BUF >> 8		; set ZH with the highbyte of the Econet receive buffer
 	ldi	ZL, ECONET_RX_BUF & 0xff	; set XL with the lowbyte of the Econet receive buffer
@@ -449,10 +450,10 @@ egpio_write:
 
 serial_tx:
 	push	r18						; preserve r18 to the stack
-	push 	XL
-	push	XH
-	push	YL
-	push	YH
+;	push 	XL
+;	push	XH
+;	push	YL
+;	push	YH
 	in		r18, SREG				; read contents of status register
 	push	r18						; preserve status register to the stack including interrupt status
 	cli								; stop interrupts
@@ -507,10 +508,10 @@ serial_tx_wait3:
 		
 	pop		r18						; retrieve SREG from the stack
 	out		SREG, r18				; restore SREG
-	pop 	YH
-	pop		YL
-	pop		XH
-	pop		XL
+;	pop 	YH
+;	pop		YL
+;	pop		XH
+;	pop		XL
 	pop		r18						; restore r18 from the stack
 	ret
 
@@ -1161,22 +1162,22 @@ init_vars:
 	ldi	ZL, MAC_addr_DA & 0xff			; set ZL with the lowbyte of the MAC address
 	ldi	ZH, MAC_addr_DA >> 8			; set ZH with the highbyte of the MAC address
 
-	ldi r17, 0x63 
+	ldi r17, 0x00 
 	st Z+,	r17						; Octet 5 of IA
 
-	ldi r17, 0xAC 
+	ldi r17, 0x01 
 	st Z+,	r17						; Octet 4 of IA
 
-	ldi r17, 0x60 
+	ldi r17, 0x4A 
 	st Z+,	r17						; Octet 3 of IA
 
-	ldi r17, 0x4A 
+	ldi r17, 0x60 
 	st Z+,	r17						; Octet 2 of IA
 
-	ldi r17, 0x01 
+	ldi r17, 0xAC 
 	st Z+,	r17						; Octet 1 of IA
 
-	ldi r17, 0x00 
+	ldi r17, 0x63 
 	st Z,	r17						; Octet 0 of IA
 
 	ret
