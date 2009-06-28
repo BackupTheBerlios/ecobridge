@@ -168,8 +168,10 @@
 
 .equ	STACK_TOP		= 0x200
 
-.equ	adlc_state		= 0x201
-.equ	adlc_rx_ptr		= 0x202
+.equ	adlc_state		= 0x201			; 1 byte
+.equ	adlc_rx_ptr		= 0x202			; 2 bytes
+.equ	MAC_addr_DA		= 0x204			; 6 bytes Stored in reverse order - Octet 5 - 0 
+.equ	MAC_addr_SA		= 0x20A			; 6 bytes Stored in reverse order - Octet 5 - 0 
 
 
 .equ	ECONET_RX_BUF	= 0x4000
@@ -195,6 +197,7 @@ nop
 ; =======================================================================
 
 reset:
+	
 	; select 8MHz clock
 	ldi	r16, 0x80
 	sts	CLKPR, r16
@@ -267,6 +270,8 @@ reset:
 
 	rcall	egpio_init
 
+	rcall init_vars
+
 	rcall	cs_init
 
 
@@ -327,6 +332,8 @@ loop:
 
 
 adlc_frame:
+	rcall cs_test_tx				; send it out on ethernet
+
 	ldi	ZH, ECONET_RX_BUF >> 8		; set ZH with the highbyte of the Econet receive buffer
 	ldi	ZL, ECONET_RX_BUF & 0xff	; set XL with the lowbyte of the Econet receive buffer
 	lds	YH, adlc_rx_ptr + 1			; put the Rx pointer address in Y
@@ -442,6 +449,10 @@ egpio_write:
 
 serial_tx:
 	push	r18						; preserve r18 to the stack
+	push 	XL
+	push	XH
+	push	YL
+	push	YH
 	in		r18, SREG				; read contents of status register
 	push	r18						; preserve status register to the stack including interrupt status
 	cli								; stop interrupts
@@ -496,6 +507,10 @@ serial_tx_wait3:
 		
 	pop		r18						; retrieve SREG from the stack
 	out		SREG, r18				; restore SREG
+	pop 	YH
+	pop		YL
+	pop		XH
+	pop		XL
 	pop		r18						; restore r18 from the stack
 	ret
 
@@ -1116,3 +1131,52 @@ CkDone1:
 
 
 .include "cs8900.inc"
+
+; =======================================================================
+; == Initialise some variables ==========================================
+; =======================================================================
+;
+init_vars:
+
+	; MAC Address stored in reverse Octet 5-0
+
+	;load X with MAC_addr_SA
+	ldi	ZL, MAC_addr_SA & 0xff			; set ZL with the lowbyte of the MAC address
+	ldi	ZH, MAC_addr_SA >> 8			; set ZH with the highbyte of the MAC address
+
+	clr	r16							; 0x00
+	st Z+,	r16						; Octet 5 of IA
+
+	ldi r17,	0x06				; use r17 to save clearing r16 again
+	st Z+,	r17						; Octet 4 of IA
+
+	ldi r17,	0x98
+	st Z+,	r17						; Octet 3 of IA
+	st Z+,	r16						; Octet 2 of IA
+	st Z+,	r16						; Octet 1 of IA
+	st Z,	r16						; Octet 0 of IA
+
+	; Store Destination MAC address for testing
+	;load Z with MAC_addr_DA
+	ldi	ZL, MAC_addr_DA & 0xff			; set ZL with the lowbyte of the MAC address
+	ldi	ZH, MAC_addr_DA >> 8			; set ZH with the highbyte of the MAC address
+
+	ldi r17, 0x63 
+	st Z+,	r17						; Octet 5 of IA
+
+	ldi r17, 0xAC 
+	st Z+,	r17						; Octet 4 of IA
+
+	ldi r17, 0x60 
+	st Z+,	r17						; Octet 3 of IA
+
+	ldi r17, 0x4A 
+	st Z+,	r17						; Octet 2 of IA
+
+	ldi r17, 0x01 
+	st Z+,	r17						; Octet 1 of IA
+
+	ldi r17, 0x00 
+	st Z,	r17						; Octet 0 of IA
+
+	ret

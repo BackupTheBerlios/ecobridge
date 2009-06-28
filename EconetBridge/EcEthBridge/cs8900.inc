@@ -191,29 +191,21 @@ INIT_Complete:
     ; Add the MAC address to the NIC
 	ldi r16, CS_IEEE_ADDR & 0xFF	; LSB register
     ldi r17, CS_IEEE_ADDR >> 8		; MSB register
-	ldi r18, 0x00					; Octet 5 of IA
+
+	;load X with Mac_addr
+	ldi	XL, MAC_addr_SA & 0xff		; set XL with the lowbyte of the MAC address
+	ldi	XH, MAC_addr_SA >> 8		; set XH with the highbyte of the MAC address
+
 	clr r19
+	ldi tmp, 6						; loop count 6 for the 6 octets 5-0
+
+LoadMAC:							
+	ld r18, X+						; Octet 5 of IA
 	rcall cs_write_pp
 
-	inc r16							; increment the LSB
-	ldi r18,0x06					; Octet 4 of IA
-	rcall cs_write_pp
-
-	inc r16							; increment the LSB
-	ldi r18,0x98					; Octet 3 of IA
-	rcall cs_write_pp
-
-	inc r16							; increment the LSB
-	ldi r18,0x00					; Octet 2 of IA
-	rcall cs_write_pp
-
-	inc r16							; increment the LSB
-	ldi r18,0x00					; Octet 1 of IA
-	rcall cs_write_pp
-
-	inc r16							; increment the LSB
-	ldi r18,0x00					; Octet 0 of IA
-	rcall cs_write_pp
+	dec tmp
+	cpi tmp, 0						; will have performed the loop 6 times
+	BRNE LoadMAC
 
 
     ; Enable Tx
@@ -330,6 +322,180 @@ cs_software_reset:
 	rcall cs_write_pp
 
 	ret
+
+; -----------------------------------------------------------------------------------------
+; CS8900 test_tx
+; -----------------------------------------------------------------------------------------
+;
+cs_test_tx:
+
+	ldi r16,0x45
+	rcall serial_tx
+
+	; The host bids for frame storage by writing the Transmit Command to the TxCMD register
+	; (memory base+ 0144h in memory mode and I/O base + 0004h in I/O mode).
+
+	ldi r16,CS_PP_TX_CMD & 0xFF		; LSB   CS_PP_TX_CMD
+    ldi r17,CS_PP_TX_CMD >> 8		; MSB
+	ldi r18, 0xC0					; LSB	write when all the packet is in the buffer
+	clr r19							; MSB
+	rcall cs_write_pp
+
+	; The host writes the transmit frame length to the TxLength register (memory base +
+	; 0146h in memory mode and I/O base + 0006h in I/O mode). If the transmit length is
+	; erroneous, the command is discarded and the TxBidErr bit (Register 18, BusST, Bit 7) is set.
+
+	rcall cs_find_tx_length
+
+	ldi r16,CS_PP_TX_LEN & 0xFF		; LSB   CS_PP_TX_LEN
+    ldi r17,CS_PP_TX_LEN >> 8		; MSB
+	mov r18, YH						; LSB	write packet length
+	mov r19, YL						; MSB
+	rcall cs_write_pp
+
+	; The host reads the BusST register. This read is performed in memory mode by
+	; reading Register 18, at memory base + 0138h. In I/O mode, the host must first set
+	; the PacketPage Pointer at the correct location by writing 0138h to the PacketPage
+	; Pointer Port (I/O base + 000Ah). The host can then read the BusST register from the
+	; PacketPage Data Port (I/O base + 000Ch).
+
+wait_until_tx_ready:
+	ldi r16,CS_BUS_STAT & 0xFF		; LSB   CS_BUS_STAT
+    ldi r17,CS_BUS_STAT >> 8		; MSB
+	rcall cs_read_pp
+
+	; After reading the register, the Rdy4TxNOW bit (Bit 8) is checked. If the bit is set, the
+	; frame can be written. If the bit is clear, the host must continue reading the BusST register
+	; (Register 18) and checking the Rdy4TxNOW bit (Bit 8) until the bit is set.
+
+	bst r19, 0	
+	brbc 6, wait_until_tx_ready
+
+	; When the CS8900A is ready to accept the frame, the host transfers the entire frame from
+	; host memory to CS8900A memory using "REP" instruction (REP MOVS starting at memory base 
+	; + 0A00h in memory mode, and REP OUT to Receive/Transmit Data Port (I/O base + 0000h) in I/O mode).
+
+
+	rcall create_tx_packet
+
+	ret
+
+
+; -----------------------------------------------------------------------------------------
+; CS8900 create_tx_packet
+; -----------------------------------------------------------------------------------------
+;
+; 
+create_tx_packet:
+	;load X with Mac_addr for DA
+	ldi	ZL, MAC_addr_DA & 0xff		; set ZL with the lowbyte of the MAC address
+	ldi	ZH, MAC_addr_DA >> 8		; set ZH with the highbyte of the MAC address
+
+	clr r19
+	ldi r17, 12						; loop count 12 for the 2 x 6 octets 5-0
+
+LoadMAC_DA_SA:							
+	ld r16, Z						; Octet 5 of IA
+	inc ZL
+	sts CS_DATA_P0, r16
+;debug
+	rcall serial_tx_hex
+	ldi r16, 0x20
+	rcall serial_tx
+
+	dec r17
+	cpi r17, 0						; will have performed the loop 12 times
+	BRNE LoadMAC_DA_SA
+
+	; Y contains the length
+	sts CS_DATA_P0, YH
+;debug
+	mov r16, YH
+	rcall serial_tx_hex
+	ldi r16, 0x20
+	rcall serial_tx
+	
+	sts CS_DATA_P0, YL
+;debug
+	mov r16, YL
+	rcall serial_tx_hex
+	ldi r16, 0x20
+	rcall serial_tx
+
+	; now output the data
+	ldi	ZH, ECONET_RX_BUF >> 8		; set ZH with the highbyte of the Econet receive buffer
+	ldi	ZL, ECONET_RX_BUF & 0xff	; set XL with the lowbyte of the Econet receive buffer
+	lds	YH, adlc_rx_ptr + 1			; put the Rx pointer address in Y
+	lds	YL, adlc_rx_ptr
+
+	clr tmp
+	
+tx_data_loop:
+	ld	r16, Z+						; get byte from RxBuffer, and increment buffer address counter
+	sts CS_DATA_P0, r16
+;debug
+	rcall serial_tx_hex
+	ldi r16, 0x20
+	rcall serial_tx
+	
+	cp	ZH, YH						; pointer = RxBuffer position high byte 
+	brne	tx_data_loop	 		; no, then continue and loop
+	
+	cp	ZL, YL						; pointer = RxBuffer position low byte
+	brne	tx_data_loop			; no, then continue and loop
+
+	rcall crlf
+	ret
+
+; -----------------------------------------------------------------------------------------
+; CS8900 cs_find_tx_length
+; -----------------------------------------------------------------------------------------
+;
+; exit :	YL = LSB of length
+;			YH = MSB of length
+
+cs_find_tx_length:
+
+	; Length =	6 bytes DA Address
+	;			6 bytes SA Address
+	;			2 bytes Length
+	;			x bytes LLC data
+	; 14 + length
+	 
+	; find the length of the packet we received
+
+	ldi	ZH, ECONET_RX_BUF >> 8		; set ZH with the highbyte of the Econet receive buffer
+	ldi	ZL, ECONET_RX_BUF & 0xff	; set XL with the lowbyte of the Econet receive buffer
+	lds	YH, adlc_rx_ptr + 1			; put the Rx pointer address in Y
+	lds	YL, adlc_rx_ptr
+	
+	clc
+	sub YL, ZL
+	sbc YH, ZH
+
+	; Y now contains the length of the data packet
+	; add the header info
+	ldi ZL, 14
+	clr ZH
+	clc
+
+	add YL, ZL
+	adc YH, ZH
+
+	ldi r16, 0x4c
+	rcall serial_tx
+
+	mov r16, YH
+	rcall serial_tx_hex
+	ldi r16, 0x20
+	rcall serial_tx
+
+	mov r16, YL
+	rcall serial_tx_hex
+	ldi r16, 0x20
+	rcall serial_tx
+
+ret
 
 ; -----------------------------------------------------------------------------------------
 ; CS8900 cs_write_pp
