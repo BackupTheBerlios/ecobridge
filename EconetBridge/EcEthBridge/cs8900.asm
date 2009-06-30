@@ -241,8 +241,7 @@ LoadMAC:
     ; Enable Tx
     ldi r16,	CS_LINE_CTRL & 0xFF	; LSB register
 	ldi r17,	CS_LINE_CTRL >> 8	; MSB register
-	ldi r18, 	CS_LCTL_SerRxON | \
-				CS_LCTL_SerTxON		; LSB data
+	ldi r18, 	CS_LCTL_SerRxON | CS_LCTL_SerTxON		; LSB data
 	clr r19							; MSB data
 	rcall cs_write_pp
 
@@ -251,10 +250,7 @@ LoadMAC:
 	ldi r16,	CS_RX_CTL & 0xFF	; LSB register
     ldi r17,	CS_RX_CTL >> 8		; MSB register
 	ldi r18,	CS_RX_IAHashA		; LSB data
-	ldi r19, 	CS_RX_RxOKA | \
-				CS_RX_MulticastA | \
-				CS_RX_IndividualA | \
-				CS_RX_BroadcastA 	; MSB data
+	ldi r19, 	CS_RX_RxOKA | CS_RX_MulticastA | CS_RX_IndividualA | CS_RX_BroadcastA 	; MSB data
 	rcall cs_write_pp
 
 ; return codes
