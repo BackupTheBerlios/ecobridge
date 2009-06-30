@@ -200,20 +200,13 @@
 .equ	ip_length		= 0x14			; the length of the data packet must be added to this
 .equ	ip_TTL			= 0x40			; TTL
 .equ	ip_Protocol		= 0x11			; UDP
-.equ	ip_S_Addr_A		= 0x1
-.equ	ip_S_Addr_B		= 0x2
-.equ	ip_S_Addr_C		= 0x80
-.equ	ip_S_Addr_D		= 0x0A
-.equ	ip_D_Addr_A		= 0x1
-.equ	ip_D_Addr_B		= 0x2
-.equ	ip_D_Addr_C		= 0x80
-.equ	ip_D_Addr_D		= 0x09
 .equ	udp_S_Port_MSB	= 0x80
 .equ	udp_S_Port_LSB	= 0x80
 .equ	udp_D_Port_MSB	= 0x80
 .equ	udp_D_Port_LSB	= 0x00
 .equ	udp_header_length=0x08
 
+.include "config.inc"
 
 .equ	ECONET_RX_BUF	= 0x4000
 .equ	ECONET_TX_BUF	= 0x6000
@@ -359,7 +352,7 @@ zero1:							; start loop around SRAM locations
 
 
 loop:
-;	rcall	cs_poll
+	rcall	cs_poll
 
 	lds	r16, adlc_state				; check the adlc_state
 	cpi	r16, FRAME_COMPLETE			; is the frame complete?
@@ -368,12 +361,15 @@ loop:
 
 
 adlc_frame_completed:
-;	rcall cs_test_tx				; send it out on ethernet
+	rcall cs_test_tx				; send it out on ethernet
 ;	rcall debug_adlc_SR				; debug output of the ADLC Status registers
 
 	rcall output_frame_serial		; send frame to serial debugger
 	rcall adlc_ready_to_receive		; reset to the Rx ready state
 	rjmp loop						; main loop
+
+
+
 
 
 ; Output the completed frame to the serial
@@ -782,22 +778,22 @@ init_vars:
 	ldi	ZL, MAC_addr_DA & 0xff			; set ZL with the lowbyte of the MAC address
 	ldi	ZH, MAC_addr_DA >> 8			; set ZH with the highbyte of the MAC address
 
-	ldi r17, 0x00 
+	ldi r17, MAC_Dest_5 
 	st Z+,	r17						; Octet 5 of IA
 
-	ldi r17, 0x01 
+	ldi r17, MAC_Dest_4 
 	st Z+,	r17						; Octet 4 of IA
 
-	ldi r17, 0x4A 
+	ldi r17, MAC_Dest_3 
 	st Z+,	r17						; Octet 3 of IA
 
-	ldi r17, 0x60 
+	ldi r17, MAC_Dest_2
 	st Z+,	r17						; Octet 2 of IA
 
-	ldi r17, 0xAC 
+	ldi r17, MAC_Dest_1 
 	st Z+,	r17						; Octet 1 of IA
 
-	ldi r17, 0x63 
+	ldi r17, MAC_Dest_0 
 	st Z,	r17						; Octet 0 of IA
 
 	; init IP Header
