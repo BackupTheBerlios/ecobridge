@@ -310,7 +310,7 @@ poll_registers_ret:
 ;			r19 = MSB
 ;
 CS_Process_RxEvent:
-/*	
+
 	ldi r16, 0x72 ; "r"
 	rcall serial_tx
 	ldi r16, 0x20 ; " "
@@ -318,7 +318,7 @@ CS_Process_RxEvent:
 
 	rcall output_r18_r19
 	rcall crlf
-*/
+
 	rjmp poll_until_no_events
 
 ; -----------------------------------------------------------------------------------------
@@ -329,7 +329,7 @@ CS_Process_RxEvent:
 ;			r19 = MSB
 ;
 CS_Process_TxEvent:
-/*
+
 	ldi r16, 0x74 ; "t"
 	rcall serial_tx
 	ldi r16, 0x20 ; " "
@@ -337,7 +337,7 @@ CS_Process_TxEvent:
 
 	rcall output_r18_r19
 	rcall crlf
-*/
+
 	rjmp poll_until_no_events
 	
 ; -----------------------------------------------------------------------------------------
@@ -348,7 +348,7 @@ CS_Process_TxEvent:
 ;			r19 = MSB
 ;
 CS_Process_BuffEvent:
-/*
+
 	ldi r16, 0x62 ; "b"
 	rcall serial_tx
 	ldi r16, 0x20 ; " "
@@ -356,7 +356,7 @@ CS_Process_BuffEvent:
 
 	rcall output_r18_r19
 	rcall crlf
-*/
+
 	rjmp poll_until_no_events
 
 ; -----------------------------------------------------------------------------------------
@@ -457,6 +457,7 @@ cs_software_reset:
 ;
 cs_test_tx:
 
+	rcall create_tx_packet
 
 	; The host bids for frame storage by writing the Transmit Command to the TxCMD register
 	; (memory base+ 0144h in memory mode and I/O base + 0004h in I/O mode).
@@ -465,19 +466,21 @@ cs_test_tx:
     ldi r17,CS_PP_TX_CMD >> 8		; MSB
 	ldi r18, 0xC0					; LSB	write when all the packet is in the buffer
 	clr r19							; MSB
-;	rcall cs_write_pp
+	rcall cs_write_pp
 
 	; The host writes the transmit frame length to the TxLength register (memory base +
 	; 0146h in memory mode and I/O base + 0006h in I/O mode). If the transmit length is
 	; erroneous, the command is discarded and the TxBidErr bit (Register 18, BusST, Bit 7) is set.
 
-	rcall cs_find_tx_length
+	lds YH, ip_TotalLength			; get high byte of length
+	lds YL, ip_TotalLength+1		; get low byte of length
+
 
 	ldi r16,CS_PP_TX_LEN & 0xFF		; LSB   CS_PP_TX_LEN
     ldi r17,CS_PP_TX_LEN >> 8		; MSB
 	mov r18, YH						; LSB	write packet length
 	mov r19, YL						; MSB
-;	rcall cs_write_pp
+	rcall cs_write_pp
 
 	; The host reads the BusST register. This read is performed in memory mode by
 	; reading Register 18, at memory base + 0138h. In I/O mode, the host must first set
@@ -488,24 +491,22 @@ cs_test_tx:
 wait_until_tx_ready:
 	ldi r16,CS_BUS_STAT & 0xFF		; LSB   CS_BUS_STAT
     ldi r17,CS_BUS_STAT >> 8		; MSB
-;	rcall cs_read_pp
+	rcall cs_read_pp
 
 	; After reading the register, the Rdy4TxNOW bit (Bit 8) is checked. If the bit is set, the
 	; frame can be written. If the bit is clear, the host must continue reading the BusST register
 	; (Register 18) and checking the Rdy4TxNOW bit (Bit 8) until the bit is set.
 
-;	bst r19, 0	
-;	brbc 6, wait_until_tx_ready
+	bst r19, 0	
+	brbc 6, wait_until_tx_ready
 
 	; When the CS8900A is ready to accept the frame, the host transfers the entire frame from
 	; host memory to CS8900A memory using "REP" instruction (REP MOVS starting at memory base 
 	; + 0A00h in memory mode, and REP OUT to Receive/Transmit Data Port (I/O base + 0000h) in I/O mode).
 
 
-	rcall create_tx_packet
-
+	rcall send_tx_packet
 	ret
-
 
 ; -----------------------------------------------------------------------------------------
 ; CS8900 create_tx_packet
@@ -513,6 +514,87 @@ wait_until_tx_ready:
 ;
 ; 
 create_tx_packet:
+
+	;copy the data to the UDP data buffer
+	ldi	XH, udp_data >> 8			; set XH with the highbyte of the udp data buffer
+	ldi	XL, udp_data & 0xff			; set XL with the lowbyte of the udp data buffer
+	ldi	ZH, ECONET_RX_BUF >> 8		; set ZH with the highbyte of the Econet receive buffer
+	ldi	ZL, ECONET_RX_BUF & 0xff	; set ZL with the lowbyte of the Econet receive buffer
+	lds	YH, adlc_rx_ptr + 1			; put the Rx pointer address in Y
+	lds	YL, adlc_rx_ptr
+
+copy_data_loop:
+	ld	r16, Z+						; get byte from RxBuffer, and increment buffer address counter
+	st X+, r16						; store it in the udp data buffer
+	
+	cp	ZH, YH						; pointer = RxBuffer position high byte 
+	brne	copy_data_loop	 		; no, then continue and loop
+	
+	cp	ZL, YL						; pointer = RxBuffer position low byte
+	brne	copy_data_loop			; no, then continue and loop
+
+	;copy the length to the UDP length
+	rcall cs_find_tx_length
+	
+	; add to the udp header length
+	adiw YH:YL, udp_header_length
+
+	sts udp_length, YH				; store high byte of length
+	sts udp_length+1, YL			; store low byte of length
+
+	; now add this total to the total IP header length
+	adiw YH:YL, ip_length
+
+	; store ip header length
+	sts ip_TotalLength, YH			; store high byte of length
+	sts ip_TotalLength+1, YL		; store low byte of length
+
+	lds	ZH, ip_ID 					; set ZH with the highbyte of the ip_ID
+	lds	ZL, ip_ID+1					; set ZL with the lowbyte of the ip_ID
+	
+	adiw ZH:ZL, 0x01				; add 1 to the ID
+
+
+	sts ip_ID , ZH
+	sts ip_ID+1 , ZL
+
+	; work out the checksums
+	; first the UDP header
+
+	ldi	ZH, udp_packet >> 8		; set ZH with the highbyte of the udp data buffer
+	ldi	ZL, udp_packet & 0xff	; set ZL with the lowbyte of the udp data buffer
+
+	lds lengthH, udp_length
+	lds lengthL, udp_length +1
+	
+	rcall cksum					; value returned in valueH/valueL
+
+	sts udp_chksum, valueH
+	sts udp_chksum+1, valueL
+
+	; now the header packet
+	ldi	ZH, ip_header >> 8		; set ZH with the highbyte of the ip header
+	ldi	ZL, ip_header & 0xff	; set ZL with the lowbyte of the ip header
+
+	clr lengthH
+	ldi lengthL,0x14 			; just the 20 header bytes
+
+	rcall cksum					; value returned in valueH/valueL
+
+	sts ip_chksum, valueH
+	sts ip_chksum+1, valueL
+
+	; packet is now complete and ready to be sent	
+
+
+ret
+
+; -----------------------------------------------------------------------------------------
+; CS8900 send_tx_packet
+; -----------------------------------------------------------------------------------------
+;
+; 
+send_tx_packet:
 	;load X with Mac_addr for DA
 	ldi	ZL, MAC_addr_DA & 0xff		; set ZL with the lowbyte of the MAC address
 	ldi	ZH, MAC_addr_DA >> 8		; set ZH with the highbyte of the MAC address
@@ -521,7 +603,7 @@ create_tx_packet:
 
 LoadMAC_DA_SA:							
 	ld r16, Z+						; Octet 5 of IA
-;	sts CS_DATA_P0, r16
+	sts CS_DATA_P0, r16
 ;debug
 	rcall output_r16
 
@@ -529,36 +611,36 @@ LoadMAC_DA_SA:
 	cpi r17, 0						; will have performed the loop 12 times
 	BRNE LoadMAC_DA_SA
 
+
+
 	; Y contains the length
-;	sts CS_DATA_P0, YH
-;debug
-	mov r16, YH
-	rcall output_r16
-	
-;	sts CS_DATA_P0, YL
-;debug
-	mov r16, YL
-	rcall output_r16
+	lds YH, ip_TotalLength			; get high byte of length
+	lds YL, ip_TotalLength+1		; get low byte of length
 
-	; now output the data
-	ldi	ZH, ECONET_RX_BUF >> 8		; set ZH with the highbyte of the Econet receive buffer
-	ldi	ZL, ECONET_RX_BUF & 0xff	; set XL with the lowbyte of the Econet receive buffer
-	lds	YH, adlc_rx_ptr + 1			; put the Rx pointer address in Y
-	lds	YL, adlc_rx_ptr
+	; get the start address
+	ldi	ZH, packet_type >> 8		; set ZH with the highbyte of the initial buffer
+	ldi	ZL, packet_type & 0xff		; set XL with the lowbyte of the initial buffer
 
-	clr tmp
-	
-tx_data_loop:
-	ld	r16, Z+						; get byte from RxBuffer, and increment buffer address counter
-;	sts CS_DATA_P0, r16
+	clc								; add the buffer address to the length to find the end position
+	add YL,ZL
+	adc YH,ZH
+
+	; minus 2 because it starts at 0 and doesn't include the last location
+	subi YL, 2
+
+
+send_data_loop:
+	ld r16, Z+
+	sts CS_DATA_P0, r16
+	inc tmp
 ;debug
 	rcall output_r16
 	
-	cp	ZH, YH						; pointer = RxBuffer position high byte 
-	brne	tx_data_loop	 		; no, then continue and loop
+	cp	ZH, YH						; pointer = end of data High byte?
+	brne	send_data_loop			; no, then continue and loop
 	
-	cp	ZL, YL						; pointer = RxBuffer position low byte
-	brne	tx_data_loop			; no, then continue and loop
+	cp	ZL, YL						; pointer = end of data low byte
+	brne	send_data_loop			; no, then continue and loop
 
 	rcall crlf
 
