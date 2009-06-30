@@ -105,17 +105,57 @@ adlc_access:
 ; -----------------------------------------------------------------------------------------
 ;
 
+	; XL/XH pointer to start of frame to transmit
+	; YL/YH pointer to end of frame
 adlc_tx_frame:
-	ret							; do nothing
+	; go on the wire and start transmitting
+	ldi	r16, ADLC_CR1
+	ldi	r17, CR1_RXRESET
+	rcall	adlc_write
+	
+	ldi	r16, ADLC_CR2
+	ldi	r17, CR2_RTS | CR2_FLAGIDLE
+	rcall	adlc_write
 
-; -----------------------------------------------------------------------------------------
-; ADLC Tx IRQ
-; -----------------------------------------------------------------------------------------
-;
+await_tdra:	
+	ldi	r16, ADLC_SR1
+	rcall	adlc_read
+	;;  XXX check for lost CTS or DCD here
+	bst	r17, 6					; TDRA?
+	brbc	6, await_tdra
 
-adlc_tx_irq:
-	rjmp	adlc_irq_ret		; return from interrupt
+	ld	r17, X+
+	cp	XL, YL
+	brne	not_end
+	cp	XH, YH
+	breq	tx_end
+	
+not_end:	
+	ldi	r16, ADLC_TXCONTINUE
+	rcall	adlc_write
+	rjmp	await_tdra
 
+tx_end:	
+	ldi	r16, ADLC_TXTERMINATE
+	rcall	adlc_write
+
+	ldi	r16, ADLC_CR2
+	ldi	r17, CR2_RTS | CR2_FC
+	rcall	adlc_write
+
+await_end:	
+	ldi	r16, ADLC_SR1
+	rcall	adlc_read
+	bst	r17, 6					; FC?
+	brbc	6, await_end
+
+	ldi	r16, ADLC_CR2				;  drop rts, go off the wire
+	ldi	r17, 0
+	rcall	adlc_write
+
+	ldi	r16, ADLC_CR1
+	ldi	r17, CR1_TXRESET
+	rjmp	adlc_write
 
 ; -----------------------------------------------------------------------------------------
 ; ADLC process_fv Frame Valid
@@ -177,10 +217,6 @@ adlc_irq:
 	out	GICR, tmp
 	sei
 
-	lds	tmp, adlc_state			; get the ADLC state
-	;bst	tmp, 7				; bit store bit 7 in of tmp in T
-	;brbs	6, adlc_tx_irq		; if T is set, ADLC state is Tx - branch to adlc_tx_irq
-
 	ldi	r16, ADLC_SR1			; set read address to ADLC Status Register1
 	rcall	adlc_read			; read the ADLC Status Register into r17
 /*
@@ -225,7 +261,6 @@ process_s2rq:
 	brbs	6, process_idle		;   ;yes
 	bst	r17, 1					; 2 ;FV: Frame Valid?
 	brbs	6, process_fv		;   ;yes
-
 
 
 ; -----------------------------------------------------------------------------------------
