@@ -275,7 +275,7 @@ reset:
 	rcall	cs_init
 
 
-	; zero sram from 0x5000 to 0xFFFF
+	; zero sram from 0x5000 to 0x7FFF
 	ldi	ZH, 0x5					; High byte Z 0x5
 	clr	tmp						; clear tmp
 	clr	ZL						; clear low byte Z
@@ -284,7 +284,8 @@ zero1:							; start loop around SRAM locations
 	inc	ZL						; increment low byte of loop
 	brne	zero1				; go from 0 to &FF
 	inc	ZH						; then increment ZH
-	brne	zero1				; until it reaches &FFFF
+	cpi	ZH, 0x80
+	brne	zero1				; until it reaches &8000
 
 	rcall	crlf				; output crlf to serial port
 
@@ -380,6 +381,82 @@ print_frame_loop:
 	
 	rcall	adlc_ready_to_receive	; reset to the Rx ready state
 	rjmp	loop					; main loop
+
+econet_start_tx:
+	; switch to 1-byte mode, no PSE
+	ldi	r16, ADLC_CR2			; set to write to Control Register 2
+	clr	r17						; clear all bits
+	rcall	adlc_write			; write to Control Register
+
+tx_await_idle:	
+	ldi	r16, ADLC_SR2
+	rcall	adlc_read
+	bst	r17, 2					; 4 ;Idle?
+	brbc	6, tx_await_idle
+
+	ldi	XL, ECONET_TX_BUF & 0xff
+	ldi	XH, ECONET_TX_BUF >> 8
+	mov	YL, XL
+	mov	YH, XH
+	ldi	r16, 6
+	add	YL, r16
+	rcall	adlc_tx_frame
+
+	rcall	adlc_ready_to_receive
+tx_await_ack:
+	lds	r16, adlc_state				; check the adlc_state
+	cpi	r16, FRAME_COMPLETE			; is the frame complete?
+	breq	got_frame
+
+	lds	r16, adlc_state				; check the adlc_state
+	rcall	serial_tx_hex
+	rcall	crlf
+	
+	ldi	r16, ADLC_SR2
+	rcall	adlc_read
+	bst	r17, 2					; 4 ;Idle?
+	brbc	6, tx_await_ack
+
+	lds	r16, adlc_state				; check the adlc_state
+	cpi	r16, FRAME_COMPLETE			; is the frame complete?
+	breq	got_frame
+
+	ldi	r16, 0x49
+	rjmp	serial_tx
+
+got_frame:
+	ldi	XL, (ECONET_TX_BUF + 2) & 0xff
+	ldi	XH, (ECONET_TX_BUF + 2) >> 8
+	ldi	YL, ECONET_RX_BUF & 0xff
+	ldi	YH, ECONET_RX_BUF >> 8
+	ld	r16, X+
+	ld	r17, Y+
+	cp	r16, r17
+	brne	not_scout
+	ld	r16, X+
+	ld	r17, Y+
+	cp	r16, r17
+	brne	not_scout
+	ldi	XL, (ECONET_TX_BUF) & 0xff
+	ldi	XH, (ECONET_TX_BUF) >> 8
+	ld	r16, X+
+	ld	r17, Y+
+	cp	r16, r17
+	brne	not_scout
+	ld	r16, X+
+	ld	r17, Y+
+	cp	r16, r17
+	brne	not_scout
+
+	mov	YL, ZL
+	mov	YH, ZH
+	rcall	adlc_tx_frame
+	ret
+	
+not_scout:
+	ldi	r16, 0x54
+	rcall	serial_tx
+	ret
 
 ; =======================================================================
 ; == EGPIO ==============================================================
@@ -707,17 +784,57 @@ adlc_access:
 ; -----------------------------------------------------------------------------------------
 ;
 
+	; XL/XH pointer to start of frame to transmit
+	; YL/YH pointer to end of frame
 adlc_tx_frame:
-	ret							; do nothing
+	; go on the wire and start transmitting
+	ldi	r16, ADLC_CR1
+	ldi	r17, CR1_RXRESET
+	rcall	adlc_write
+	
+	ldi	r16, ADLC_CR2
+	ldi	r17, CR2_RTS | CR2_FLAGIDLE
+	rcall	adlc_write
 
-; -----------------------------------------------------------------------------------------
-; ADLC Tx IRQ
-; -----------------------------------------------------------------------------------------
-;
+await_tdra:	
+	ldi	r16, ADLC_SR1
+	rcall	adlc_read
+	;;  XXX check for lost CTS or DCD here
+	bst	r17, 6					; TDRA?
+	brbc	6, await_tdra
 
-adlc_tx_irq:
-	rjmp	adlc_irq_ret		; return from interrupt
+	ld	r17, X+
+	cp	XL, YL
+	brne	not_end
+	cp	XH, YH
+	breq	tx_end
+	
+not_end:	
+	ldi	r16, ADLC_TXCONTINUE
+	rcall	adlc_write
+	rjmp	await_tdra
 
+tx_end:	
+	ldi	r16, ADLC_TXTERMINATE
+	rcall	adlc_write
+
+	ldi	r16, ADLC_CR2
+	ldi	r17, CR2_RTS | CR2_FC
+	rcall	adlc_write
+
+await_end:	
+	ldi	r16, ADLC_SR1
+	rcall	adlc_read
+	bst	r17, 6					; FC?
+	brbc	6, await_end
+
+	ldi	r16, ADLC_CR2				;  drop rts, go off the wire
+	ldi	r17, 0
+	rcall	adlc_write
+
+	ldi	r16, ADLC_CR1
+	ldi	r17, CR1_TXRESET
+	rjmp	adlc_write
 
 ; -----------------------------------------------------------------------------------------
 ; ADLC process_fv Frame Valid
@@ -759,10 +876,6 @@ adlc_irq:
 	clr	tmp
 	out	GICR, tmp
 	sei
-
-	lds	tmp, adlc_state			; get the ADLC state
-	;bst	tmp, 7				; bit store bit 7 in of tmp in T
-	;brbs	6, adlc_tx_irq		; if T is set, ADLC state is Tx - branch to adlc_tx_irq
 
 	ldi	r16, ADLC_SR1			; set read address to ADLC Status Register1
 	rcall	adlc_read			; read the ADLC Status Register into r17
