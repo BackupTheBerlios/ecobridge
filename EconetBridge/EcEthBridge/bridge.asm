@@ -183,7 +183,7 @@
 .equ	ip_ID			= 0x21A			; 021A-021B 2 bytes Identification 0x018d
 										; 021C-021D 2 byte  Flags 0x00 
 										; 021E-021E 1 byte  TTL   64  0x40
-.										; 021F-021F 1 byte  Protocol UDP 0x11
+										; 021F-021F 1 byte  Protocol UDP 0x11
 .equ	ip_chksum		= 0x220			; 0220-0221 2 bytes Header Checksum 0x77 0x26
 .equ	ip_src_ip		= 0x222			; 0222-0225 4 bytes Source IP 1.2.128.9  0x01 0x02 0x80 0x09
 .equ	ip_dest_ip		= 0x226			; 0226-0229 4 bytes Destination IP 1.2.128.5 0x01 0x02 0x80 0x05
@@ -217,6 +217,7 @@
 
 .equ	RX_IDLE			= 0
 .equ	RX_DATA			= 1
+.equ	RX_SCOUT_ACK		= 2
 .equ	FRAME_COMPLETE	= 10
 
 
@@ -350,7 +351,8 @@ zero1:							; start loop around SRAM locations
 	ldi	r18, (1 << INT0)		; enable adlc interrupts
 	out	GICR, r18
 
-
+	;rcall	test_xmit
+	
 loop:
 	rcall	cs_poll
 
@@ -454,63 +456,73 @@ tx_await_idle:
 	mov	YH, XH
 	ldi	r16, 6
 	add	YL, r16
+	ldi	r20, 0
 	rcall	adlc_tx_frame
 
-	rcall	adlc_ready_to_receive
 tx_await_ack:
-	lds	r16, adlc_state				; check the adlc_state
-	cpi	r16, FRAME_COMPLETE			; is the frame complete?
-	breq	got_frame
-
-	lds	r16, adlc_state				; check the adlc_state
-	rcall	serial_tx_hex
-	rcall	crlf
+	ldi	r16, ADLC_SR1
+	rcall	adlc_read
+	bst	r17, 1
+	brbc	6, tx_await_ack
 	
 	ldi	r16, ADLC_SR2
 	rcall	adlc_read
+	bst	r17, 0
+	brbs	6, tx_got_ap
 	bst	r17, 2					; 4 ;Idle?
-	brbc	6, tx_await_ack
+	brbs	6, tx_saw_idle
 
-	lds	r16, adlc_state				; check the adlc_state
-	cpi	r16, FRAME_COMPLETE			; is the frame complete?
-	breq	got_frame
+tx_error2:
+	mov	r16, r17
+	rcall	serial_tx_hex
+	
+	ldi	r16, 0x46
+	rjmp	serial_tx
 
+tx_error:
+	mov	r16, r17
+	rcall	serial_tx_hex
+	
+	ldi	r16, 0x45
+	rjmp	serial_tx
+
+tx_saw_idle:	
 	ldi	r16, 0x49
 	rjmp	serial_tx
 
-got_frame:
-	ldi	XL, (ECONET_TX_BUF + 2) & 0xff
-	ldi	XH, (ECONET_TX_BUF + 2) >> 8
-	ldi	YL, ECONET_RX_BUF & 0xff
-	ldi	YH, ECONET_RX_BUF >> 8
-	ld	r16, X+
-	ld	r17, Y+
-	cp	r16, r17
-	brne	not_scout
-	ld	r16, X+
-	ld	r17, Y+
-	cp	r16, r17
-	brne	not_scout
-	ldi	XL, (ECONET_TX_BUF) & 0xff
-	ldi	XH, (ECONET_TX_BUF) >> 8
-	ld	r16, X+
-	ld	r17, Y+
-	cp	r16, r17
-	brne	not_scout
-	ld	r16, X+
-	ld	r17, Y+
-	cp	r16, r17
-	brne	not_scout
+tx_got_ap:
+	ldi	r16, ADLC_RX
+	rcall	adlc_read
 
+	ldi	XL, ECONET_RX_BUF & 0xff	; set XL with the lowbyte of the Econet receive buffer
+	ldi	XH, ECONET_RX_BUF >> 8		; set XH with the highbyte of the Econet receive buffer
+
+	st	X+, r17
+	
+	sts	adlc_rx_ptr, XL				; set ALDC receive ptr to the start of the Rx buffer
+	sts	adlc_rx_ptr + 1, XH
+
+	ldi	r16, RX_SCOUT_ACK
+	sts	adlc_state, r16
+
+	ldi	r16, ADLC_CR1
+	ldi	r17, CR1_RIE | CR1_TXRESET
+	rcall	adlc_write
+
+tx_wait_frame:
+	lds	r16, adlc_state
+	cpi	r16, FRAME_COMPLETE
+	brne	tx_wait_frame
+
+	ldi	XL, ECONET_TX_BUF & 0xff
+	ldi	XH, ECONET_TX_BUF >> 8
 	mov	YL, ZL
 	mov	YH, ZH
+	ldi	r20, 1
 	rcall	adlc_tx_frame
+	
 	ret
 	
-not_scout:
-	ldi	r16, 0x54
-	rcall	serial_tx
-	ret
 
 ; =======================================================================
 ; == EGPIO ==============================================================
@@ -731,8 +743,41 @@ noclock:
 ; == ADLC ===============================================================
 ; =======================================================================
 
-.include "adlc.asm"
+test_xmit:	
+	ldi	ZH, ECONET_TX_BUF >> 8
+	ldi	ZL, ECONET_TX_BUF & 0xff
 
+	;; 0.83 -> 0.254, read fileserver version
+	ldi	r16, 0xfe
+	st	Z+, r16	
+	ldi	r16, 0x00
+	st	Z+, r16	
+	ldi	r16, 0x53
+	st	Z+, r16	
+	ldi	r16, 0x00
+	st	Z+, r16	
+	ldi	r16, 0x80
+	st	Z+, r16	
+	ldi	r16, 0x99
+	st	Z+, r16
+	ldi	r16, 0x90
+	st	Z+, r16
+	ldi	r16, 25
+	st	Z+, r16
+	ldi	r16, 0
+	st	Z+, r16
+	ldi	r16, 0
+	st	Z+, r16
+	ldi	r16, 0
+	st	Z+, r16
+	ldi	r16, 0
+	st	Z+, r16
+	ldi	r16, 0
+	st	Z+, r16
+
+	rjmp	econet_start_tx
+
+.include "adlc.asm"
 
 
 ; =======================================================================
@@ -740,7 +785,7 @@ noclock:
 ; =======================================================================
 
 
-.include "ip.asm"
+.include "ip.asm"		
 
 ; =======================================================================
 ; == CS8900 =============================================================
