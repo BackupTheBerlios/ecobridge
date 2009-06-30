@@ -493,8 +493,8 @@ wait_until_tx_ready:
 	; frame can be written. If the bit is clear, the host must continue reading the BusST register
 	; (Register 18) and checking the Rdy4TxNOW bit (Bit 8) until the bit is set.
 
-	bst r19, 0	
-	brbc 6, wait_until_tx_ready
+;	bst r19, 0	
+;	brbc 6, wait_until_tx_ready
 
 	; When the CS8900A is ready to accept the frame, the host transfers the entire frame from
 	; host memory to CS8900A memory using "REP" instruction (REP MOVS starting at memory base 
@@ -531,9 +531,6 @@ copy_data_loop:
 
 	;copy the length to the UDP length
 	rcall cs_find_tx_length
-	
-	; add to the udp header length
-	adiw YH:YL, udp_header_length
 
 	sts udp_length, YH				; store high byte of length
 	sts udp_length+1, YL			; store low byte of length
@@ -563,18 +560,28 @@ copy_data_loop:
 	lds lengthH, udp_length
 	lds lengthL, udp_length +1
 	
+	clr r16
+	sts udp_chksum, r16			; make sure the checksum bytes are 0 before calculation
+	sts udp_chksum+1, r16
+
 	rcall cksum					; value returned in valueH/valueL
 
 	sts udp_chksum, valueH
 	sts udp_chksum+1, valueL
 
-	; now the header packet
+	; now the ip header packet
 	ldi	ZH, ip_header >> 8		; set ZH with the highbyte of the ip header
 	ldi	ZL, ip_header & 0xff	; set ZL with the lowbyte of the ip header
 
 	clr lengthH
 	ldi lengthL,0x14 			; just the 20 header bytes
 
+	lds lengthH, ip_TotalLength		; get high byte of length
+	lds lengthL, ip_TotalLength+1	; get low byte of length
+	
+	sts ip_chksum, r16			; make sure the checksum bytes are 0 before calculation
+	sts ip_chksum+1, r16
+	
 	rcall cksum					; value returned in valueH/valueL
 
 	sts ip_chksum, valueH
@@ -599,14 +606,13 @@ send_tx_packet:
 
 LoadMAC_DA_SA:							
 	ld r16, Z+						; Octet 5 of IA
-	sts CS_DATA_P0, r16
+;	sts CS_DATA_P0, r16
 ;debug
 	rcall output_r16
 
 	dec r17
 	cpi r17, 0						; will have performed the loop 12 times
 	BRNE LoadMAC_DA_SA
-
 
 
 	; Y contains the length
@@ -617,17 +623,17 @@ LoadMAC_DA_SA:
 	ldi	ZH, packet_type >> 8		; set ZH with the highbyte of the initial buffer
 	ldi	ZL, packet_type & 0xff		; set XL with the lowbyte of the initial buffer
 
+	; add two bytes for the packet type address to the length
+	adiw ZH:ZL, 0x02
+
 	clc								; add the buffer address to the length to find the end position
 	add YL,ZL
 	adc YH,ZH
 
-	; minus 2 because it starts at 0 and doesn't include the last location
-	subi YL, 2
-
 
 send_data_loop:
 	ld r16, Z+
-	sts CS_DATA_P0, r16
+;	sts CS_DATA_P0, r16
 	inc tmp
 ;debug
 	rcall output_r16
@@ -646,36 +652,28 @@ send_data_loop:
 ; CS8900 cs_find_tx_length
 ; -----------------------------------------------------------------------------------------
 ;
+; returns the length of the UDP packet (header + data)
+;
 ; exit :	YL = LSB of length
 ;			YH = MSB of length
 
 cs_find_tx_length:
 
-	; Length =	6 bytes DA Address
-	;			6 bytes SA Address
-	;			2 bytes Length
-	;			x bytes LLC data
-	; 14 + length
-	 
-	; find the length of the packet we received
+	; find the length of the packet received
 
 	ldi	ZH, ECONET_RX_BUF >> 8		; set ZH with the highbyte of the Econet receive buffer
 	ldi	ZL, ECONET_RX_BUF & 0xff	; set XL with the lowbyte of the Econet receive buffer
 	lds	YH, adlc_rx_ptr + 1			; put the Rx pointer address in Y
 	lds	YL, adlc_rx_ptr
-	
+
 	clc
 	sub YL, ZL
 	sbc YH, ZH
 
 	; Y now contains the length of the data packet
-	; add the header info
-	ldi ZL, 14
-	clr ZH
-	clc
+	; add the udp header length of 8 bytes
 
-	add YL, ZL
-	adc YH, ZH
+	adiw YH:YL, udp_header_length
 
 
 ret
