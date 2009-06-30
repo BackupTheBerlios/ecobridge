@@ -351,7 +351,7 @@ zero1:							; start loop around SRAM locations
 	ldi	r18, (1 << INT0)		; enable adlc interrupts
 	out	GICR, r18
 
-	;rcall	test_xmit
+;	rcall	test_xmit
 	
 loop:
 	rcall	cs_poll
@@ -363,7 +363,7 @@ loop:
 
 
 adlc_frame_completed:
-	rcall cs_test_tx				; send it out on ethernet
+;	rcall cs_test_tx				; send it out on ethernet
 ;	rcall debug_adlc_SR				; debug output of the ADLC Status registers
 
 	rcall output_frame_serial		; send frame to serial debugger
@@ -748,13 +748,13 @@ test_xmit:
 	ldi	ZL, ECONET_TX_BUF & 0xff
 
 	;; 0.83 -> 0.254, read fileserver version
-	ldi	r16, 0xfe
+	ldi	r16, EconetFS
 	st	Z+, r16	
-	ldi	r16, 0x00
+	ldi	r16, EconetNetA
 	st	Z+, r16	
-	ldi	r16, 0x53
+	ldi	r16, EconetStation
 	st	Z+, r16	
-	ldi	r16, 0x00
+	ldi	r16, EconetNetA
 	st	Z+, r16	
 	ldi	r16, 0x80
 	st	Z+, r16	
@@ -876,7 +876,7 @@ init_vars:
 	st Z+, r17							; 2 bytes Header Checksum 0x77 0x26
 	st Z+, r17
 
-	ldi r16, ip_S_Addr_A				; 4 bytes Source IP 1.2.128.10  0x01 0x02 0x80 0x0A
+	ldi r16, ip_S_Addr_A				; 4 bytes Source IP 1.2.128.10
 	st Z+, r16
 
 	ldi r16, ip_S_Addr_B
@@ -888,7 +888,7 @@ init_vars:
 	ldi r16, ip_S_Addr_D
 	st Z+, r16
 
-	ldi r16, ip_D_Addr_A				; 4 bytes Destination IP 1.2.128.5 0x01 0x02 0x80 0x05
+	ldi r16, ip_D_Addr_A				; 4 bytes Destination IP 
 	st Z+, r16
 
 	ldi r16, ip_D_Addr_B
