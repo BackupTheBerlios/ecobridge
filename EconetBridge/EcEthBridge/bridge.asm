@@ -173,6 +173,47 @@
 .equ	MAC_addr_DA		= 0x204			; 6 bytes Stored in reverse order - Octet 5 - 0 
 .equ	MAC_addr_SA		= 0x20A			; 6 bytes Stored in reverse order - Octet 5 - 0 
 
+.equ	adlc_tmp_ptr	= 0x210			; 2 bytes
+.equ	ip_packet_ptr	= 0x212			; 2 bytes
+
+.equ	packet_type		= 0x214			; 0214-0215 2 bytes Type IP 0x08 00
+.equ	ip_header		= 0x216			; 0216-0216 1 byte  Version :4 Header Length 20 bytes 0x45
+										; 0217-0217 1 byte  Differential Services Field 0x00
+.equ	ip_TotalLength	= 0x218			; 0218-0219 2 bytes Total length 40 bytes  0x00 0x28
+.equ	ip_ID			= 0x21A			; 021A-021B 2 bytes Identification 0x018d
+										; 021C-021D 2 byte  Flags 0x00 
+										; 021E-021E 1 byte  TTL   64  0x40
+.										; 021F-021F 1 byte  Protocol UDP 0x11
+.equ	ip_chksum		= 0x220			; 0220-0221 2 bytes Header Checksum 0x77 0x26
+.equ	ip_src_ip		= 0x222			; 0222-0225 4 bytes Source IP 1.2.128.9  0x01 0x02 0x80 0x09
+.equ	ip_dest_ip		= 0x226			; 0226-0229 4 bytes Destination IP 1.2.128.5 0x01 0x02 0x80 0x05
+.equ	udp_packet		= 0x22A			; 022A-022B 2 bytes source TCP port 80 00 = 32768
+										; 022C-022D 2 bytes remote TCP port 80 00 = 32768
+.equ	udp_length		= 0x22E			; 022E-022F 2 bytes length (incl packet header (8 bytes + data) 00 14
+.equ	udp_chksum		= 0x230			; 0230-0231 2 bytes checksum E9 B2
+.equ	udp_data		= 0x232			; 0232-     x bytes data 05 00 08 00 06 00 00 00 01 00 00 00
+
+; some default values for the above
+.equ	ip_type			= 0x08
+.equ	ip_version		= 0x45
+.equ	ip_DSF			= 0x00
+.equ	ip_length		= 0x14			; the length of the data packet must be added to this
+.equ	ip_TTL			= 0x40			; TTL
+.equ	ip_Protocol		= 0x11			; UDP
+.equ	ip_S_Addr_A		= 0x1
+.equ	ip_S_Addr_B		= 0x2
+.equ	ip_S_Addr_C		= 0x80
+.equ	ip_S_Addr_D		= 0x0A
+.equ	ip_D_Addr_A		= 0x1
+.equ	ip_D_Addr_B		= 0x2
+.equ	ip_D_Addr_C		= 0x80
+.equ	ip_D_Addr_D		= 0x09
+.equ	udp_S_Port_MSB	= 0x80
+.equ	udp_S_Port_LSB	= 0x80
+.equ	udp_D_Port_MSB	= 0x80
+.equ	udp_D_Port_LSB	= 0x00
+.equ	udp_header_length=0x08
+
 
 .equ	ECONET_RX_BUF	= 0x4000
 .equ	ECONET_TX_BUF	= 0x6000
@@ -308,58 +349,42 @@ zero1:							; start loop around SRAM locations
 ;	rcall serial_tx_hex
 
 ;	bst r17, 5					; stores DCD flag bit of Status register into T
-;	brtc clock_present		; check if bit is clear, else 
+;	brtc clock_present			; check if bit is clear, else 
 ;	rcall	NoClock				; print no clock
 ;clock_present:
 
-
-;test_loop:
-;	ldi	r16, 0
-;	rcall	adlc_read
-;	rjmp	test_loop
 
 	ldi	r18, (1 << INT0)		; enable adlc interrupts
 	out	GICR, r18
 
 
-
 loop:
-	rcall	cs_poll
+;	rcall	cs_poll
 
 	lds	r16, adlc_state				; check the adlc_state
 	cpi	r16, FRAME_COMPLETE			; is the frame complete?
-	breq	adlc_frame				; yes, then print it to the screen
+	breq	adlc_frame_completed	; yes, then print it to the screen
 	rjmp	loop					
 
 
-adlc_frame:
-	rcall cs_test_tx				; send it out on ethernet
-	ret
+adlc_frame_completed:
+;	rcall cs_test_tx				; send it out on ethernet
+;	rcall debug_adlc_SR				; debug output of the ADLC Status registers
+
+	rcall output_frame_serial		; send frame to serial debugger
+	rcall adlc_ready_to_receive		; reset to the Rx ready state
+	rjmp loop						; main loop
+
+
+; Output the completed frame to the serial
+
+output_frame_serial:
+
 
 	ldi	ZH, ECONET_RX_BUF >> 8		; set ZH with the highbyte of the Econet receive buffer
 	ldi	ZL, ECONET_RX_BUF & 0xff	; set XL with the lowbyte of the Econet receive buffer
 	lds	YH, adlc_rx_ptr + 1			; put the Rx pointer address in Y
 	lds	YL, adlc_rx_ptr
-
-;	rcall	crlf
-
-;	mov	r16, ZH						; Output in hex the Rx Buffer address
-;	rcall	serial_tx_hex
-;	mov	r16, ZL
-;	rcall	serial_tx_hex
-;	ldi r16, 0x2D					; "-"
-;	rcall	serial_tx				; output
-	
-;	mov	r16, YH						; Ouput in hex the Rx Pointer address
-;	rcall	serial_tx_hex
-;	mov	r16, YL
-;	rcall	serial_tx_hex
-;	rcall	crlf
-
-	; ignore the pointer and just print the first 10 bytes of the buffer
-;	ldi	YH, ECONET_RX_BUF >> 8		; put the Rx pointer address in Y
-;	ldi	YL, 0xA
-
 
 	clr tmp
 	
@@ -379,8 +404,41 @@ print_frame_loop:
 
 	rcall	crlf					; finished outputting the Rx buffer contents, printer crlf
 	
-	rcall	adlc_ready_to_receive	; reset to the Rx ready state
-	rjmp	loop					; main loop
+	ret
+
+
+
+; Temporary routine to print out the values stored for the status registers
+
+debug_adlc_SR:
+
+	ldi r16, 0x53 ; "S"
+	rcall serial_tx
+	ldi r16, 0x20 ; " "
+	rcall serial_tx
+
+	ldi	ZH, ECONET_TX_BUF >> 8		; set ZH with the highbyte of the Econet Tx buffer
+	ldi	ZL, ECONET_TX_BUF & 0xff	; set XL with the lowbyte of the Econet Tx buffer
+	lds	YH, adlc_tmp_ptr + 1		; put the Tx pointer address in Y
+	lds	YL, adlc_tmp_ptr
+
+	clr tmp
+	
+print_sr_loop:
+	ld	r16, Z+						; get byte from RxBuffer, and increment buffer address counter
+	rcall	serial_tx_hex			; output in hex
+	
+	ldi	r16, 32						; Space
+	rcall	serial_tx				; output
+	
+	cp	ZH, YH						; pointer = RxBuffer position high byte 
+	brne	print_sr_loop			; no, then continue and loop
+	
+	cp	ZL, YL						; pointer = RxBuffer position low byte
+	brne	print_sr_loop			; no, then continue and loop
+
+	rcall	crlf					; finished outputting the Rx buffer contents, printer crlf
+	ret								; main loop
 
 econet_start_tx:
 	; switch to 1-byte mode, no PSE
@@ -527,10 +585,8 @@ egpio_write:
 
 serial_tx:
 	push	r18						; preserve r18 to the stack
-;	push 	XL
-;	push	XH
-;	push	YL
-;	push	YH
+	push 	XL						; X is used in the egpio_write routine
+	push	XH
 	in		r18, SREG				; read contents of status register
 	push	r18						; preserve status register to the stack including interrupt status
 	cli								; stop interrupts
@@ -585,10 +641,8 @@ serial_tx_wait3:
 		
 	pop		r18						; retrieve SREG from the stack
 	out		SREG, r18				; restore SREG
-;	pop 	YH
-;	pop		YL
-;	pop		XH
-;	pop		XL
+	pop		XH
+	pop		XL
 	pop		r18						; restore r18 from the stack
 	ret
 
@@ -676,509 +730,12 @@ noclock:
 	rcall	crlf				; ouput CRLF
 
 
+
 ; =======================================================================
 ; == ADLC ===============================================================
 ; =======================================================================
 
-; -----------------------------------------------------------------------------------------
-; ADLC Read
-; -----------------------------------------------------------------------------------------
-;
-; r16=address
-; r17=data
-
-adlc_read:
-	cbi	PORTD, ADLC_RS0			; clear RS0 on PORTD
-	cbi	PORTD, ADLC_RS1			; clear RS1 on PORTD
-	sbrc	r16, 0				; if bit 0 in the address field is not clear
-	sbi	PORTD, ADLC_RS0			;    set bit 0
-	sbrc	r16, 1				; if bit 1 in the address field is not clear
-	sbi	PORTD, ADLC_RS1			;    set bit 1
-	sbi	PORTD, ADLC_RnW			; Read from ADLC
-
-	ldi	r16, 0x1				; make sure the ADLC_CLK at PB0 stays set
-	out	DDRB, r16				; clear all other lines on PORTB
-	cbi	DDRE, ADLC_D0			; clear ADLC_D0 line on PORTE
-
-	clc
-	
-	in	r18, GICR				; save the contents of the General Interrupt Control Register
-	ldi	tmp, (1 << INT1)		; External INT1 enable
-	out	GIFR, tmp				; write to the General Interrupt Flag Register
-	out	GICR, tmp				; write to the General Interrupt Control Register
-
-
-adlc_read_wait:					; wait for adlc_access to run
-	brcc	adlc_read_wait		; r16 and r17 will return with PortB and PortE
-	
-	bst	r16, ADLC_D0			; Store the bit from ADLC_D0 in the T flag
-	bld	r17, 0					; load T into bit 0 of r17 to leave the byte read in r17
-
-	ldi	r16, 0xff				; set pins back to output
-	out	DDRB, r16				; Port B
-	sbi	DDRE, ADLC_D0			; ADLC_DO pin on PORT E
-	ret
-
-
-; -----------------------------------------------------------------------------------------
-; ADLC Write
-; -----------------------------------------------------------------------------------------
-;
-; r16=address
-; r17=data
-
-adlc_write:
-	; set the addressing
-	cbi	PORTD, ADLC_RS0			; clear RS0 on PORTD -
-	cbi	PORTD, ADLC_RS1			; clear RS1 on PORTD - ADLC Rx
-	sbrc	r16, 0				; if bit 0 in the address field is not clear
-	sbi	PORTD, ADLC_RS0			;    set bit 0
-	sbrc	r16, 1				; if bit 1 in the address field is not clear
-	sbi	PORTD, ADLC_RS1			;    set bit 1
-	cbi	PORTD, ADLC_RnW			; write to ADLC
-
-	; set the data
-	out	PORTB, r17				; put the data on PORT B
-	cbi	PORTE, ADLC_D0			; clear bit 2 on PORT E
-	sbrc	r17, 0				; if bit 0 in the data field is not clear
-	sbi	PORTE, ADLC_D0			;    set bit to 1
-
-	clc
-	
-	in	r18, GICR				; save the contents of the General Interrupt Control Register
-	ldi	tmp, (1 << INT1)		; External INT1 enable
-	out	GIFR, tmp				; write to the General Interrupt Flag Register
-	out	GICR, tmp				; write to the General Interrupt Control Register
-
-adlc_write_wait:				; wait for adlc_access to run
-	brcc adlc_write_wait		; by checking if carry is cleared
-	ret
-
-
-
-; -----------------------------------------------------------------------------------------
-; ADLC access
-; -----------------------------------------------------------------------------------------
-;
-; perform one read or write access cycle
-
-adlc_access:
-	nop
-	nop
-	cbi	PORTE, ADLC_nCE			; Clear the ADLC_nCE
-	nop	
-	nop
-	nop
-	nop
-	nop
-	nop
-	in	r17, PINB				; read PortB to r17
-	in	r16, PINE				; read PortE to r16
-	sbi	PORTE, ADLC_nCE			; set ADLC_nCE to flag read completed
-	out	GICR, r18				; restore the contents of the Global Interrupt Control Register
-	sec							; set carry to flag interrupt is handled
-	reti						; return from interrupt
-
-; -----------------------------------------------------------------------------------------
-; ADLC Tx frame
-; -----------------------------------------------------------------------------------------
-;
-
-	; XL/XH pointer to start of frame to transmit
-	; YL/YH pointer to end of frame
-adlc_tx_frame:
-	; go on the wire and start transmitting
-	ldi	r16, ADLC_CR1
-	ldi	r17, CR1_RXRESET
-	rcall	adlc_write
-	
-	ldi	r16, ADLC_CR2
-	ldi	r17, CR2_RTS | CR2_FLAGIDLE
-	rcall	adlc_write
-
-await_tdra:	
-	ldi	r16, ADLC_SR1
-	rcall	adlc_read
-	;;  XXX check for lost CTS or DCD here
-	bst	r17, 6					; TDRA?
-	brbc	6, await_tdra
-
-	ld	r17, X+
-	cp	XL, YL
-	brne	not_end
-	cp	XH, YH
-	breq	tx_end
-	
-not_end:	
-	ldi	r16, ADLC_TXCONTINUE
-	rcall	adlc_write
-	rjmp	await_tdra
-
-tx_end:	
-	ldi	r16, ADLC_TXTERMINATE
-	rcall	adlc_write
-
-	ldi	r16, ADLC_CR2
-	ldi	r17, CR2_RTS | CR2_FC
-	rcall	adlc_write
-
-await_end:	
-	ldi	r16, ADLC_SR1
-	rcall	adlc_read
-	bst	r17, 6					; FC?
-	brbc	6, await_end
-
-	ldi	r16, ADLC_CR2				;  drop rts, go off the wire
-	ldi	r17, 0
-	rcall	adlc_write
-
-	ldi	r16, ADLC_CR1
-	ldi	r17, CR1_TXRESET
-	rjmp	adlc_write
-
-; -----------------------------------------------------------------------------------------
-; ADLC process_fv Frame Valid
-; -----------------------------------------------------------------------------------------
-;
-;
-; exit : adlc_state = FRAME COMPLETE
-; 
-process_fv:
-	ldi	r16, 0x76				; "v" CRC is  Valid
-	call	serial_tx			; write to serial
-
-	rcall	adlc_rx_flush		; clear remaining bytes in the input buffer
-
-	ldi	r16, FRAME_COMPLETE		;
-	sts	adlc_state, r16			; set ADLC state to FRAME COMPLETE
-
-	ldi	r16, ADLC_CR1			; write to Control Register 1
-	ldi	r17, CR1_TXRESET		; Tx Reset
-	rcall	adlc_write			; write to ADLC
-
-	rjmp	adlc_irq_ret		; return from interrupt
-
-
-
-; -----------------------------------------------------------------------------------------
-; ADLC IRQ
-; -----------------------------------------------------------------------------------------
-;
-
-adlc_irq:	
-	push	tmp					; save register values to the stack
-	push	r16
-	push	r17
-	in		r16, SREG			; Save the status register
-	push	r16
-
-	; disable adlc irq and re-enable global interrupts
-	clr	tmp
-	out	GICR, tmp
-	sei
-
-	ldi	r16, ADLC_SR1			; set read address to ADLC Status Register1
-	rcall	adlc_read			; read the ADLC Status Register into r17
-
-	bst	r17, 0					; RDA? Receive data available
-	brbs	6, process_rda		; yes
-	bst	r17, 1					; S2RQ - Status #2 Read Request ?
-	brbs	6, process_s2rq		; yes
-
-	ldi	r16, 0x56				; "V" - valid CRC is Valid
-	rcall	serial_tx			; write to serial
-
-	rjmp	adlc_irq_ret		; clean up routine for interrupt handling
-
-
-process_s2rq:
-	ldi	r16, ADLC_SR2			; set address to Status Register2
-	rcall	adlc_read			; read Status Register2
-	bst	r17, 0					; 1 ;AP: Address Present?
-	brbs	6, process_ap		;   ;yes
-	bst	r17, 7					; 80;RDA? Receive Data Available
-	brbs	6, process_rda		;   ;yes
-	bst	r17, 6					; 40;overrun? Rx Overrun
-	brbs	6, rx_overrun		;   ;yes
-	bst	r17, 5					; 20;DCD? signifies presence of clock
-	brbs	6, process_dcd		;   ;yes
-	bst	r17, 4					; 10;CRC error?
-	brbs	6, rx_error			;   ;yes
-	bst	r17, 3					; 8 ;Abort? Abort Received?
-	brbs	6, abandon_rx		;   ;yes
-	bst	r17, 2					; 4 ;Idle?: Receive Idle?
-	brbs	6, process_idle		;   ;yes
-	bst	r17, 1					; 2 ;FV: Frame Valid?
-	brbs	6, process_fv		;   ;yes
-
-
-; -----------------------------------------------------------------------------------------
-; ADLC process_ap Address Present
-; -----------------------------------------------------------------------------------------
-;
-; The address field is the first 8 bits following the opening flag, so will always be the
-; first byte of the packet. This byte being present causes the Rx Interrupt if enabled.
-
-process_ap:
-;	ldi	r16, 0x61				; "a"
-;	call	serial_tx			; send to serial
-
-	lds	XL, adlc_rx_ptr			; put the Rx buffer pointer address in X
-	lds	XH, adlc_rx_ptr + 1
-
-	; Read 1 byte to the buffer
-	ldi	r16, ADLC_RX			; set read address to ADLC_RX (2) 
-	rcall	adlc_read			; read ADLC, r17 = data read
-
-	st	X+, r17					; store the data read in the Rx buffer
-
-	sts	adlc_rx_ptr, XL			; store the incremented Rx buffer pointer
-	sts	adlc_rx_ptr + 1, XH		; 
-
-	lds	r16, adlc_state			; add 1 to adlc_state
-	inc	r16
-	sts	adlc_state, r16
-
-;delay	
-	ldi		r16, 160			; set up delay loop
-delay:
-	dec		r16					; minus 1
-	brne	delay				; loop until finished
-
-	rjmp	process_s2rq		; continue processing Status Register 2 until finished
-
-
-; -----------------------------------------------------------------------------------------
-; ADLC process_rda Receive Data Available
-; -----------------------------------------------------------------------------------------
-;
-
-process_rda:
-;	ldi		r16, 0x72			; "r" - rda entered
-;	rcall 	serial_tx			; 
-
-	lds	XL, adlc_rx_ptr		; put the Rx buffer pointer address in X
-	lds	XH, adlc_rx_ptr + 1
-
-	; read 2 bytes to the buffer
-
-	; 1st byte
-	ldi	r16, ADLC_RX			; set read address to ADLC_RX (2) 
-	rcall	adlc_read			; read ADLC, r17 = data read
-	st	X+, r17					; store the data read in the Rx buffer
-
-	; 2nd byte
-	ldi	r16, ADLC_RX			; set read address to ADLC_RX (2) 
-	rcall	adlc_read			; read ADLC, r17 = data read
-	st	X+, r17					; store the data read in the Rx buffer
-
-	sts	adlc_rx_ptr, XL			; store the incremented Rx buffer pointer
-	sts	adlc_rx_ptr + 1, XH		; 
-
-	rjmp	adlc_irq_ret		; return from interrupt
-
-
-
-; -----------------------------------------------------------------------------------------
-; ADLC rx_overrun
-; -----------------------------------------------------------------------------------------
-;
-rx_overrun:
-	ldi		r16, 0x6F			; "o" - overrun
-	rcall 	serial_tx			; 
-	rjmp 	abandon_rx
-
-; -----------------------------------------------------------------------------------------
-; ADLC process_dcd - No Clock
-; -----------------------------------------------------------------------------------------
-;
-process_dcd:
-	ldi		r16, 0x6E			; "n" - no clock
-	rcall 	serial_tx			; 
-;	rcall 	noclock
-	rjmp	adlc_irq_ret		; return from interrupt
-
-
-; -----------------------------------------------------------------------------------------
-; ADLC rx_error	Receive Error
-; -----------------------------------------------------------------------------------------
-;
-rx_error:
-	ldi		r16, 0x65			; "e" - error
-	rcall 	serial_tx			; 
-	rcall	adlc_rx_flush		; clear any remaing bytes
-
-; -----------------------------------------------------------------------------------------
-; ADLC abandon_rx Abandon Rx
-; -----------------------------------------------------------------------------------------
-;
-; exit: adlc_state = 0
-; 
-abandon_rx:
-	; abandon in-progress reception
-	clr	tmp
-	sts	adlc_state, tmp			; clear the adlc_state
-	rcall	adlc_clear_rx		; clear rx status
-	rjmp	process_s2rq		; might be AP as well
-
-; -----------------------------------------------------------------------------------------
-; ADLC process_idle
-; -----------------------------------------------------------------------------------------
-;
-; exit: adlc_state = 0
-; 
-process_idle:					
-	ldi	r16, 0x69				; append "i" - network is idle
-	call	serial_tx			; write to serial
-	rcall	crlf
-
-	clr	tmp						; tmp=0
-	sts	adlc_state, tmp			; ADLC state=0
-
-	rcall	adlc_clear_rx		; clear Rx Status Register
-	rjmp	adlc_irq_ret		; clean up routine for interrupt handling
-
-
-
-; -----------------------------------------------------------------------------------------
-; ADLC Rx Flush
-; -----------------------------------------------------------------------------------------
-	
-adlc_rx_flush:
-	; switch to 1-byte mode, no PSE
-	ldi	r16, ADLC_CR2			; set to write to Control Register 2
-	clr	r17						; clear all bits
-	rcall	adlc_write			; write to Control Register
-
-	; read SR2
-	ldi	r16, ADLC_SR2			; read Status Register 2
-	rcall	adlc_read			; read Satus Register into r17
-
-	;if there is a byte to read, read it first before clearing
-	
-	bst	r17, 7					; RDA? is receive data available
-	brbc	6, no_rda			; no
-
-	lds	XL, adlc_rx_ptr			; put the Rx buffer pointer address in X
-	lds	XH, adlc_rx_ptr + 1
-
-	; Read 1 byte to the buffer
-	ldi	r16, ADLC_RX			; set read address to ADLC_RX (2) 
-	rcall	adlc_read			; read ADLC, r17 = data read
-
-	st	X+, r17					; store the data read in the Rx buffer
-
-	sts	adlc_rx_ptr, XL			; store the incremented Rx buffer pointer
-	sts	adlc_rx_ptr + 1, XH		; 
-
-
-no_rda:
-	rjmp	adlc_clear_rx		; clear rx status
-
-
-; -----------------------------------------------------------------------------------------
-; ADLC clear Rx
-; -----------------------------------------------------------------------------------------
-;
-; clear rx status and switch back to 1-byte mode
-;
-
-adlc_clear_rx:
-	ldi	r16, ADLC_CR2			; set to write to Control Register 2
-	ldi	r17, CR2val				; reset Receieve status bits
-	rjmp	adlc_write			; write to ADLC
-
-; -----------------------------------------------------------------------------------------
-; ADLC IRQ ret
-; -----------------------------------------------------------------------------------------
-
-adlc_irq_ret:
-	ldi	tmp, (1 << INT0)		; restore the interrupt flag
-	out	GICR, tmp
-	pop	r16						; restore Status register from the Stack
-	out	SREG, r16		
-	pop	r17						; restore other registers from the Stack
-	pop	r16
-	pop	tmp
-	reti						; return from interrupt
-
-; -----------------------------------------------------------------------------------------
-; ADLC init
-; -----------------------------------------------------------------------------------------
-
-
-adlc_init:
-	; During a power-on sequence, the ADLC is reset via the RESET input and internally 
-	; latched in a reset condition to prevent erroneous output transitions. The four control
-	; registers must be programmed prior to the release of the reset condition. The release
-	; of the reset condition is peformed by software by writing a "0" into the Rx RS control
-	; bit (receiver) and/or Tx RS control bit (transmitter). The release of the reset condition
-	; must be done after the RESET input has gone high.
-	; At any time during operation, writing a "1" into the Rx RS control bit or Tx RS control
-	; bit causes the reset condition of the receiver or the transmitter.
-
-
-	; raise the reset line on the ADLC
-	ldi	r16, EGPIO_ADLC_RESET | EGPIO_SET		; set the ADLC reset to 1
-	rcall	egpio_write							; write to ADLC
-
-	; set the initial values of Control Register 1
-	ldi	r17, CR1_AC | CR1_TXRESET | CR1_RXRESET	; Switch controlling access to CR3
-												; Resets all Tx, Rx status and FIFO registers
-												; these will automatically go back to 0
-	ldi	r16, ADLC_CR1							; set to ADLC Control Register 1
-	rcall	adlc_write							; write to ADLC
-
-	;new
-	ldi r17, 0x1E								
-	ldi r16, ADLC_TXTERMINATE					; write to TXTerminate address
-	rcall adlc_write
-	;end new
-
-	; set the initial values of Control Register 3 (CR1_AC previously set)
-	clr	r17										; Set initial value to 0
-	ldi	r16, ADLC_CR3							; set to ADLC Control Register 3
-	rcall	adlc_write							; write to ADLC
-
-
-	; set the initial values of Control Register 4
-	ldi	r17, CR4_TXWLS | CR4_RXWLS				; Set Tx & Rx Word lengths to 8 bits
-	ldi	r16, ADLC_CR4							; set to ADLC Control Register 4
-	rcall	adlc_write							; write to ADLC
-
-
-; -----------------------------------------------------------------------------------------
-; ADLC ready to receive
-; -----------------------------------------------------------------------------------------
-;
-; exit	: adlc_state = 0
-; 		: adlc_rx_ptr    = ECONET RX Buffer LSB
-; 		: adlc_rx_ptr + 1    = ECONET RX Buffer MSB
-
-adlc_ready_to_receive:
- 	
-	;initialise the adlc_state
-	
-	clr	tmp							; tmp = 0
-	sts	adlc_state, tmp				; adlc_state=0
-
-	; initialise the Rx Buffer pointer
-
-	ldi	XL, ECONET_RX_BUF & 0xff	; set XL with the lowbyte of the Econet receive buffer
-	ldi	XH, ECONET_RX_BUF >> 8		; set XH with the highbyte of the Econet receive buffer
-	
-	sts	adlc_rx_ptr, XL				; set ALDC receive ptr to the start of the Rx buffer
-	sts	adlc_rx_ptr + 1, XH
-	
-	ldi	r17, CR1_RIE | CR1_TXRESET	; Enable Receive interrupts | Reset the TX status
-	ldi	r16, ADLC_CR1				; set to write to Control Register 1
-	rcall	adlc_write				; write to the ADLC
-
-	ldi	r17, CR2val					; Status bit prioritised
-	ldi	r16, ADLC_CR2				; set to write to Control Register 2
-	rjmp	adlc_write				; write to the ADLC
-
-
+.include "adlc.asm"
 
 
 
@@ -1186,65 +743,15 @@ adlc_ready_to_receive:
 ; == IP =================================================================
 ; =======================================================================
 
-;
-; Calc checksum. Reads packet at offset zL/zH for
-; lengthH/lengthL bytes and calculates the checksum
-; in valueH/valueL.
-;
-cksum: 
-	clr     chksumL					; we do the arithmetic
-	clr     chksumM					; using a 24
-	clr     chksumH					; bit area
-	sbrs    lengthL,0				; odd length?
-	rjmp	cksumC
-	mov	YL,ZL
-	mov	YH,ZH
-	add	YL,lengthL
-	adc	YH,lengthH
-    	clr	WL
-	st	y,WL		      		 	; clear byte after last
-	adiw	lengthL,1
-cksumC: 
-	lsr	lengthH
-    	ror	lengthL
-cksuml: 		
-	ld      WH,z+		 			; get high byte of 16-bit word
-	ld      WL,z+
-	add     chksumL,WL	      		; add to accum
-	brcc    noLcarry
-	ldi     WL,1
-	add     chksumM,WL
-	brcc    noLcarry
-	add     chksumH,WL
-noLcarry:
-	add     chksumM,WH	      		; add in the high byte
-	brcc    noHcarry
-	inc     chksumH
-noHcarry:
-	subi    lengthL,1
-	sbci    lengthH,0
-	clr     WL
-	cpi     lengthL,0
-	cpc     lengthH,WL
-	breq    CkDone
-	brpl    cksuml    
-CkDone: 
-	add     chksumL,chksumH	 		; add in the third byte of 24 bit area
-	brcc    CkDone1
-	inc     chksumM
-CkDone1:
-	mov     valueL,chksumL
-	com	valueL
-	mov     valueH,chksumM
-	com	valueH
-	ret
+
+.include "ip.asm"
 
 ; =======================================================================
 ; == CS8900 =============================================================
 ; =======================================================================
 
 
-.include "cs8900.inc"
+.include "cs8900.asm"
 
 ; =======================================================================
 ; == Initialise some variables ==========================================
@@ -1292,5 +799,76 @@ init_vars:
 
 	ldi r17, 0x63 
 	st Z,	r17						; Octet 0 of IA
+
+	; init IP Header
+	clr r17
+	
+	ldi	ZL, packet_type & 0xff			; set ZL with the lowbyte of the ip_header structure
+	ldi	ZH, packet_type >> 8			; set ZH with the highbyte of the ip_header structure
+
+	ldi r16, ip_type					; Type IP 0x80 00
+	st Z+, r16
+	st Z+, r17
+
+	ldi r16, ip_version					; 1 byte  Version :4 Header Length 20 bytes 0x45
+	st Z+, r16
+
+	ldi r16, ip_DSF						; 1 byte  Differential Services Field 0x00
+	st Z+, r16
+
+	st Z+, r17							; 2 bytes Total length (currently adds in the 20 bytes for the header)
+	ldi r16, ip_length					; rest to be added ... 40 bytes  0x00 0x28
+	st Z+, r16
+
+	st Z+, r17							; 2 bytes Identification. Starts at 0 and is increment with each send 0x018d
+	st Z+, r17
+
+	st Z+, r17							; 2 byte  Flags 0x00
+	st Z+, r17		
+
+	ldi r16, ip_TTL						; 1 byte  TTL   64  0x40
+	st Z+, r16
+
+	ldi	r16, ip_Protocol				; 1 byte  Protocol UDP 0x11
+	st Z+, r16
+						
+	st Z+, r17							; 2 bytes Header Checksum 0x77 0x26
+	st Z+, r17
+
+	ldi r16, ip_S_Addr_A				; 4 bytes Source IP 1.2.128.10  0x01 0x02 0x80 0x0A
+	st Z+, r16
+
+	ldi r16, ip_S_Addr_B
+	st Z+, r16
+
+	ldi r16, ip_S_Addr_C
+	st Z+, r16
+
+	ldi r16, ip_S_Addr_D
+	st Z+, r16
+
+	ldi r16, ip_D_Addr_A				; 4 bytes Destination IP 1.2.128.5 0x01 0x02 0x80 0x05
+	st Z+, r16
+
+	ldi r16, ip_D_Addr_B
+	st Z+, r16
+
+	ldi r16, ip_D_Addr_C
+	st Z+, r16
+
+	ldi r16, ip_D_Addr_D
+	st Z+, r16
+
+	; udp packet defaults
+
+	ldi r16, udp_S_Port_MSB				; 2 bytes source TCP port 80 00 = 32768
+	st Z+, r16
+	ldi r16, udp_S_Port_LSB
+	st Z+, r17
+
+	ldi r16, udp_D_Port_MSB				; 2 bytes destination TCP port 80 00 = 32768
+	st Z+, r16
+	ldi r16, udp_D_Port_LSB
+	st Z, r16
 
 	ret
