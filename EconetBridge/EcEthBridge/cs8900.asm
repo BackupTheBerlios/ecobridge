@@ -622,33 +622,25 @@ LoadMAC_DA_SA:
 	cpi	r17, 0				; will have performed the loop 12 times
 	BRNE	LoadMAC_DA_SA
 
+	; get the start address
+	ldi	ZH, packet_type >> 8		; set ZH with the highbyte of the initial buffer
+	ldi	ZL, packet_type & 0xff		; set XL with the lowbyte of the initial buffer
 
 	; Y contains the length
 	lds	YH, ip_TotalLength		; get high byte of length
 	lds	YL, ip_TotalLength+1		; get low byte of length
 
-	; get the start address
-	ldi	ZH, packet_type >> 8		; set ZH with the highbyte of the initial buffer
-	ldi	ZL, packet_type & 0xff		; set XL with the lowbyte of the initial buffer
-
 	; add two bytes for the packet type address to the length
 	adiw	YH:YL, 0x02
 
-	clc						; add the buffer address to the length to find the end position
-	add	YL,ZL
-	adc	YH,ZH
+	; ouput the total data LLC length so the CS8900 know how much data is being sent
+	sts	CS_DATA_P0, r18
+	sts	CS_DATA_P0, r19
 
-	; ouput the total data length
-	sts	CS_DATA_P0, YH
-;debug
-	mov	r16, YH
-	rcall	output_r16
-
-	sts	CS_DATA_P0, YL
-;debug
-	mov	r16, YL
-	rcall	output_r16
-
+	; add the length to the start address for the loop
+	clc
+	add YL, ZL
+	adc YH, ZH
 
 send_data_loop:
 	ld	r16, Z+
