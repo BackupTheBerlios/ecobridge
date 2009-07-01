@@ -238,7 +238,7 @@ LoadMAC:
 	BRNE	LoadMAC
 
 
-    ; Enable Tx
+ 	; Enable Tx
 	ldi	r16, CS_LINE_CTRL & 0xFF	; LSB register
 	ldi	r17, CS_LINE_CTRL >> 8		; MSB register
 	ldi	r18, CS_LCTL_SerRxON | CS_LCTL_SerTxON		
@@ -247,7 +247,7 @@ LoadMAC:
 	rcall cs_write_pp
 
 
-    ; Enable Rx
+	; Enable Rx
 	ldi	r16, CS_RX_CTL & 0xFF		; LSB register
 	ldi	r17, CS_RX_CTL >> 8		; MSB register
 	ldi	r18, CS_RX_IAHashA		; LSB data
@@ -637,6 +637,17 @@ LoadMAC_DA_SA:
 	clc						; add the buffer address to the length to find the end position
 	add	YL,ZL
 	adc	YH,ZH
+
+	; ouput the total data length
+	sts	CS_DATA_P0, YH
+;debug
+	mov	r16, YH
+	rcall	output_r16
+
+	sts	CS_DATA_P0, YL
+;debug
+	mov	r16, YL
+	rcall	output_r16
 
 
 send_data_loop:
