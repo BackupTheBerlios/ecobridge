@@ -311,6 +311,9 @@ reset:
 
 	rcall	cs_init
 
+xmit_forever:	
+	rcall	cs_test_tx_simple
+	rjmp	xmit_forever
 
 	; zero sram from 0x5000 to 0x7FFF
 	ldi	ZH, 0x5				; High byte Z 0x5
@@ -365,7 +368,7 @@ loop:
 
 
 adlc_frame_completed:
-;	rcall	cs_test_tx				; send it out on ethernet
+	rcall	cs_test_tx				; send it out on ethernet
 ;	rcall	debug_adlc_SR			; debug output of the ADLC Status registers
 
 	rcall	output_frame_serial		; send frame to serial debugger
