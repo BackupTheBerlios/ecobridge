@@ -157,7 +157,17 @@
 ;		= 1	: Not Found
 ;		= 2	: No Response
 
-cs_init:	
+cs_init:
+	ldi	r16, EGPIO_ETHER_RESET			; unreset chip
+	rcall	egpio_write
+
+	clr	r16
+	clr	r17
+cs_init_delay:
+	inc	r17
+	brne	cs_init_delay
+	inc	r16
+	brne	cs_init_delay
 
 	; check for chip
 	lds	r18, CS_PP_DATA0			; read the Packet Page Data Port
@@ -452,6 +462,55 @@ cs_software_reset:
 ; CS8900 test_tx
 ; -----------------------------------------------------------------------------------------
 ;
+cs_test_tx_simple:
+	ldi	r16, 0xc0
+	clr	r17
+	sts	CS_TX_CMD_I, r16
+	sts	CS_TX_CMD_I + 1, r17
+
+	ldi	r16, 16
+	clr	r17
+	sts	CS_TX_LEN_I, r16
+	sts	CS_TX_LEN_I + 1, r17
+
+poll_for_rdy:	
+	ldi	r16,CS_BUS_STAT & 0xFF		; LSB   CS_BUS_STAT
+	ldi	r17,CS_BUS_STAT >> 8		; MSB
+	rcall	cs_read_pp
+
+	; After reading the register, the Rdy4TxNOW bit (Bit 8) is checked. If the bit is set, the
+	; frame can be written. If the bit is clear, the host must continue reading the BusST register
+	; (Register 18) and checking the Rdy4TxNOW bit (Bit 8) until the bit is set.
+
+	bst	r19, 0	
+	brbc	6, poll_for_rdy
+
+	ldi	r16, 0x54
+	rcall	serial_tx
+
+	ldi	r16, 0xff
+	sts	CS_DATA_P0, r16
+	sts	CS_DATA_P0+1, r16
+	sts	CS_DATA_P0, r16
+	sts	CS_DATA_P0+1, r16
+	sts	CS_DATA_P0, r16
+	sts	CS_DATA_P0+1, r16
+
+	ldi	r16, 0x55
+	sts	CS_DATA_P0, r16
+	sts	CS_DATA_P0+1, r16
+	sts	CS_DATA_P0, r16
+	sts	CS_DATA_P0+1, r16
+	sts	CS_DATA_P0, r16
+	sts	CS_DATA_P0+1, r16
+
+	ldi	r16, 0xaa
+	sts	CS_DATA_P0, r16
+	sts	CS_DATA_P0+1, r16
+	sts	CS_DATA_P0, r16
+	sts	CS_DATA_P0+1, r16
+	ret
+
 cs_test_tx:
 
 	rcall create_tx_packet
@@ -475,8 +534,8 @@ cs_test_tx:
 
 	ldi	r16,CS_PP_TX_LEN & 0xFF		; LSB   CS_PP_TX_LEN
 	ldi	r17,CS_PP_TX_LEN >> 8		; MSB
-	mov	r18, YH				; LSB	write packet length
-	mov	r19, YL				; MSB
+	mov	r18, YL				; LSB	write packet length
+	mov	r19, YH				; MSB
 	rcall	cs_write_pp
 
 	; The host reads the BusST register. This read is performed in memory mode by
