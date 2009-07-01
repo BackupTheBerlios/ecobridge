@@ -634,8 +634,18 @@ LoadMAC_DA_SA:
 	adiw	YH:YL, 0x02
 
 	; ouput the total data LLC length so the CS8900 know how much data is being sent
-	sts	CS_DATA_P0, r18
-	sts	CS_DATA_P0, r19
+	sts	CS_DATA_P0, YH
+	sts	CS_DATA_P0, YL
+
+;debug - this isn't part of the final data packet
+	mov	r16, YH
+	rcall serial_tx_hex
+
+	mov	r16, YL
+	rcall serial_tx_hex
+
+	ldi	r16, 0x20
+	rcall serial_tx
 
 	; add the length to the start address for the loop
 	clc
