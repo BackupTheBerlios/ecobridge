@@ -197,7 +197,7 @@
 .equ	ip_type		= 0x08
 .equ	ip_version		= 0x45
 .equ	ip_DSF		= 0x00
-.equ	ip_length		= 0x14		; the length of the data packet must be added to this
+.equ	ip_length		= 0x14		; header length, the length of the data packet must be added to this
 .equ	ip_TTL		= 0x40		; TTL
 .equ	ip_Protocol		= 0x11		; UDP
 .equ	udp_S_Port_MSB	= 0x80
@@ -221,9 +221,13 @@
 .equ	FRAME_COMPLETE	= 10
 
 
-jmp	reset
-jmp	adlc_irq
-rjmp	adlc_access
+; =======================================================================
+; == Set the initial vectors ============================================
+; =======================================================================
+
+jmp	reset						; Reset Vector
+jmp	adlc_irq					; Int0
+rjmp	adlc_access					; Int1
 nop
 
 
@@ -311,9 +315,6 @@ reset:
 
 	rcall	cs_init
 
-xmit_forever:	
-	rcall	cs_test_tx_simple
-	rjmp	xmit_forever
 
 	; zero sram from 0x5000 to 0x7FFF
 	ldi	ZH, 0x5				; High byte Z 0x5
@@ -355,8 +356,6 @@ zero1:						; start loop around SRAM locations
 
 	ldi	r18, (1 << INT0)			; enable adlc interrupts
 	out	GICR, r18
-
-;	rcall	test_xmit
 	
 loop:
 	rcall	cs_poll
@@ -368,14 +367,10 @@ loop:
 
 
 adlc_frame_completed:
-	rcall	cs_test_tx				; send it out on ethernet
-;	rcall	debug_adlc_SR			; debug output of the ADLC Status registers
-
+;	rcall	cs_test_tx				; send it out on ethernet
 	rcall	output_frame_serial		; send frame to serial debugger
 	rcall	adlc_ready_to_receive		; reset to the Rx ready state
 	rjmp	loop					; main loop
-
-
 
 
 
@@ -411,37 +406,7 @@ print_frame_loop:
 
 
 
-; Temporary routine to print out the values stored for the status registers
 
-debug_adlc_SR:
-
-	ldi	r16, 0x53 				; "S"
-	rcall	serial_tx
-	ldi	r16, 0x20 				; " "
-	rcall serial_tx
-
-	ldi	ZH, ECONET_TX_BUF >> 8		; set ZH with the highbyte of the Econet Tx buffer
-	ldi	ZL, ECONET_TX_BUF & 0xff	; set XL with the lowbyte of the Econet Tx buffer
-	lds	YH, adlc_tmp_ptr + 1		; put the Tx pointer address in Y
-	lds	YL, adlc_tmp_ptr
-
-	clr tmp
-	
-print_sr_loop:
-	ld	r16, Z+				; get byte from RxBuffer, and increment buffer address counter
-	rcall	serial_tx_hex			; output in hex
-	
-	ldi	r16, 32				; Space
-	rcall	serial_tx				; output
-	
-	cp	ZH, YH				; pointer = RxBuffer position high byte 
-	brne	print_sr_loop			; no, then continue and loop
-	
-	cp	ZL, YL				; pointer = RxBuffer position low byte
-	brne	print_sr_loop			; no, then continue and loop
-
-	rcall	crlf					; finished outputting the Rx buffer contents, printer crlf
-	ret						; main loop
 
 econet_start_tx:
 	; switch to 1-byte mode, no PSE
