@@ -261,8 +261,8 @@ LoadMAC:
 	ldi	r16, CS_RX_CTL & 0xFF		; LSB register
 	ldi	r17, CS_RX_CTL >> 8		; MSB register
 	ldi	r18, CS_RX_IAHashA		; LSB data
-	ldi	r19, CS_RX_RxOKA | CS_RX_MulticastA | CS_RX_IndividualA 
-							;| CS_RX_BroadcastA 	; MSB data
+	ldi	r19, CS_RX_RxOKA | CS_RX_MulticastA | CS_RX_IndividualA | CS_RX_BroadcastA 	
+							; MSB data
 	rcall	cs_write_pp
 
 ; return codes
@@ -462,54 +462,6 @@ cs_software_reset:
 ; CS8900 test_tx
 ; -----------------------------------------------------------------------------------------
 ;
-cs_test_tx_simple:
-	ldi	r16, 0xc0
-	clr	r17
-	sts	CS_TX_CMD_I, r16
-	sts	CS_TX_CMD_I + 1, r17
-
-	ldi	r16, 16
-	clr	r17
-	sts	CS_TX_LEN_I, r16
-	sts	CS_TX_LEN_I + 1, r17
-
-poll_for_rdy:	
-	ldi	r16,CS_BUS_STAT & 0xFF		; LSB   CS_BUS_STAT
-	ldi	r17,CS_BUS_STAT >> 8		; MSB
-	rcall	cs_read_pp
-
-	; After reading the register, the Rdy4TxNOW bit (Bit 8) is checked. If the bit is set, the
-	; frame can be written. If the bit is clear, the host must continue reading the BusST register
-	; (Register 18) and checking the Rdy4TxNOW bit (Bit 8) until the bit is set.
-
-	bst	r19, 0	
-	brbc	6, poll_for_rdy
-
-	ldi	r16, 0x54
-	rcall	serial_tx
-
-	ldi	r16, 0xff
-	sts	CS_DATA_P0, r16
-	sts	CS_DATA_P0+1, r16
-	sts	CS_DATA_P0, r16
-	sts	CS_DATA_P0+1, r16
-	sts	CS_DATA_P0, r16
-	sts	CS_DATA_P0+1, r16
-
-	ldi	r16, 0x55
-	sts	CS_DATA_P0, r16
-	sts	CS_DATA_P0+1, r16
-	sts	CS_DATA_P0, r16
-	sts	CS_DATA_P0+1, r16
-	sts	CS_DATA_P0, r16
-	sts	CS_DATA_P0+1, r16
-
-	ldi	r16, 0xaa
-	sts	CS_DATA_P0, r16
-	sts	CS_DATA_P0+1, r16
-	sts	CS_DATA_P0, r16
-	sts	CS_DATA_P0+1, r16
-	ret
 
 cs_test_tx:
 
@@ -518,11 +470,11 @@ cs_test_tx:
 	; The host bids for frame storage by writing the Transmit Command to the TxCMD register
 	; (memory base+ 0144h in memory mode and I/O base + 0004h in I/O mode).
 
-	ldi	r16,CS_PP_TX_CMD & 0xFF		; LSB   CS_PP_TX_CMD
-	ldi	r17,CS_PP_TX_CMD >> 8		; MSB
-	ldi	r18, 0xC0				; LSB	write when all the packet is in the buffer
-	clr	r19					; MSB
-	rcall	cs_write_pp
+	ldi	r16, 0xC0				; LSB	write when all the packet is in the buffer
+	clr	r17					; MSB
+	sts	CS_TX_CMD_I, r16 
+	sts	CS_TX_CMD_I+1, r17
+
 
 	; The host writes the transmit frame length to the TxLength register (memory base +
 	; 0146h in memory mode and I/O base + 0006h in I/O mode). If the transmit length is
@@ -531,12 +483,11 @@ cs_test_tx:
 	lds	YH, ip_TotalLength		; get high byte of length
 	lds	YL, ip_TotalLength+1		; get low byte of length
 
+	; add 14 bytes for the 2 x 6 byte MAC addresses and 2 byte packet type address to the length
+	adiw	YH:YL, 14
 
-	ldi	r16,CS_PP_TX_LEN & 0xFF		; LSB   CS_PP_TX_LEN
-	ldi	r17,CS_PP_TX_LEN >> 8		; MSB
-	mov	r18, YL				; LSB	write packet length
-	mov	r19, YH				; MSB
-	rcall	cs_write_pp
+	sts	CS_TX_LEN_I, YL
+	sts	CS_TX_LEN_I+1, YH
 
 	; The host reads the BusST register. This read is performed in memory mode by
 	; reading Register 18, at memory base + 0138h. In I/O mode, the host must first set
@@ -544,31 +495,60 @@ cs_test_tx:
 	; Pointer Port (I/O base + 000Ah). The host can then read the BusST register from the
 	; PacketPage Data Port (I/O base + 000Ch).
 
-wait_until_tx_ready:
+wait_for_tx_ready:
 	ldi	r16,CS_BUS_STAT & 0xFF		; LSB   CS_BUS_STAT
 	ldi	r17,CS_BUS_STAT >> 8		; MSB
 	rcall	cs_read_pp
+
+; check for TxBidErr bit error
+	bst	r18, 7
+	brbs	6, cs_test_TxBidErr
+
 
 	; After reading the register, the Rdy4TxNOW bit (Bit 8) is checked. If the bit is set, the
 	; frame can be written. If the bit is clear, the host must continue reading the BusST register
 	; (Register 18) and checking the Rdy4TxNOW bit (Bit 8) until the bit is set.
 
 	bst	r19, 0	
-	brbc	6, wait_until_tx_ready
+	brbc	6, wait_for_tx_ready
 
 	; When the CS8900A is ready to accept the frame, the host transfers the entire frame from
 	; host memory to CS8900A memory using "REP" instruction (REP MOVS starting at memory base 
 	; + 0A00h in memory mode, and REP OUT to Receive/Transmit Data Port (I/O base + 0000h) in I/O mode).
 
-
 	rcall	send_tx_packet
 
-	ldi	r16, 0x52 				; "R"
-	rcall	serial_tx
-	ldi	r16, 0x20 				; " "
-	rcall	serial_tx
 
+	; When the CS8900A successfully completes transmitting a frame, it sets the TxOK bit 
+	; (Register 8, TxEvent, Bit 8).
+
+	ldi	r16,CS_TX_EVENT & 0xFF		; LSB   CS_TX_EVENT
+	ldi	r17,CS_TX_EVENT >> 8		; MSB
+	rcall	cs_read_pp
+
+; check for TxOK
+	bst	r19, 0
+	brbc	6, cs_test_TxOKErr
+
+	ldi	r16,0					; set the return code to 0x00
 	ret
+	
+cs_test_TxBidErr:
+	ldi	r16, 0x65				; "e"
+	; display value from the BUS
+	rcall output_r18_r19
+	rcall serial_tx
+	ldi	r16, 0x01				; set the return code to 0x01
+	ret
+
+cs_test_TxOKErr:
+	ldi	r16, 0x66				; "f"
+	; display value from the BUS
+	rcall output_r18_r19
+	rcall serial_tx
+	ldi	r16, 0x02				; set the return code to 0x02
+	ret
+
 
 ; -----------------------------------------------------------------------------------------
 ; CS8900 create_tx_packet
@@ -643,9 +623,6 @@ copy_data_loop:
 	clr	lengthH
 	ldi	lengthL,0x14 			; just the 20 header bytes
 
-	lds	lengthH, ip_TotalLength		; get high byte of length
-	lds	lengthL, ip_TotalLength+1	; get low byte of length
-	
 	sts	ip_chksum, r16			; make sure the checksum bytes are 0 before calculation
 	sts	ip_chksum+1, r16
 	
@@ -669,13 +646,18 @@ send_tx_packet:
 	ldi	ZL, MAC_addr_DA & 0xff		; set ZL with the lowbyte of the MAC address
 	ldi	ZH, MAC_addr_DA >> 8		; set ZH with the highbyte of the MAC address
 
-	ldi	r17, 12				; loop count 12 for the 2 x 6 octets 5-0
+	ldi	r17, 6				; loop count 12 for the 2 x 6 octets 5-0
 
 LoadMAC_DA_SA:							
-	ld	r16, Z+				; Octet 5 of IA
+	ld	r16, Z+				; get the next octet
 	sts	CS_DATA_P0, r16
 ;debug
-	rcall	output_r16
+;	rcall	output_r16
+
+	ld	r16, Z+				; get the next octet
+	sts	CS_DATA_P0+1, r16
+;debug
+;	rcall	output_r16
 
 	dec	r17
 	cpi	r17, 0				; will have performed the loop 12 times
@@ -690,41 +672,45 @@ LoadMAC_DA_SA:
 	lds	YL, ip_TotalLength+1		; get low byte of length
 
 	; add two bytes for the packet type address to the length
+	
 	adiw	YH:YL, 0x02
 
-	; ouput the total data LLC length so the CS8900 know how much data is being sent
-	sts	CS_DATA_P0, YH
-	sts	CS_DATA_P0, YL
-
-;debug - this isn't part of the final data packet
-	mov	r16, YH
-	rcall serial_tx_hex
-
-	mov	r16, YL
-	rcall serial_tx_hex
-
-	ldi	r16, 0x20
-	rcall serial_tx
-
 	; add the length to the start address for the loop
-	clc
 	add YL, ZL
 	adc YH, ZH
+
 
 send_data_loop:
 	ld	r16, Z+
 	sts	CS_DATA_P0, r16
-	inc	tmp
 ;debug
-	rcall output_r16	
+;	rcall output_r16	
 
 	cp	ZH, YH				; pointer = end of data High byte?
-	brne	send_data_loop			; no, then continue and loop
-	
-	cp	ZL, YL				; pointer = end of data low byte
-	brne	send_data_loop			; no, then continue and loop
+	brne	skip_LSB				; no, don't bother checking the low byte
 
-	rcall crlf
+	cp	ZL, YL				; ZH=LH at this stage. does pointer low byte = end of data low byte
+	breq	exit_send_data_loop		; yes. Data end reached. Finish
+
+skip_LSB:
+	ld	r16, Z+				; output the next byte to the CS_DATA_PORT high byte
+	sts	CS_DATA_P0+1, r16
+;debug
+;	rcall output_r16	
+
+	cp	ZH, YH				; pointer = end of data High byte?
+	brne	send_data_loop
+
+	cp	ZL, YL				; pointer = end of data low byte?
+	brne	send_data_loop
+
+	
+
+exit_send_data_loop:
+
+	ldi	r16, 0x73
+	rcall	serial_tx
+	rcall	crlf
 
 	ret
 
@@ -746,7 +732,6 @@ cs_find_tx_length:
 	lds	YH, adlc_rx_ptr + 1		; put the Rx pointer address in Y
 	lds	YL, adlc_rx_ptr
 
-	clc
 	sub	YL, ZL
 	sbc	YH, ZH
 
