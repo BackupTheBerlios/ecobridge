@@ -190,24 +190,6 @@ process_fv:
 	rjmp	adlc_irq_ret			; return from interrupt
 
 
-; -----------------------------------------------------------------------------------------
-; ADLC adlc_reg_debug
-; -----------------------------------------------------------------------------------------
-;
-; used temporarily to write the status register values to an area of memory
-;
-; entry : r16 - register value
-;         r18 - register
-;
-adlc_reg_debug:
-
-	lds	XL, adlc_tmp_ptr			; put the Tx buffer pointer address in X
-	lds	XH, adlc_tmp_ptr + 1
-	st	X+, r18				; store Reg number
-	st	X+, r16				; store the data read in the temp Tx buffer
-	sts	adlc_tmp_ptr, XL			; store the incremented Rx buffer pointer
-	sts	adlc_tmp_ptr + 1, XH	 
-	ret
 
 ; -----------------------------------------------------------------------------------------
 ; ADLC IRQ
@@ -218,7 +200,6 @@ adlc_irq:
 	push	tmp					; save register values to the stack
 	push	r16
 	push	r17
-;	push	r18					; temp for debug
 	in	r16, SREG				; Save the status register
 	push	r16
 
@@ -230,10 +211,6 @@ adlc_irq:
 	ldi	r16, ADLC_SR1			; set read address to ADLC Status Register1
 	rcall	adlc_read				; read the ADLC Status Register into r17
 
-; temp for debugging, Store the read register in the Tx buffer
-;	ldi r18, 0x01				; Status Reg 01
-;	rcall adlc_reg_debug
-	
 	bst	r17, 0				; RDA? Receive data available
 	brbs	6, process_rda			; yes
 	bst	r17, 1				; S2RQ - Status #2 Read Request ?
@@ -249,10 +226,6 @@ adlc_irq:
 process_s2rq:
 	ldi	r16, ADLC_SR2			; set address to Status Register2
 	rcall	adlc_read				; read Status Register2
-
-; temp for debugging, Store the read register in the Tx buffer
-;	ldi r18, 0x02				; Status Reg 01
-;	rcall adlc_reg_debug
 
 	bst	r17, 0				; 1 ;AP: Address Present?
 	brbs	6, process_ap			;   ;yes
@@ -457,7 +430,6 @@ adlc_irq_ret:
 	out	GICR, tmp
 	pop	r16					; restore Status register from the Stack
 	out	SREG, r16		
-;	pop r18					; temp for debug
 	pop	r17					; restore other registers from the Stack
 	pop	r16
 	pop	tmp
@@ -545,14 +517,6 @@ adlc_ready_to_receive:
 	
 	sts	adlc_rx_ptr, XL			; set ALDC receive ptr to the start of the Rx buffer
 	sts	adlc_rx_ptr + 1, XH
-	
-	; temp for debugging. Store a copy of the ADLC status Register
-	; use the Tx buffer because that is not currently being used
-;	ldi	XL, ECONET_TX_BUF & 0xff	; set XL with the lowbyte of the Econet receive buffer
-;	ldi	XH, ECONET_TX_BUF >> 8		; set XH with the highbyte of the Econet receive buffer
-	
-;	sts	adlc_tmp_ptr, XL			; set ALDC receive ptr to the start of the Rx buffer
-;	sts	adlc_tmp_ptr + 1, XH
 
 	ldi	r17, CR1_RIE | CR1_TXRESET	; Enable Receive interrupts | Reset the TX status
 	ldi	r16, ADLC_CR1			; set to write to Control Register 1
