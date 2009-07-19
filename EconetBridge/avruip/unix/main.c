@@ -31,7 +31,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: main.c,v 1.1 2009/07/19 14:33:48 markusher Exp $
+ * $Id: main.c,v 1.2 2009/07/19 17:51:28 markusher Exp $
  *
  */
 
@@ -44,7 +44,8 @@
 #include "timer.h"
 #include "clock.h"
 
-//#include "adlc.h"
+#include "serial.h"
+#include "adlc.h"
 
 extern void adlc_irq(void);
 extern void adlc_access(void);
@@ -63,31 +64,42 @@ extern void serial_tx_hex(uint8_t mask);
 
 void AVR_init(void)
 {
-
+	// select 8MHz clock
 	CLKPR = 0x80;
 	CLKPR = 0x0;
+
+	// set up I/O
+	DDRB = 0xFF;
+	DDRE = ADLC_D0 || ADLC_nCE;
+	DDRD = 0xF3;
+	PORTD = 0xFF;
+	PORTE = ADLC_nCE;
+
+	// set up timer 0 to generate ADLC clock waveform
+	OCR0 = 4;
+	TCCR0 = (1 << WGM01) | (1 << COM00) | (1 << CS00);
+
+	// set up timer 1 to generate Econet clock output
+	TCCR1A = (1 << WGM11) | (1 << COM1A1);
+	TCCR1B = (1 << WGM13) | (1 << WGM12) | (1 << CS10); // no prescaling
 
 	// select 1 wait state for upper region at 0x8000-0xffff
 	EMCUCR = (1 << SRL2);
 
 	// set the MicroController Control Register
 	MCUCR =  (1 << SRE) | (1 << ISC11) | (1 << SRW10);
-	/*
-	SRE	= 7		External SRAM Enable
-	ISC111 		trigger on falling edge
-	SRW10	= 6		External SRAM Wait State Select
-	*/
+
 }
 
 ISR(INT0_vect)
 {
-//	adlc_irq();
+	adlc_irq();
 	return;
 }
 
 ISR(INT1_vect)
 {
-//	adlc_access();
+	adlc_access();
 	return;
 }
 
@@ -105,8 +117,6 @@ main(void)
 
   timer_set(&periodic_timer, CLOCK_SECOND / 2);
   timer_set(&arp_timer, CLOCK_SECOND * 10);
-
-//  tapdev_init();
 
   nic_init();
   uip_init();
