@@ -81,7 +81,7 @@ SRC	= ./unix/main.c $(ETHERNET) $(UIP) $(AUN)
 # Even though the DOS/Win* filesystem matches both .s and .S the same,
 # it will preserve the spelling of the filenames, and gcc itself does
 # care about how the name is spelled on its command-line.
-ASRC = ./drivers/Serial.S ./drivers/adlc.S
+ASRC = ./drivers/serial.S ./drivers/adlc.S
 
 
 # List any extra directories to look for include files here.
@@ -355,7 +355,7 @@ program: $(TARGET).hex $(TARGET).eep
 # Link: create ELF output file from object files.
 .SECONDARY : $(TARGET).elf
 .PRECIOUS : $(OBJ)
-%.elf: $(OBJ)
+$(TARGET).elf: $(OBJ)
 	@echo
 	@echo $(MSG_LINKING) $@
 	$(CC) $(ALL_CFLAGS) $(OBJ) --output $@ $(LDFLAGS)
