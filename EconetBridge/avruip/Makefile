@@ -52,8 +52,8 @@ OPT = s
 # List C source files here. (C dependencies are automatically generated.)
 #REALTEK = ./drivers/rtl8019.c 
 #ASIX = ./drivers/ax88796.c 
-CS8900 = ./drivers/cs8900.c
-#ADLC = ./drivers/adlc.c
+CS8900 = ./drivers/serial.c ./drivers/cs8900.c 
+ADLC = ./drivers/adlc.c
 
 ETHERNET = $(CS8900) ./avr/delay.c ./avr/nic.c
 #TELNETD = ./apps/telnetd/telnetd.c ./apps/telnetd/shell.c ./lib/memb.c
@@ -61,7 +61,7 @@ ETHERNET = $(CS8900) ./avr/delay.c ./avr/nic.c
 AUN = ./apps/aun/aun.c
 UIP = ./uip/uip.c ./uip/uip_arp.c ./uip/uiplib.c ./uip/psock.c ./uip/clock.c ./uip/timer.c ./uip/uip-neighbor.c
 
-SRC	= ./unix/main.c $(ETHERNET) $(UIP) $(AUN)
+SRC	= ./unix/main.c $(ETHERNET) $(UIP) $(AUN) $(ADLC)
 
 
 # If there is more than one source file, append them above, or modify and
@@ -81,7 +81,7 @@ SRC	= ./unix/main.c $(ETHERNET) $(UIP) $(AUN)
 # Even though the DOS/Win* filesystem matches both .s and .S the same,
 # it will preserve the spelling of the filenames, and gcc itself does
 # care about how the name is spelled on its command-line.
-ASRC = ./drivers/serial.S ./drivers/adlc.S
+ASRC = ./drivers/serial_asm.S ./drivers/adlc_asm.S
 
 
 # List any extra directories to look for include files here.
