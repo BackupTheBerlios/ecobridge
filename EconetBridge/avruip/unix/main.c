@@ -31,7 +31,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: main.c,v 1.2 2009/07/19 17:51:28 markusher Exp $
+ * $Id: main.c,v 1.3 2009/07/19 18:13:43 markusher Exp $
  *
  */
 
@@ -52,9 +52,6 @@ extern void adlc_access(void);
 extern void adlc_init(void);
 
 
-extern void serial_tx(uint8_t mask);
-extern void serial_tx_hex(uint8_t mask);
-
 #define BUF ((struct uip_eth_hdr *)&uip_buf[0])
 
 #ifndef NULL
@@ -70,7 +67,7 @@ void AVR_init(void)
 
 	// set up I/O
 	DDRB = 0xFF;
-	DDRE = ADLC_D0 || ADLC_nCE;
+	DDRE = (ADLC_D0 | ADLC_nCE);
 	DDRD = 0xF3;
 	PORTD = 0xFF;
 	PORTE = ADLC_nCE;
@@ -114,6 +111,7 @@ main(void)
   AVR_init();
   clock_init();
 //  adlc_init();
+  GICR = (1 << INT0);
 
   timer_set(&periodic_timer, CLOCK_SECOND / 2);
   timer_set(&arp_timer, CLOCK_SECOND * 10);
