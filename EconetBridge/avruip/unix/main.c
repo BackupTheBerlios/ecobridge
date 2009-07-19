@@ -31,7 +31,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: main.c,v 1.3 2009/07/19 18:13:43 markusher Exp $
+ * $Id: main.c,v 1.4 2009/07/19 19:04:53 philb Exp $
  *
  */
 
@@ -91,12 +91,6 @@ void AVR_init(void)
 ISR(INT0_vect)
 {
 	adlc_irq();
-	return;
-}
-
-ISR(INT1_vect)
-{
-	adlc_access();
 	return;
 }
 
