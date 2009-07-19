@@ -20,20 +20,14 @@
 #ifndef __ADLC_H__
 #define __ADLC_H__
 
-#include <stdint.h>
-
-//extern unsigned char *ECONET_RX_BUF;		/* The Econet Rx Buf pointer points to received data. */
-
-extern unsigned char ECONET_RX_BUF[2000];		/* The Econet Rx Buf pointer points to received data. */
-
-
-extern unsigned short	adlc_rx_ptr;
-extern unsigned short	adlc_r24_ptr;
-extern unsigned char	adlc_state;
 
 void	adlc_poller(void);
-void	adlc_init2(void);
 
+#define	ADLC_RS1		0			// PD0 Register Select 1			Econet Pin6
+#define	ADLC_RnW		1			// PD1 Read/Write Control			Econet Pin2
+#define	ADLC_RS0		4			// PD4 Register Select 0			Econet Pin5
+#define	ADLC_nCE		0			// PE0						Econet Pin3
+#define	ADLC_D0		2			// PE2						Econet Pin7
 
 #define	RX_IDLE		0
 #define	RX_CHECK_NET1	1
