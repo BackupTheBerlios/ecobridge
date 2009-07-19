@@ -136,6 +136,7 @@
 #define saved_gicr		r20
 
 #define egpio_arg		r24
+#define serial_tx_arg		r24
 
 .section .text             ; Start program section
 
@@ -311,7 +312,7 @@ await_end:
 ; -----------------------------------------------------------------------------------------
 ;
 rx_overrun:
-	ldi	tmp1, 0x6F				; "o" - overrun
+	ldi	serial_tx_arg, 0x6F				; "o" - overrun
 	rcall serial_tx				; 
 	rjmp 	abandon_rx
 
@@ -320,7 +321,7 @@ rx_overrun:
 ; -----------------------------------------------------------------------------------------
 ;
 process_dcd:
-	ldi	tmp1, 0x6E				; "n" - no clock
+	ldi	serial_tx_arg, 0x6E				; "n" - no clock
 	rcall serial_tx				; 
 ;	rcall noclock
 	rjmp	adlc_irq_ret			; return from interrupt
@@ -331,7 +332,7 @@ process_dcd:
 ; -----------------------------------------------------------------------------------------
 ;
 rx_error:
-	ldi		tmp1, 0x65			; "e" - error
+	ldi	serial_tx_arg, 0x65			; "e" - error
 	rcall 	serial_tx			; 
 	rcall	adlc_rx_flush			; clear any remaing bytes
 
@@ -354,7 +355,7 @@ abandon_rx:
 ; exit: adlc_state = 0
 ; 
 process_idle:					
-	ldi	tmp1, 0x69				; append "i" - network is idle
+	ldi	serial_tx_arg, 0x69				; append "i" - network is idle
 	call	serial_tx				; write to serial
 	rcall	crlf
 
@@ -380,6 +381,9 @@ __vector_1:
 	out	GICR, r24
 	sei
 
+	ldi	serial_tx_arg, 0x41
+	rcall	serial_tx
+
 	ldi	tmp1, ADLC_SR1			; set read address to ADLC Status Register1
 	rcall	adlc_read				; read the ADLC Status Register into tmp2
 
@@ -389,7 +393,7 @@ __vector_1:
 	brbs	6, process_s2rq			; yes
 
 ;this hasn't occurred so far
-	ldi	tmp1, 0x56				; "V" - valid CRC is Valid
+	ldi	serial_tx_arg, 0x56				; "V" - valid CRC is Valid
 	rcall	serial_tx				; write to serial
 
 	rjmp	adlc_irq_ret			; clean up routine for interrupt handling
@@ -620,6 +624,8 @@ adlc_init:
 	; At any time during operation, writing a "1" into the Rx RS control bit or Tx RS control
 	; bit causes the reset condition of the receiver or the transmitter.
 
+	ldi	serial_tx_arg, 0x61
+	rcall	serial_tx
 
 	; raise the reset line on the ADLC
 	ldi	egpio_arg, EGPIO_ADLC_RESET | EGPIO_SET	; set the ADLC reset to 1
@@ -652,6 +658,31 @@ adlc_init:
 	ldi	tmp2, CR1_TXRESET | CR1_RXRESET ;  keep transmitter and receiver reset, irqs off, back to CR2
 	ldi	tmp1, ADLC_CR1			; set to write to Control Register 1
 	rcall	adlc_write				; write to the ADLC
+
+	rcall	adlc_ready_to_receive
+	
+	ldi	serial_tx_arg, 0x62
+	rcall	serial_tx
+
+#if 0
+adlc_debug_loop:
+	ldi	tmp1, ADLC_SR1
+	rcall	adlc_read
+
+	mov	serial_tx_arg, tmp2
+	rcall	serial_tx_hex
+
+	ldi	tmp1, ADLC_SR2
+	rcall	adlc_read
+	
+	mov	serial_tx_arg, tmp2
+	rcall	serial_tx_hex
+	rcall	crlf
+	rjmp	adlc_debug_loop
+#endif
+		
+	ret
+
 	
 ; -----------------------------------------------------------------------------------------
 ; ADLC ready to receive

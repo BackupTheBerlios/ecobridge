@@ -31,7 +31,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: main.c,v 1.5 2009/07/19 19:06:07 philb Exp $
+ * $Id: main.c,v 1.6 2009/07/19 20:19:40 philb Exp $
  *
  */
 
@@ -98,7 +98,7 @@ main(void)
 
   AVR_init();
   clock_init();
-//  adlc_init();
+  adlc_init();
   GICR = (1 << INT0);
 
   timer_set(&periodic_timer, CLOCK_SECOND / 2);
