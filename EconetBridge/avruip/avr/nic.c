@@ -15,7 +15,7 @@
 *****************************************************************************/
 
 #include "nic.h"
-
+#include "serial.h"
 
 
 
@@ -76,7 +76,7 @@ unsigned char nic_poll(void)
 	// copy the packet data into the uIP packet buffer
 	NICRetreivePacketData( uip_buf, packetLength );
 
-//serial_packet(uip_buf, packetLength);
+serial_packet(uip_buf, packetLength);
 
 
 	NICEndPacketRetreive();

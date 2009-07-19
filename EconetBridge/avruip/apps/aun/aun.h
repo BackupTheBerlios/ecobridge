@@ -60,13 +60,10 @@ void aun_appcall(void);
 
 void aun_init(void);
 
-
-typedef unsigned char u_char;
-
-typedef unsigned int u_int;
-
-typedef unsigned short u_short;
-typedef unsigned long u_long;
+typedef unsigned char	u_char;
+typedef unsigned int	u_int;
+typedef unsigned short	u_short;
+typedef unsigned long	u_long;
 
 
 /* module.h
@@ -430,6 +427,17 @@ struct txcb
 
 
 
+
+/*
+ * Declaration of the protosocket function that handles the connection
+ * (defined at the end of the code).
+ */
+
+static void newdata(void);
+//static void check_entries(void);
+
+
+void do_immediate(void) ;
 
 
 #endif /* __AUN_H__ */

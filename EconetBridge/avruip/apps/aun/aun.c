@@ -24,6 +24,7 @@
  */
 #include "aun.h"
 #include "uip.h"
+#include "serial.h"
 #include <string.h>
 
 #ifndef NULL
@@ -69,18 +70,6 @@ struct aunhdr
 };
 
 unsigned char machine_type =  MACHINE_TYPE_RISC_PC;
-
-
-/*
- * Declaration of the protosocket function that handles the connection
- * (defined at the end of the code).
- */
-
-static void newdata(void);
-//static void check_entries(void);
-
-
-//static struct uip_udp_conn *resolv_conn = NULL;
 
 
 
@@ -227,9 +216,6 @@ u_char	pad[UIP_LLH_LEN];
 u_char	Network;
 u_char	Station;
 };
-
-//#define BUF ((struct uip_tcpip_hdr *)&uip_buf[UIP_LLH_LEN])
-#define BUF ((struct EcoDest *)&uip_buf[UIP_LLH_LEN])
 
 	struct mns_msg *m; 
 
