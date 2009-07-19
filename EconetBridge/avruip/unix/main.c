@@ -31,7 +31,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: main.c,v 1.4 2009/07/19 19:04:53 philb Exp $
+ * $Id: main.c,v 1.5 2009/07/19 19:06:07 philb Exp $
  *
  */
 
@@ -86,12 +86,6 @@ void AVR_init(void)
 	// set the MicroController Control Register
 	MCUCR =  (1 << SRE) | (1 << ISC11) | (1 << SRW10);
 
-}
-
-ISR(INT0_vect)
-{
-	adlc_irq();
-	return;
 }
 
 /*---------------------------------------------------------------------------*/

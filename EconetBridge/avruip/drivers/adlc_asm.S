@@ -367,8 +367,8 @@ process_idle:
 ; ADLC IRQ main entry point
 ; -----------------------------------------------------------------------------------------
 ;
-.global adlc_irq
-adlc_irq:	
+.global __vector_1
+__vector_1:	
 	push	r24					; save register values to the stack
 	push	tmp1
 	push	tmp2
