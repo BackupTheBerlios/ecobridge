@@ -29,7 +29,7 @@ void clock_init(void)
 	OCR3AH = 0x7A;
 	OCR3AL = 0x10;
 
-//	sei
+	sei();
 
 	return;
 }
@@ -49,7 +49,7 @@ ISR(TIMER3_COMPA_vect)
 
 	// reset interrupt flag
 	ETIFR = 0;
-serial_short(timerCounter);
+//serial_short(timerCounter);
 	return;
 }
 
