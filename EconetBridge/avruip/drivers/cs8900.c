@@ -15,38 +15,33 @@ History:
 #include "cs8900.h"
 #include "delay.h"
 #include "uip.h"
+#include "serial.h"
+
+/* register asm routines */
 
 extern void serial_tx(uint8_t mask);
 extern void serial_tx_hex(uint8_t mask);
-//extern void egpio_init(void);
+
+extern void egpio_init(void);
 
 extern void aWriteIORegister(void);
 extern void aReadIORegister(void);
+/*
+extern unsigned char	addr_lo;
+extern unsigned char	addr_hi;
+extern unsigned char	data;
+*/
+register uint8_t addr_lo	asm("r3");
+register uint8_t addr_hi	asm("r4");
+register uint8_t data		asm("r2");
 
 
-//#include "uip.h"
-//#include "uip_arp.h"
-
+/* This should really be the same variable as in uip.c */
 unsigned char gEtherAddr[6] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55};
 
-
-int gPrevTxBidFail = 0;
-int gTxInProgress = 0;
+unsigned char gPrevTxBidFail = 0;
 
 
-//
-//	gRxDataBuf - Rx data buffer
-//	gTxDataBuf - Tx data buffer
-//	gTxLength - Tx frame is always 1513 bytes in length
-//
-extern unsigned char gRxDataBuf[];
-extern unsigned char gTxDataBuf[];
-extern int gTxLength;
-
-/* Tx and Rx statistics for Interrupt Mode*/
-//extern int  gIntTxErr , gIntTxOK , gIntRxErr , gIntRxOK, gBufEvent_Rdy4Tx;
-
-//extern unsigned int gIrqNo;/* The CS8900's IRQ number.  It can be 5, 10, 11, and 12. */
 
 /* wrappers for the driver */
 
@@ -283,7 +278,6 @@ void cs8900RetreivePacketData(unsigned char * localBuffer, unsigned int length)
 
 	unsigned short totalLen, val;
 	int leftLen;
-	int c;
 	unsigned short *data;
 	unsigned char *cp;
 
@@ -353,28 +347,14 @@ static unsigned short ReadPPRegister(unsigned short regOffset)
 void WritePPRegister(unsigned short regOffset, unsigned short val)
 {
 
-
-	unsigned char temp1;
-	unsigned char temp2;
-	
-	temp1 = (regOffset & 0x00FF);
-	temp2 = ((regOffset & 0xFF00) >> 8);
-
 	// write a 16 bit register offset to IO port CS8900_PPTR
-	outportb(CS8900_PPTR, temp1);
-	outportb(((CS8900_PPTR + 1)), temp2);
+      outportb(CS8900_PPTR, (unsigned char)(regOffset & 0x00FF));
+	outportb((CS8900_PPTR + 1),
+	(unsigned char)((regOffset & 0xFF00) >> 8));
 
 	// write 16 bits to IO port CS8900_PPTR
-//	outportb(CS8900_PDATA, (unsigned char)(val & 0x00FF));
-//	outportb(((CS8900_PDATA + 1)), (unsigned char)((val & 0xFF00) >> 8));
-
-	temp1 = (val & 0x00FF);
-	temp2 = ((val & 0xFF00) >> 8);
-
-	// Write the 16 bits of data in val to reg
-	outportb(CS8900_PDATA, (unsigned char)temp1);
-	outportb((CS8900_PDATA + 1), (unsigned char)temp2);
-
+	outportb(CS8900_PDATA, (unsigned char)(val & 0x00FF));
+	outportb(((CS8900_PDATA + 1)), (unsigned char)((val & 0xFF00) >> 8));
 }
 
 /*******************************************************************/
@@ -398,21 +378,9 @@ unsigned short ReadRxStatusLengthRegister()
 void WriteIORegister(unsigned short reg, unsigned short val)
 {
 
-
-	unsigned char temp1;
-	unsigned char temp2;
-	
-	temp1 = (val & 0x00FF);
-	temp2 = ((val & 0xFF00) >> 8);
-
 	// Write the 16 bits of data in val to reg
-	outportb(reg, (unsigned char)temp1);
-	outportb((reg + 1), (unsigned char)temp2);
-
-
-	// Write the 16 bits of data in val to reg
-//	outportb((unsigned short *)reg, (unsigned char)(val & 0x00FF));
-//	outportb(((unsigned short *)(reg + 1)), (unsigned char)((val & 0xFF00) >> 8));
+	outportb((unsigned short *)reg, (unsigned char)(val & 0x00FF));
+	outportb(((unsigned short *)(reg + 1)), (unsigned char)((val & 0xFF00) >> 8));
 
 }
 
@@ -421,8 +389,10 @@ void WriteIORegister(unsigned short reg, unsigned short val)
 /*******************************************************************/
 unsigned short ReadIORegister(unsigned short reg)
 {
-	return(inportb((unsigned short *)reg) | (inportb((unsigned short *)(reg + 1)) << 8));
-//	return((inportb((unsigned short *)reg)) <<8 | (inportb((unsigned short *)(reg + 1)) ));
+
+	return(inportb((unsigned short *)reg) | 
+		(inportb((unsigned short *)(reg + 1)) << 8));
+
 }
 
 
@@ -432,20 +402,20 @@ unsigned short ReadIORegister(unsigned short reg)
 /*******************************************************************/
 int cs8900_poll_init(unsigned short duplexMode)
 {
-     unsigned short chip_type, chip_rev;
-     unsigned short tmpAddr0, tmpAddr1, tmpAddr2;
-	  unsigned short *ptr;
-	  int status;
+	unsigned short chip_type, chip_rev;
+ 	unsigned short tmpAddr0, tmpAddr1, tmpAddr2;
+	unsigned short *ptr;
+	int status;
 
 
 
-     // Information: read Chip Id and Revision
-     chip_type = ReadPPRegister(PP_ChipID);
-     chip_rev = ReadPPRegister(PP_ChipRev);
+	// Information: read Chip Id and Revision
+	chip_type = ReadPPRegister(PP_ChipID);
+	chip_rev = ReadPPRegister(PP_ChipRev);
 
 	serial_crlf();
 
-     //printf("CS8900 - type: %x, rev: %x\n", chip_type, chip_rev);
+	//printf("CS8900 - type: %x, rev: %x\n", chip_type, chip_rev);
 	serial_tx(0x54);
 	serial_short(chip_type);
 
@@ -544,7 +514,6 @@ int cs8900_reset(void)
 void outportb( unsigned short reg, unsigned char val)
 {
 
-
 	// write the value in val to the register
 	addr_lo=((unsigned char)(reg & 0x00FF));
 	addr_hi=((unsigned char)((reg & 0xFF00) >> 8));
@@ -558,6 +527,7 @@ void outportb( unsigned short reg, unsigned char val)
 
 unsigned short inportb(unsigned short reg)
 {
+
 	addr_lo=((unsigned char)(reg & 0x00FF));
 	addr_hi=((unsigned char)((reg & 0xFF00) >> 8));
 
@@ -569,96 +539,4 @@ unsigned short inportb(unsigned short reg)
 }
 
 
-
-
-void serial_short(unsigned short val)
-{
-
-	unsigned short tmp;
-
-	tmp = ((val & 0xFF00) >>8);		// calc high byte
-	serial_tx_hex((unsigned char)tmp);	// output high byte in hex
-
-	serial_tx(0x20);				// space
-
-	tmp = (val & 0x00FF);			// calc lo byte
-	serial_tx_hex((unsigned char)tmp);	// output high byte in hex
-
-	return;
-
-}
-
-void serial_shortLH(unsigned short val)
-{
-
-	unsigned short tmp;
-
-	tmp = (val & 0x00FF);			// calc lo byte
-	serial_tx_hex((unsigned char)tmp);	// output high byte in hex
-
-	serial_tx(0x20);				// space
-
-	tmp = ((val & 0xFF00) >>8);		// calc high byte
-	serial_tx_hex((unsigned char)tmp);	// output high byte in hex
-
-	return;
-
-}
-
-void serial_ok(unsigned char okVal)
-{
-
-	serial_tx(0x6f);		// o
-	serial_tx(0x6b);		// k
-	serial_tx(0x20);		// space
-	serial_tx_hex(okVal);	// value
-	serial_crlf(); 		// cr lf
-
-	return;
-}
-
-void serial_rx(void)
-{
-
-	serial_tx(0x72);		// r
-	serial_tx(0x78);		// x
-	serial_tx(0x20);		// space
-	return;
-}
-
-void serial_error(unsigned char eVal)
-{
-
-	serial_tx(0x65);		// e
-	serial_tx(0x20);		// space
-	serial_tx_hex(eVal);	// error value
-	serial_crlf(); 		// cr lf
-
-	return;
-}
-
-void serial_crlf(void)
-{
-
-	serial_tx(13);		// cr
-	serial_tx(10);		// lf
-
-	return;
-}
-
-void serial_packet(unsigned short pktbuff, unsigned short pktlen)
-{
-// print out packet content
-	unsigned short c;
-	unsigned short *x;
-	x=pktbuff;
-
-  for(c=0; c < pktlen/2; c++) {	
-	serial_shortLH(*x++);
-	serial_tx(0x20);
-	}
-	serial_crlf();
-
-	return;
-}
 

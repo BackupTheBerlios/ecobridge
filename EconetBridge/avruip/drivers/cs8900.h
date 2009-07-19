@@ -10,11 +10,10 @@
 #ifndef _CS8900_H_
 #define _CS8900_H_
 
-#include <stdint.h>
+//#include <stdint.h>
 
-register uint8_t addr_lo	asm("r3");
-register uint8_t addr_hi	asm("r4");
-register uint8_t data		asm("r2");
+#include "serial.h"
+
 
 /*****************************************************************************
 *
@@ -193,7 +192,7 @@ unsigned int cs8900BeginPacketRetreive(void);
 void cs8900RetreivePacketData(unsigned char * , unsigned int );
 void cs8900EndPacketRetreive(void);
 
-static unsigned short ReadPPRegister(unsigned short );
+static unsigned short ReadPPRegister(unsigned short);
 void WritePPRegister(unsigned short, unsigned short);
 unsigned short ReadRxStatusLengthRegister(void);
 void WriteIORegister(unsigned short , unsigned short );
@@ -202,12 +201,5 @@ int cs8900_poll_init(unsigned short);
 int cs8900_reset(void);
 void outportb( unsigned short, unsigned char);
 unsigned short inportb(unsigned short);
-
-void serial_short(unsigned short);
-void serial_ok(unsigned char);
-void serial_rx(void);
-void serial_error(unsigned char);
-void serial_crlf(void);
-
 
 #endif /* _CS8900_H_ */
