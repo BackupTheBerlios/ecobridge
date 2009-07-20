@@ -159,6 +159,9 @@ adlc_read:
 	ldi	tmp1, 0x1				; make sure the ADLC_CLK at PB0 stays set
 	out	DDRB, tmp1				; clear all other lines on PORTB
 	cbi	DDRE, ADLC_D0			; clear ADLC_D0 line on PORTE
+	ldi	tmp1, 0xff
+	out	PORTB, tmp1
+	sbi	PORTE, ADLC_D0
 
 	clc
 	
@@ -396,8 +399,10 @@ await_end:
 rx_overrun:
 	ldi	serial_tx_arg, 0x6F				; "o" - overrun
 	rcall serial_tx				; 
-	rjmp 	abandon_rx
-
+	;rcall 	adlc_ready_to_receive  
+	;rjmp	adlc_irq_ret
+	rjmp	process_fv
+	
 ; -----------------------------------------------------------------------------------------
 ; ADLC process_dcd - No Clock
 ; -----------------------------------------------------------------------------------------
@@ -463,22 +468,7 @@ __vector_1:
 	out	GICR, r24
 	sei
 
-	ldi	tmp1, ADLC_SR1			; set read address to ADLC Status Register1
-	rcall	adlc_read				; read the ADLC Status Register into tmp2
-
-	bst	tmp2, 0				; RDA? Receive data available
-	brbs	6, process_rda			; yes
-	bst	tmp2, 1				; S2RQ - Status #2 Read Request ?
-	brbs	6, process_s2rq			; yes
-
-;this hasn't occurred so far
-	ldi	serial_tx_arg, 0x56				; "V" - valid CRC is Valid
-	rcall	serial_tx				; write to serial
-
-	rjmp	adlc_irq_ret			; clean up routine for interrupt handling
-
-
-process_s2rq:
+process_s2rq:	
 	ldi	tmp1, ADLC_SR2			; set address to Status Register2
 	rcall	adlc_read				; read Status Register2
 
@@ -498,6 +488,7 @@ process_s2rq:
 	brbs	6, process_idle			;   ;yes
 	bst	tmp2, 1				; 2 ;FV: Frame Valid?
 	brbs	6, process_fv			;   ;yes
+	rjmp	adlc_irq_ret
 
 ; -----------------------------------------------------------------------------------------
 ; ADLC process_fv Frame Valid
@@ -657,9 +648,7 @@ adlc_rx_flush:
 no_rda:
 	ldi	tmp1, ADLC_CR2			; set to write to Control Register 2
 	ldi	tmp2, CR2_FLAGIDLE | CR2_RTS | CR2_CLRRX | CR2_PSE | CR2_TWOBYTE
-	rcall	adlc_write				; write to Control Register
-
-	ret
+	rjmp	adlc_write				; write to Control Register
 
 
 ; -----------------------------------------------------------------------------------------
@@ -681,7 +670,7 @@ adlc_clear_rx:
 adlc_irq_ret:
 	ldi	r24, (1 << INT0)			; restore the interrupt flag
 	out	GICR, r24
-	pop	tmp1					; restore Status register from the Stack
+ 	pop	tmp1					; restore Status register from the Stack
 	out	SREG, tmp1		
 	pop	tmp2					; restore other registers from the Stack
 	pop	tmp1
@@ -814,7 +803,8 @@ adlc_ready_to_receive:
 interesting_network:
 	cpi	tmp1, 0xff
 	breq	yes_network
-	
+	cpi	tmp1, 0x01
+	breq	yes_network		
 	clc
 	clz
 	ret
