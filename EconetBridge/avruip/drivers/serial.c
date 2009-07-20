@@ -62,6 +62,35 @@ void serial_rx(void)
 	return;
 }
 
+void serial_txx(void)
+{
+
+	serial_tx(0x74);		// t
+	serial_tx(0x78);		// x
+	serial_tx(0x20);		// space
+	return;
+}
+
+void serial_eth(void)
+{
+
+	serial_tx(0x65);		// e
+	serial_tx(0x74);		// t
+	serial_tx(0x68);		// h
+	serial_tx(0x20);		// space
+	return;
+}
+
+void serial_eco(void)
+{
+
+	serial_tx(0x65);		// e
+	serial_tx(0x73);		// c
+	serial_tx(0x6f);		// o
+	serial_tx(0x20);		// space
+	return;
+}
+
 void serial_error(unsigned char eVal)
 {
 
