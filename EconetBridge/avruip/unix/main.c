@@ -31,7 +31,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: main.c,v 1.7 2009/07/20 11:46:16 philb Exp $
+ * $Id: main.c,v 1.8 2009/07/20 23:16:49 markusher Exp $
  *
  */
 
@@ -70,7 +70,7 @@ void AVR_init(void)
 	DDRE = (1 << ADLC_D0 | 1 << ADLC_nCE);
 	DDRD = 0xF3;
 	PORTD = 0xFF;
-	PORTE = 1 << ADLC_nCE;
+	PORTE = (1 << ADLC_nCE);
 
 	// set up timer 0 to generate ADLC clock waveform
 	OCR0 = 4;
@@ -118,10 +118,11 @@ main(void)
 
 
   while(1) {
-    uip_len = nic_poll();
 
 // check the econet for complete packets
     adlc_poller();
+
+    uip_len = nic_poll();
 
     if(uip_len > 0) {
 
