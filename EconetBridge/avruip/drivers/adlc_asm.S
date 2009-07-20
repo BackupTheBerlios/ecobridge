@@ -164,13 +164,53 @@ adlc_read:
 	
 	in	saved_gicr, GICR				; save the contents of the General Interrupt Control Register
 	ldi	r24, (1 << INT1)			; External INT1 enable
+adlc_read_prewait:
+        sbic    PIND, 3
+        rjmp    adlc_read_prewait
 	out	GIFR, r24				; write to the General Interrupt Flag Register
 	out	GICR, r24				; write to the General Interrupt Control Register
 
+        brcs    adlc_read_done
+        brcs    adlc_read_done
+        brcs    adlc_read_done
+        brcs    adlc_read_done
 
-adlc_read_wait:					; wait for adlc_access to run
-	brcc	adlc_read_wait			; tmp1 and tmp2 will return with PortB and PortE
-	
+        brcs    adlc_read_done
+        brcs    adlc_read_done
+        brcs    adlc_read_done
+        brcs    adlc_read_done
+
+        brcs    adlc_read_done
+        brcs    adlc_read_done
+        brcs    adlc_read_done
+        brcs    adlc_read_done
+
+        brcs    adlc_read_done
+        brcs    adlc_read_done
+        brcs    adlc_read_done
+        brcs    adlc_read_done
+
+        brcs    adlc_read_done
+        brcs    adlc_read_done
+        brcs    adlc_read_done
+        brcs    adlc_read_done
+
+        brcs    adlc_read_done
+        brcs    adlc_read_done
+        brcs    adlc_read_done
+        brcs    adlc_read_done
+
+        brcs    adlc_read_done
+        brcs    adlc_read_done
+        brcs    adlc_read_done
+        brcs    adlc_read_done
+
+        brcs    adlc_read_done
+        brcs    adlc_read_done
+        brcs    adlc_read_done
+        brcs    adlc_read_done
+
+adlc_read_done:
 	bst	tmp1, ADLC_D0			; Store the bit from ADLC_D0 in the T flag
 	bld	tmp2, 0				; load T into bit 0 of tmp2 to leave the byte read in tmp2
 
@@ -207,11 +247,53 @@ adlc_write:
 	
 	in	saved_gicr, GICR				; save the contents of the General Interrupt Control Register
 	ldi	r24, (1 << INT1)			; External INT1 enable
+adlc_write_prewait:
+        sbic    PIND, 3
+        rjmp    adlc_write_prewait
 	out	GIFR, r24				; write to the General Interrupt Flag Register
 	out	GICR, r24				; write to the General Interrupt Control Register
 
-adlc_write_wait:					; wait for adlc_access to run
-	brcc adlc_write_wait			; by checking if carry is cleared
+        brcs    adlc_write_done
+        brcs    adlc_write_done
+        brcs    adlc_write_done
+        brcs    adlc_write_done
+
+        brcs    adlc_write_done
+        brcs    adlc_write_done
+        brcs    adlc_write_done
+        brcs    adlc_write_done
+
+        brcs    adlc_write_done
+        brcs    adlc_write_done
+        brcs    adlc_write_done
+        brcs    adlc_write_done
+
+        brcs    adlc_write_done
+        brcs    adlc_write_done
+        brcs    adlc_write_done
+        brcs    adlc_write_done
+
+        brcs    adlc_write_done
+        brcs    adlc_write_done
+        brcs    adlc_write_done
+        brcs    adlc_write_done
+
+        brcs    adlc_write_done
+        brcs    adlc_write_done
+        brcs    adlc_write_done
+        brcs    adlc_write_done
+
+        brcs    adlc_write_done
+        brcs    adlc_write_done
+        brcs    adlc_write_done
+        brcs    adlc_write_done
+
+        brcs    adlc_write_done
+        brcs    adlc_write_done
+        brcs    adlc_write_done
+        brcs    adlc_write_done
+
+adlc_write_done:
 	ret
 
 
@@ -234,7 +316,7 @@ __vector_2:
 	nop
 	sbi	PORTE, ADLC_nCE			; set ADLC_nCE to flag read completed
 	out	GICR, saved_gicr				; restore the contents of the Global Interrupt Control Register
-	sec							; set carry to flag interrupt is handled
+        sec
 	reti						; return from interrupt
 
 ; -----------------------------------------------------------------------------------------
