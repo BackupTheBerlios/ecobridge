@@ -463,9 +463,6 @@ __vector_1:
 	out	GICR, r24
 	sei
 
-	ldi	serial_tx_arg, 0x41
-	rcall	serial_tx
-
 	ldi	tmp1, ADLC_SR1			; set read address to ADLC Status Register1
 	rcall	adlc_read				; read the ADLC Status Register into tmp2
 
@@ -774,6 +771,7 @@ adlc_debug_loop:
 ; 		: adlc_rx_ptr    = ECONET RX Buffer LSB
 ; 		: adlc_rx_ptr + 1    = ECONET RX Buffer MSB
 
+.globl	adlc_ready_to_receive
 adlc_ready_to_receive:
  	
 	ldi	tmp2, CR1_RXRESET | CR1_TXRESET; reset tx and rx
