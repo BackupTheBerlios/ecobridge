@@ -18,7 +18,7 @@ void clock_init(void)
 	timerCounter = 0;
 
 	// set up timer 3 to generate timer clock output
-	TCCR3A = ((1 << WGM32));			// TCCR3A - Timer/Counter3 Control Register A
+//	TCCR3A = ((1 << WGM32));			// TCCR3A - Timer/Counter3 Control Register A
 	// this gives input frequency of 31250Hz from an 8 MHz clock
 	TCCR3B = (1 << CS32);						// prescaler/256
 
