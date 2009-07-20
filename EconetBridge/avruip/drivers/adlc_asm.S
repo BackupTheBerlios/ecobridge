@@ -104,7 +104,7 @@
 #define	SR1_IRQ		0x80		// IRQ. Interrupts are enabled as appropriage to indicate transmit,
 							// receive and error conditions.
 
-	// status register 2
+// status register 2
 #define	SR2_AP		0x01		// Address present. Set to indicate that the first byte of a packet
 							// is available for reading.
 #define	SR2_FV		0x02		// Frame valid. Indicates packet received and CRC correct.
@@ -165,7 +165,7 @@ adlc_read:
 
 	clc
 	
-	in	saved_gicr, GICR				; save the contents of the General Interrupt Control Register
+	in	saved_gicr, GICR			; save the contents of the General Interrupt Control Register
 	ldi	r24, (1 << INT1)			; External INT1 enable
 adlc_read_prewait:
         sbic    PIND, 3
@@ -248,7 +248,7 @@ adlc_write:
 
 	clc
 	
-	in	saved_gicr, GICR				; save the contents of the General Interrupt Control Register
+	in	saved_gicr, GICR			; save the contents of the General Interrupt Control Register
 	ldi	r24, (1 << INT1)			; External INT1 enable
 adlc_write_prewait:
         sbic    PIND, 3
@@ -318,8 +318,8 @@ __vector_2:
 	in	tmp1, PINE				; read PortE to tmp1
 	nop
 	sbi	PORTE, ADLC_nCE			; set ADLC_nCE to flag read completed
-	out	GICR, saved_gicr				; restore the contents of the Global Interrupt Control Register
-        sec
+	out	GICR, saved_gicr			; restore the contents of the Global Interrupt Control Register
+	sec						; set carry to flag interrupt is handled
 	reti						; return from interrupt
 
 ; -----------------------------------------------------------------------------------------
@@ -408,9 +408,9 @@ rx_overrun:
 ; -----------------------------------------------------------------------------------------
 ;
 process_dcd:
-	ldi	serial_tx_arg, 0x6E				; "n" - no clock
-	rcall serial_tx				; 
-;	rcall noclock
+	ldi	serial_tx_arg, 0x6E		; "n" - no clock
+	rcall	serial_tx				; 
+;	rcall	noclock
 	rjmp	adlc_irq_ret			; return from interrupt
 
 
@@ -419,7 +419,7 @@ process_dcd:
 ; -----------------------------------------------------------------------------------------
 ;
 rx_error:
-	ldi	serial_tx_arg, 0x65			; "e" - error
+	ldi	serial_tx_arg, 0x65		; "e" - error
 	rcall 	serial_tx			; 
 	rcall	adlc_rx_flush			; clear any remaing bytes
 
@@ -442,7 +442,7 @@ abandon_rx:
 ; exit: adlc_state = 0
 ; 
 process_idle:					
-	ldi	serial_tx_arg, 0x69				; append "i" - network is idle
+	ldi	serial_tx_arg, 0x69		; append "i" - network is idle
 	call	serial_tx				; write to serial
 	rcall	crlf
 
@@ -707,9 +707,9 @@ adlc_init:
 	rcall	adlc_write				; write to ADLC
 
 	;new
-	ldi tmp2, 0x1E								
-	ldi tmp1, ADLC_TXTERMINATE		; write to TXTerminate address
-	rcall adlc_write
+	ldi	tmp2, 0x1E								
+	ldi	tmp1, ADLC_TXTERMINATE		; write to TXTerminate address
+	rcall	adlc_write
 	;end new
 
 	; set the initial values of Control Register 3 (CR1_AC previously set)
@@ -760,7 +760,7 @@ adlc_debug_loop:
 ; 		: adlc_rx_ptr    = ECONET RX Buffer LSB
 ; 		: adlc_rx_ptr + 1    = ECONET RX Buffer MSB
 
-.globl	adlc_ready_to_receive
+.global	adlc_ready_to_receive
 adlc_ready_to_receive:
  	
 	ldi	tmp2, CR1_RXRESET | CR1_TXRESET; reset tx and rx
