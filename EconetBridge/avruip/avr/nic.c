@@ -38,7 +38,11 @@ void nic_send(void)
 	if( uip_len <= TOTAL_HEADER_LENGTH )
 	{
 		NICSendPacketData(uip_buf, uip_len);
-//serial_packet(uip_buf, uip_len);	
+//serial_packet(uip_buf, uip_len);
+serial_eth();
+serial_txx();
+serial_crlf();
+	
 	}
 	else
 	{
@@ -76,7 +80,10 @@ unsigned char nic_poll(void)
 	// copy the packet data into the uIP packet buffer
 	NICRetreivePacketData( uip_buf, packetLength );
 
-serial_packet(uip_buf, packetLength);
+//serial_packet(uip_buf, packetLength);
+serial_eth();
+serial_rx();
+serial_crlf();
 
 
 	NICEndPacketRetreive();
