@@ -31,7 +31,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: main.c,v 1.6 2009/07/19 20:19:40 philb Exp $
+ * $Id: main.c,v 1.7 2009/07/20 11:46:16 philb Exp $
  *
  */
 
@@ -67,10 +67,10 @@ void AVR_init(void)
 
 	// set up I/O
 	DDRB = 0xFF;
-	DDRE = (ADLC_D0 | ADLC_nCE);
+	DDRE = (1 << ADLC_D0 | 1 << ADLC_nCE);
 	DDRD = 0xF3;
 	PORTD = 0xFF;
-	PORTE = ADLC_nCE;
+	PORTE = 1 << ADLC_nCE;
 
 	// set up timer 0 to generate ADLC clock waveform
 	OCR0 = 4;
