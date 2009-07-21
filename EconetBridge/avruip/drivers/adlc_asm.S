@@ -351,7 +351,7 @@ adlc_tx_frame:
 	mov	YH, r23
 	mov	YL, r22
 	
-	ldi	r20, 0
+	ldi	r23, 0
 	; go on the wire and start transmitting
 	ldi	tmp1, ADLC_CR1
 	ldi	tmp2, CR1_RXRESET
@@ -372,10 +372,10 @@ skip:
 	ld	tmp2, X+
 	cpi	r21, 1
 	brne	not_data
-	inc	r20
-	cpi	r20, 5
+	inc	r23
+	cpi	r23, 5
 	breq	skip
-	cpi	r20, 6
+	cpi	r23, 6
 	breq	skip
 	
 not_data:	
@@ -408,10 +408,13 @@ await_end:
 	bst	tmp2, 6				; FC?
 	brbc	6, await_end
 
+	ldi	tmp1, RX_SCOUT_ACK1
+	mov	adlc_state, tmp1
+
 	; reset tx
-	ldi	tmp1, ADLC_CR1
-	ldi	tmp2, CR1_TXRESET
-	rjmp	adlc_write
+	ldi	tmp2, CR1_RIE | CR1_TXRESET	; Enable Receive interrupts | Reset the TX status
+	ldi	tmp1, ADLC_CR1			; set to write to Control Register 1
+	rjmp	adlc_write				; write to the ADLC
 
 ; -----------------------------------------------------------------------------------------
 ; ADLC rx_overrun
@@ -452,7 +455,7 @@ rx_error:
 ; 
 abandon_rx:
 	; abandon in-progress reception
-	clr	adlc_state
+	clr	adlc_state		
 	rcall	adlc_clear_rx			; clear rx status
 	rjmp	process_s2rq			; might be AP as well
 
@@ -462,13 +465,8 @@ abandon_rx:
 ;
 ; exit: adlc_state = 0
 ; 
-process_idle:					
-	ldi	serial_tx_arg, 0x69		; append "i" - network is idle
-	call	serial_tx				; write to serial
-	rcall	crlf
-
+process_idle:
 	clr	adlc_state
-	
 	rcall	adlc_clear_rx			; clear Rx Status Register
 	rjmp	adlc_irq_ret			; clean up routine for interrupt handling
 
@@ -499,6 +497,8 @@ process_s2rq:
 	brbs	6, process_rda			;   ;yes
 	bst	tmp2, 6				; 40;overrun? Rx Overrun
 	brbs	6, rx_overrun			;   ;yes
+	bst	tmp2, 1				; 2 ;FV: Frame Valid?
+	brbs	6, process_fv			;   ;yes
 	bst	tmp2, 5				; 20;DCD? signifies presence of clock
 	brbs	6, process_dcd			;   ;yes
 	bst	tmp2, 4				; 10;CRC error?
@@ -507,8 +507,6 @@ process_s2rq:
 	brbs	6, abandon_rx			;   ;yes
 	bst	tmp2, 2				; 4 ;Idle?: Receive Idle?
 	brbs	6, process_idle			;   ;yes
-	bst	tmp2, 1				; 2 ;FV: Frame Valid?
-	brbs	6, process_fv			;   ;yes
 	rjmp	adlc_irq_ret
 
 ; -----------------------------------------------------------------------------------------
@@ -599,6 +597,8 @@ process_rda:
 	cpi	tmp1, RX_CHECK_NET2
 	breq	check_dst_net
 
+	rjmp	adlc_irq_ret
+	
 	;; if we get here, something is wrong.  Reset and start over.
 	rjmp	discontinue
 
@@ -801,3 +801,9 @@ no_network:
 	sez
 	clc
 	ret
+
+	.globl	get_adlc_state
+get_adlc_state:
+	mov	r24, adlc_state
+	ret
+	
