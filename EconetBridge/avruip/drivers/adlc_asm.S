@@ -503,10 +503,10 @@ process_s2rq:
 	brbs	6, process_ap			;   ;yes
 	bst	tmp2, 7				; 80;RDA? Receive Data Available
 	brbs	6, process_rda			;   ;yes
-	bst	tmp2, 6				; 40;overrun? Rx Overrun
-	brbs	6, rx_overrun			;   ;yes
 	bst	tmp2, 1				; 2 ;FV: Frame Valid?
 	brbs	6, process_fv			;   ;yes
+	bst	tmp2, 6				; 40;overrun? Rx Overrun
+	brbs	6, rx_overrun			;   ;yes
 	bst	tmp2, 5				; 20;DCD? signifies presence of clock
 	brbs	6, process_dcd			;   ;yes
 	bst	tmp2, 4				; 10;CRC error?
@@ -555,14 +555,7 @@ process_ap:
 
 	inc	adlc_state
 
-;delay	
-	ldi	tmp1, 220				; set up delay loop
-delay:
-	dec	tmp1					; minus 1
-	brne	delay					; loop until finished
-
-	rjmp	process_s2rq			; continue processing Status Register 2 until finished
-
+	rjmp	adlc_irq_ret
 
 ; -----------------------------------------------------------------------------------------
 ; ADLC process_rda Receive Data Available
