@@ -10,7 +10,7 @@
 
 volatile unsigned char ECONET_RX_BUF[2000];
 volatile unsigned short adlc_rx_ptr;
-register unsigned char adlc_state	asm("r15");
+volatile register unsigned char adlc_state	asm("r15");
 
 struct tx_record
 {
@@ -44,6 +44,8 @@ struct tx_record *get_tx_buf(void)
   return NULL;
 }
 
+extern int get_adlc_state(void);
+
 int do_tx_packet(struct tx_record *tx)
 {
   unsigned char *buf = tx->buf;
@@ -57,15 +59,34 @@ int do_tx_packet(struct tx_record *tx)
   serial_tx('t');
   serial_tx('x');
   serial_tx_hex (type);
-
   serial_crlf();
 
   if (adlc_await_idle())
     return LINE_JAMMED;
 
-  adlc_tx_frame (tx->buf, tx->buf + tx->len, 1);
+  if (type == BROADCAST) {
+    adlc_tx_frame (tx->buf, tx->buf + tx->len, 1);
+    adlc_ready_to_receive ();
+    return TX_OK;
+  }
+
+  adlc_tx_frame (tx->buf, tx->buf + 6, 1);
+
+  unsigned char state;
+  do {
+    state = get_adlc_state();
+  } while (state != RX_IDLE && state != FRAME_COMPLETE);
  
-  return NOT_LISTENING;
+  if (state == FRAME_COMPLETE) {
+    adlc_tx_frame (tx->buf, tx->buf + tx->len, 0);
+
+    do {
+      state = get_adlc_state();
+    } while (state != RX_IDLE && state != FRAME_COMPLETE);
+    serial_tx_hex (state);
+  }
+
+  return TX_OK;
 }
 
 int enqueue_tx(unsigned char *buf, int length)
@@ -134,5 +155,43 @@ void test_bcast(void)
   *(p++) = 0x9c;
   *(p++) = 0x3;
 
-  serial_tx_hex (enqueue_tx(buf, p - buf));
+  enqueue_tx(buf, p - buf);
+}
+
+void test_immediate(void)
+{
+  static unsigned char buf[16];
+  unsigned char *p = buf;
+  *(p++) = 0x52;
+  *(p++) = 0x00;
+  *(p++) = 0x51;
+  *(p++) = 0x00;
+  *(p++) = 0x88;
+  *(p++) = 0x00;
+  *(p++) = 0x00;
+  *(p++) = 0x00;
+  *(p++) = 0x00;
+
+  enqueue_tx(buf, p - buf);
+}
+
+void test_4way(void)
+{
+  static unsigned char buf[16];
+  unsigned char *p = buf;
+  *(p++) = 0xfe;
+  *(p++) = 0x00;
+  *(p++) = 0x51;
+  *(p++) = 0x00;
+  *(p++) = 0x80;
+  *(p++) = 0x99;
+  *(p++) = 0x90;
+  *(p++) = 25;
+  *(p++) = 0x00;
+  *(p++) = 0x00;
+  *(p++) = 0x00;
+  *(p++) = 0x00;
+  *(p++) = 0x00;
+
+  enqueue_tx(buf, p - buf);
 }
