@@ -348,9 +348,12 @@ idle_wait_loop:
 adlc_tx_frame:
 	mov	XH, r25
 	mov	XL, r24
+	push	YH
+	push	YL
 	mov	YH, r23
 	mov	YL, r22
-	
+	mov	r21, r20
+		
 	ldi	r23, 0
 	; go on the wire and start transmitting
 	ldi	tmp1, ADLC_CR1
@@ -370,7 +373,7 @@ await_tdra:
 
 skip:	
 	ld	tmp2, X+
-	cpi	r21, 1
+	cpi	r21, 0
 	brne	not_data
 	inc	r23
 	cpi	r23, 5
@@ -414,7 +417,10 @@ await_end:
 	; reset tx
 	ldi	tmp2, CR1_RIE | CR1_TXRESET	; Enable Receive interrupts | Reset the TX status
 	ldi	tmp1, ADLC_CR1			; set to write to Control Register 1
-	rjmp	adlc_write				; write to the ADLC
+	rcall	adlc_write				; write to the ADLC
+	pop	YL
+	pop	YH
+	ret
 
 ; -----------------------------------------------------------------------------------------
 ; ADLC rx_overrun
@@ -481,6 +487,8 @@ __vector_1:
 	push	tmp2
 	in	tmp1, SREG				; Save the status register
 	push	tmp1
+	push	XH
+	push	XL
 
 	; disable adlc irq and re-enable global interrupts
 	clr	r24
@@ -686,6 +694,9 @@ adlc_clear_rx:
 ; -----------------------------------------------------------------------------------------
 
 adlc_irq_ret:
+	pop	XL
+	pop	XH
+	
 	ldi	r24, (1 << INT0)			; restore the interrupt flag
 	out	GICR, r24
  	pop	tmp1					; restore Status register from the Stack
