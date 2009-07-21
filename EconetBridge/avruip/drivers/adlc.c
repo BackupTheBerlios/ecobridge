@@ -70,23 +70,30 @@ int do_tx_packet(struct tx_record *tx)
     return TX_OK;
   }
 
-  adlc_tx_frame (tx->buf, tx->buf + 6, 1);
+  if (type == IMMEDIATE)
+    adlc_tx_frame (tx->buf, tx->buf + tx->len, 1);
+  else
+    adlc_tx_frame (tx->buf, tx->buf + 6, 1);
 
   unsigned char state;
   do {
     state = get_adlc_state();
   } while (state != RX_IDLE && state != FRAME_COMPLETE);
- 
-  if (state == FRAME_COMPLETE) {
+
+  if (state == RX_IDLE)
+    return NOT_LISTENING;
+
+  if (type == NORMAL_PACKET) {
     adlc_tx_frame (tx->buf, tx->buf + tx->len, 0);
 
     do {
       state = get_adlc_state();
     } while (state != RX_IDLE && state != FRAME_COMPLETE);
-    serial_tx_hex (state);
   }
+    
+  adlc_ready_to_receive ();
 
-  return TX_OK;
+  return (state == FRAME_COMPLETE) ? TX_OK : NET_ERROR;
 }
 
 int enqueue_tx(unsigned char *buf, int length)
@@ -162,7 +169,7 @@ void test_immediate(void)
 {
   static unsigned char buf[16];
   unsigned char *p = buf;
-  *(p++) = 0x52;
+  *(p++) = 0xfe;
   *(p++) = 0x00;
   *(p++) = 0x51;
   *(p++) = 0x00;
