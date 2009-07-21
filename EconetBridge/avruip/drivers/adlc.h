@@ -38,6 +38,7 @@ void	adlc_poller(void);
 #define	FRAME_COMPLETE	32
 #define	PACKET_Rx		1
 
+extern void adlc_ready_to_receive(void);
 
 #endif /* __ADLC_H__ */
 /** @} */

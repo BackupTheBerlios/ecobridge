@@ -514,9 +514,6 @@ process_fv:
 ; first byte of the packet. This byte being present causes the Rx Interrupt if enabled.
 
 process_ap:
-;	ldi	tmp1, 0x61				; "a"
-;	call	serial_tx				; send to serial
-
 	lds	XL, adlc_rx_ptr			; put the Rx buffer pointer address in X
 	lds	XH, adlc_rx_ptr + 1
 
@@ -692,12 +689,9 @@ adlc_init:
 	; At any time during operation, writing a "1" into the Rx RS control bit or Tx RS control
 	; bit causes the reset condition of the receiver or the transmitter.
 
-	ldi	serial_tx_arg, 0x61
-	rcall	serial_tx
-
 	; raise the reset line on the ADLC
 	ldi	egpio_arg, EGPIO_ADLC_RESET | EGPIO_SET	; set the ADLC reset to 1
-	rcall	egpio_write				; write to ADLC
+	rcall	egpio_write
 
 	; set the initial values of Control Register 1
 	ldi	tmp2, CR1_AC | CR1_TXRESET | CR1_RXRESET	; Switch controlling access to CR3
@@ -706,17 +700,15 @@ adlc_init:
 	ldi	tmp1, ADLC_CR1			; set to ADLC Control Register 1
 	rcall	adlc_write				; write to ADLC
 
-	;new
+	; weird voodoo write copied from acorn code
 	ldi	tmp2, 0x1E								
 	ldi	tmp1, ADLC_TXTERMINATE		; write to TXTerminate address
 	rcall	adlc_write
-	;end new
 
 	; set the initial values of Control Register 3 (CR1_AC previously set)
 	clr	tmp2					; Set initial value to 0
 	ldi	tmp1, ADLC_CR3			; set to ADLC Control Register 3
 	rcall	adlc_write				; write to ADLC
-
 
 	; set the initial values of Control Register 4
 	ldi	tmp2, CR4_TXWLS | CR4_RXWLS	; Set Tx & Rx Word lengths to 8 bits
@@ -727,30 +719,7 @@ adlc_init:
 	ldi	tmp1, ADLC_CR1			; set to write to Control Register 1
 	rcall	adlc_write				; write to the ADLC
 
-	rcall	adlc_ready_to_receive
-	
-	ldi	serial_tx_arg, 0x62
-	rcall	serial_tx
-
-#if 0
-adlc_debug_loop:
-	ldi	tmp1, ADLC_SR1
-	rcall	adlc_read
-
-	mov	serial_tx_arg, tmp2
-	rcall	serial_tx_hex
-
-	ldi	tmp1, ADLC_SR2
-	rcall	adlc_read
-	
-	mov	serial_tx_arg, tmp2
-	rcall	serial_tx_hex
-	rcall	crlf
-	rjmp	adlc_debug_loop
-#endif
-		
-	ret
-
+	;;  fall through
 	
 ; -----------------------------------------------------------------------------------------
 ; ADLC ready to receive
@@ -762,30 +731,23 @@ adlc_debug_loop:
 
 .global	adlc_ready_to_receive
 adlc_ready_to_receive:
- 	
-	ldi	tmp2, CR1_RXRESET | CR1_TXRESET; reset tx and rx
+	;initialise the adlc_state
+	clr	adlc_state
+
+	; initialise the Rx Buffer pointer
+	ldi	XL, lo8(ECONET_RX_BUF)		; set XL with the lowbyte of the Econet receive buffer
+	ldi	XH, hi8(ECONET_RX_BUF)		; set XH with the highbyte of the Econet receive buffer
+	
+	sts	adlc_rx_ptr, XL			; set ALDC receive ptr to the start of the Rx buffer
+	sts	adlc_rx_ptr + 1, XH
+
+	ldi	tmp2, CR1_TXRESET			; reset tx, unreset rx
 	ldi	tmp1, ADLC_CR1			; set to write to Control Register 1
 	rcall	adlc_write				; write to the ADLC
 
 	ldi	tmp2, CR2val				; Status bit prioritised
 	ldi	tmp1, ADLC_CR2			; set to write to Control Register 2
 	rcall	adlc_write				; write to the ADLC
-
-	ldi	tmp2, CR1_TXRESET			; reset tx, unreset rx
-	ldi	tmp1, ADLC_CR1			; set to write to Control Register 1
-	rcall	adlc_write				; write to the ADLC
-
-	;initialise the adlc_state
-
-	clr	adlc_state
-
-	; initialise the Rx Buffer pointer
-
-	ldi	XL, lo8(ECONET_RX_BUF)		; set XL with the lowbyte of the Econet receive buffer
-	ldi	XH, hi8(ECONET_RX_BUF)		; set XH with the highbyte of the Econet receive buffer
-	
-	sts	adlc_rx_ptr, XL			; set ALDC receive ptr to the start of the Rx buffer
-	sts	adlc_rx_ptr + 1, XH
 
 	ldi	tmp2, CR1_RIE | CR1_TXRESET	; Enable Receive interrupts | Reset the TX status
 	ldi	tmp1, ADLC_CR1			; set to write to Control Register 1
@@ -818,6 +780,3 @@ no_network:
 	sez
 	clc
 	ret
-	
-	
-
