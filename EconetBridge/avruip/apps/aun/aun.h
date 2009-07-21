@@ -22,8 +22,6 @@
 #ifndef __AUN_H__
 #define __AUN_H__
 
-#define AUN_PORT 32768
-
 
 /* Since this file will be included by uip.h, we cannot include uip.h
    here. But we might need to include uipopt.h if we need the u8_t and
@@ -35,7 +33,8 @@ struct aun_state {
 };
 
 #define NOT_LISTEING	0
-#define LISTENING		1
+#define LISTENING	1
+
 
 //dummy as not using tcp at the moment
 typedef int uip_tcp_appstate_t;
@@ -276,6 +275,24 @@ struct mns_msg
 #define MSG_IS_RETRY    01
 #define MSG_IS_DATAGRAM 02
    u_int   mns_handle;
+   u_char	mns_machine;
+   u_char	mns_pad;
+   u_char	mns_release;
+   u_char   mns_version;
+   u_short	mns_padend;
+};
+
+struct mns_msg2
+{
+   u_char  mns_opcode;
+   u_char  mns_port;
+   u_char  mns_control;
+#define Econet_MachinePeek        8
+   u_char  mns_status;
+#define MSG_IS_RETRY    01
+#define MSG_IS_DATAGRAM 02
+   u_int   mns_handle;
+   u_int   mns_pad2;
    u_char	mns_machine;
    u_char	mns_pad;
    u_char	mns_release;

@@ -25,6 +25,7 @@
 #include "aun.h"
 #include "uip.h"
 #include "serial.h"
+#include "econet.h"
 #include <string.h>
 
 #ifndef NULL
@@ -39,8 +40,18 @@ static struct aun_state s;
 #define STATE_OFFER_RECEIVED  2
 #define STATE_CONFIG_RECEIVED 3
 
-#define ECO_NET 1
-#define ETH_NET 130
+#define ECONET_INTERFACE_NET	1
+#define ETHNET_INTERFACE_NET  130
+
+
+// boolean flags for the routing table
+#define NOT_ROUTABLE	0
+#define ROUTABLE 	1
+
+#define LOCAL_NETWORK 	0
+
+
+
 
 struct Econet_Header {
 	unsigned char DSTN;
@@ -69,8 +80,17 @@ struct aunhdr
 	unsigned long handle;
 };
 
-unsigned char machine_type =  MACHINE_TYPE_RISC_PC;
 
+struct RoutingTable
+{
+	unsigned char flag;
+};
+
+
+volatile static struct RoutingTable rTableEco[255];
+
+
+unsigned char machine_type =  MACHINE_TYPE_ARC;
 
 
 /*---------------------------------------------------------------------------*/
@@ -83,21 +103,34 @@ void
 aun_init(void)
 {
   
-  s.state = LISTENING;
+	unsigned char i;
+
+	// initialise econet routing table
+	for (i=1; i<255; i++) {
+		rTableEco[i].flag = 0;		// clear the table
+	}
+
+	rTableEco[LOCAL_NETWORK].flag = ROUTABLE;
+	rTableEco[ANY_NETWORK].flag = ROUTABLE;
+	rTableEco[ECONET_INTERFACE_NET].flag = ROUTABLE;
+	
+
+	s.state = LISTENING;
 
 	// remove any open connections
 	if (s.conn != NULL) {
 		uip_udp_remove(s.conn);
 	}
 
-
 	// listen on the AUN port from all IP addresses
 
-	s.conn = uip_udp_new(NULL, HTONS(AUN_PORT));
+	s.conn = uip_udp_new(NULL, HTONS(MNSDATAPORT));
+
 
 	if (s.conn != NULL) {
-		s.conn->lport = HTONS(AUN_PORT);
+		s.conn->lport = HTONS(MNSDATAPORT);
 	}
+
 
 
 }
@@ -113,9 +146,12 @@ void
 aun_appcall(void)
 {
 	
-	serial_ok(0x7e);
+  if(uip_udp_conn->rport == HTONS(MNSDATAPORT)) {
 
-  if(uip_udp_conn->rport == HTONS(AUN_PORT)) {
+serial_eth();
+serial_rx();
+serial_packet(uip_buf+42, 12);
+
 
    if(uip_aborted()) 
    {}
@@ -141,6 +177,32 @@ aun_appcall(void)
 
   }
 
+
+  if(uip_udp_conn->rport == HTONS(MNSATPPORT)) {
+
+   if(uip_aborted()) 
+   {}
+   if(uip_timedout()) 
+   {}
+   if(uip_closed()) 
+   {}
+   if(uip_connected()) 
+   {}
+   if(uip_acked()) 
+   {}
+   if(uip_poll()) 
+   {}
+   if(uip_newdata()) 
+   {
+      newdata();
+    }
+   if (uip_rexmit() ||
+            uip_acked() ||
+            uip_connected() ||
+            uip_poll())
+    {}
+
+  }
 	return;
 }
 /*---------------------------------------------------------------------------*/
@@ -159,8 +221,6 @@ newdata(void)
 	struct mns_msg *m; 
 
 	m = (struct mns_msg *)uip_appdata;
-
-	serial_ok(m->mns_opcode);
 
 	switch (m->mns_opcode)
 	{
@@ -208,7 +268,6 @@ void do_immediate(void)
  *    None
  */
 {
-//   mns.mns_rximmcnt++;
 
 struct EcoDest 
 {
@@ -217,7 +276,13 @@ u_char	Network;
 u_char	Station;
 };
 
-	struct mns_msg *m; 
+	struct mns_msg2 *m; 
+
+	m = (struct mns_msg2 *)uip_appdata;
+
+	unsigned char Net, Stn;
+
+	#define BUF ((struct EcoDest *)&uip_buf[UIP_LLH_LEN])
 
 	/* traditionally the network and station would be x.x.NET.STN of 
 	   the IP address. This may not be correct, and the sender should
@@ -227,29 +292,57 @@ u_char	Station;
 
 	// Get net and station
 
+//	Net = (BUF->Network);
+	Net = ECONET_INTERFACE_NET;	// temporarily set the network to our network
+					// for testing
+	Stn = (BUF->Station);
+	
+
 	// If in our routing table, machine peek the target
+	if (rTableEco[Net].flag == NOT_ROUTABLE) {
+		return;
+	}
 
-	// if available, send the original answer back to the orginator
-/*
-	serial_tx_hex(BUF->Network);
-	serial_tx(0x20);
-	serial_tx_hex(BUF->Station);
+	if (Econet_Peek(&Net,&Stn)==0) {
+		return;
+	};
 
-*/
+	// if available, send the answer back to the orginator
 
-	m = (struct mns_msg *)uip_appdata;
-
-	m->mns_opcode	= IMMEDIATE_OP_REPLY;
-	m->mns_machine	= machine_type;
-	m->mns_pad		= 0;
-	m->mns_release	= ((RELEASE_NBR % 10) | ((RELEASE_NBR / 10) << 4));
+	m->mns_opcode = IMMEDIATE_OP_REPLY;
+	// all the codes inbetween are set from the incoming packet
+	m->mns_machine = machine_type;
+	m->mns_pad = 0;
+	m->mns_release = ((RELEASE_NBR % 10) | ((RELEASE_NBR / 10) << 4));
 	m->mns_version	= (char) VERSION_NBR;
 
-	uip_udp_send(sizeof(struct mns_msg));
-   
+	uip_send(uip_appdata,12);
+
+
    return;
 
 } /* do_immediate() */
+
+
+
+/******************************************************************************/
+
+/******************************************************************************/
+
+void do_atp(unsigned char *Net, unsigned char *Stn) 
+
+{
+
+	struct atp_block *atp; 
+
+
+	atp = ((struct atp_block *)&uip_buf[UIP_LLH_LEN]);
+
+	atp->atpb_net = *Net;
+	atp->atpb_station = *Stn;
+
+
+}
 
 /*
 static void 
