@@ -31,7 +31,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: main.c,v 1.8 2009/07/20 23:16:49 markusher Exp $
+ * $Id: main.c,v 1.9 2009/07/21 18:47:13 philb Exp $
  *
  */
 
@@ -116,6 +116,7 @@ main(void)
 
   aun_init();
 
+  test_bcast();
 
   while(1) {
 
