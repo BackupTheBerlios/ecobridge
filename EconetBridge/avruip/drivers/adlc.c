@@ -2,6 +2,7 @@
 #include <stdint.h>
 
 #include "adlc.h"
+#include "serial.h"
 
 #define MAX_TX	8
 #define TX_RETRY_COUNT	16
@@ -52,10 +53,22 @@ int do_tx_packet(struct tx_record *tx)
   else if (buf[5] == 0)
     type = IMMEDIATE;
 
-  return TX_OK;
+  serial_eco();
+  serial_tx('t');
+  serial_tx('x');
+  serial_tx_hex (type);
+
+  serial_crlf();
+
+  if (adlc_await_idle())
+    return LINE_JAMMED;
+
+  adlc_tx_frame (tx->buf, tx->buf + tx->len, 1);
+ 
+  return NOT_LISTENING;
 }
 
-int enqueue_tx(char *buf, int length)
+int enqueue_tx(unsigned char *buf, int length)
 {
   if (length < 6)
     return -2;		// can't enqueue runt packets
@@ -72,7 +85,7 @@ int enqueue_tx(char *buf, int length)
   return -1;
 }
 
-void	adlc_poller(void)
+void adlc_poller(void)
 {
   if (adlc_state == FRAME_COMPLETE)
   {
@@ -107,4 +120,19 @@ void	adlc_poller(void)
       }
     }
   }
+}
+
+void test_bcast(void)
+{
+  static unsigned char buf[16];
+  unsigned char *p = buf;
+  *(p++) = 0xff;
+  *(p++) = 0xff;
+  *(p++) = 0xff;
+  *(p++) = 0xff;
+  *(p++) = 0x80;
+  *(p++) = 0x9c;
+  *(p++) = 0x3;
+
+  serial_tx_hex (enqueue_tx(buf, p - buf));
 }

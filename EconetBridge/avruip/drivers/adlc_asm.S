@@ -322,15 +322,36 @@ __vector_2:
 	sec						; set carry to flag interrupt is handled
 	reti						; return from interrupt
 
+	.globl	adlc_await_idle
+adlc_await_idle:
+	; switch to 1-byte mode, no PSE
+	ldi	tmp1, ADLC_CR2			; set to write to Control Register 2
+	clr	tmp2					; clear all bits
+	rcall	adlc_write				; write to Control Register
+
+idle_wait_loop:	
+	ldi	tmp1, ADLC_SR2
+	rcall	adlc_read
+	bst	tmp2, 2				; 4 ;Idle?
+	brbc	6, idle_wait_loop
+
+	clr	r24
+	ret
+	
+
 ; -----------------------------------------------------------------------------------------
 ; ADLC Tx frame
 ; -----------------------------------------------------------------------------------------
 ;
 
-	; XL/XH pointer to start of frame to transmit
-	; YL/YH pointer to end of frame
+	.globl	adlc_tx_frame
 adlc_tx_frame:
-	ldi	r21, 0
+	mov	XH, r25
+	mov	XL, r24
+	mov	YH, r23
+	mov	YL, r22
+	
+	ldi	r20, 0
 	; go on the wire and start transmitting
 	ldi	tmp1, ADLC_CR1
 	ldi	tmp2, CR1_RXRESET
@@ -349,12 +370,12 @@ await_tdra:
 
 skip:	
 	ld	tmp2, X+
-	cpi	r20, 1
+	cpi	r21, 1
 	brne	not_data
-	inc	r21
-	cpi	r21, 5
+	inc	r20
+	cpi	r20, 5
 	breq	skip
-	cpi	r21, 6
+	cpi	r20, 6
 	breq	skip
 	
 not_data:	
