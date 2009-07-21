@@ -85,7 +85,7 @@ void serial_eco(void)
 {
 
 	serial_tx(0x65);		// e
-	serial_tx(0x73);		// c
+	serial_tx('c');			// c
 	serial_tx(0x6f);		// o
 	serial_tx(0x20);		// space
 	return;
