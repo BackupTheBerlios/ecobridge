@@ -42,13 +42,13 @@ extern unsigned char send_packet(unsigned char*, unsigned short length);
 #define	RX_CHECK_NET1	1
 #define	RX_CHECK_NET2	2
 #define	RX_PAYLOAD	3
+#define FRAME_COMPLETE  15
 
-#define RX_SCOUT        (0 << 3)
-#define RX_SCOUT_ACK    (1 << 3)
-#define RX_DATA         (2 << 3)
-#define RX_DATA_ACK     (3 << 3)
+#define RX_SCOUT        (0 << 4)
+#define RX_SCOUT_ACK    (1 << 4)
+#define RX_DATA         (2 << 4)
+#define RX_DATA_ACK     (3 << 4)
 
-#define	FRAME_COMPLETE	32
 #define DISCONTINUED    64
 
 // pin definitions

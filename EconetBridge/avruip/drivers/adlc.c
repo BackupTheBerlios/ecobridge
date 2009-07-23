@@ -8,8 +8,8 @@
 #define BUF ((struct uip_tcpip_hdr *)&uip_buf[UIP_LLH_LEN])
 
 #define MAX_TX	8
-#define TX_RETRY_COUNT	16
-#define TX_RETRY_DELAY	128
+#define ADLC_TX_RETRY_COUNT	16
+#define ADLC_TX_RETRY_DELAY	128
 
 volatile unsigned char ECONET_RX_BUF[2000];
 volatile unsigned short adlc_rx_ptr;
@@ -49,6 +49,10 @@ struct tx_record *get_tx_buf(void)
 }
 
 extern int get_adlc_state(void);
+extern int adlc_await_idle(void);
+extern void adlc_tx_frame(unsigned char *buf, unsigned char *end, unsigned char type);
+
+static uint32_t ip_target;
 
 int do_tx_packet(struct tx_record *tx)
 {
@@ -82,7 +86,7 @@ int do_tx_packet(struct tx_record *tx)
   unsigned char state;
   do {
     state = get_adlc_state();
-  } while (state != RX_IDLE && state != FRAME_COMPLETE);
+  } while (state != RX_IDLE && state != (RX_SCOUT_ACK | FRAME_COMPLETE));
 
   if (state == RX_IDLE)
     return NOT_LISTENING;
@@ -92,12 +96,12 @@ int do_tx_packet(struct tx_record *tx)
 
     do {
       state = get_adlc_state();
-    } while (state != RX_IDLE && state != FRAME_COMPLETE);
+    } while (state != RX_IDLE && state != (RX_SCOUT_ACK | FRAME_COMPLETE));
   }
     
   adlc_ready_to_receive ();
 
-  return (state == FRAME_COMPLETE) ? TX_OK : NET_ERROR;
+  return ((state & 0xf) == FRAME_COMPLETE) ? TX_OK : NET_ERROR;
 }
 
 int enqueue_tx(unsigned char *buf, int length)
@@ -111,7 +115,7 @@ int enqueue_tx(unsigned char *buf, int length)
   struct tx_record *tx = get_tx_buf();
   if (tx)
   {
-    tx->retry_count = TX_RETRY_COUNT;
+    tx->retry_count = ADLC_TX_RETRY_COUNT;
     tx->retry_timer = 0;
     tx->len = length;
     tx->buf = buf;
@@ -123,15 +127,15 @@ int enqueue_tx(unsigned char *buf, int length)
   return -1;
 }
 
+int should_bridge(uint16_t dest, uint32_t *ip_target)
+{
+  /* ... */
+  return 0;
+}
+
 void adlc_poller(void)
 {
-  if (adlc_state == FRAME_COMPLETE)
-  {
-    // print out the packet on the serial
-    serial_packet(ECONET_RX_BUF,0x12);
-    adlc_ready_to_receive();
-  }
-  else if (adlc_state == RX_IDLE)
+  if (adlc_state == RX_IDLE)
   {
     int i;
     for (i = 0; i < MAX_TX; i++)
@@ -144,7 +148,7 @@ void adlc_poller(void)
 	  switch (do_tx_packet (tx)) {
 	  default:
 	    if (tx->retry_count--) {
-	      tx->retry_timer = TX_RETRY_DELAY;
+	      tx->retry_timer = ADLC_TX_RETRY_DELAY;
 	      break;
 	    }
 	  case TX_OK:
@@ -157,6 +161,22 @@ void adlc_poller(void)
 	  tx->retry_timer--;
       }
     }
+  }
+  else if (adlc_state == (RX_SCOUT | FRAME_COMPLETE))
+  {
+    uint16_t dst = *((uint16_t *)ECONET_RX_BUF);
+    if (should_bridge (dst, &ip_target))
+    {
+      static unsigned char scout_buf[6];
+      scout_buf[0] = ECONET_RX_BUF[2];
+      scout_buf[1] = ECONET_RX_BUF[3];
+      scout_buf[2] = ECONET_RX_BUF[0];
+      scout_buf[3] = ECONET_RX_BUF[1];
+      scout_buf[4] = ECONET_RX_BUF[4];
+      scout_buf[5] = ECONET_RX_BUF[5];
+      adlc_tx_frame (scout_buf, scout_buf + 6, 1);
+    }
+    adlc_ready_to_receive();
   }
 }
 

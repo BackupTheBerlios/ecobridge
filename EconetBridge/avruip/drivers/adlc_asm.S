@@ -506,7 +506,9 @@ process_s2rq:
 process_fv:
 	rcall	adlc_rx_flush			; clear remaining bytes in the input buffer
 
-	ldi	tmp1, FRAME_COMPLETE		;
+        mov     tmp1, adlc_state
+        andi    tmp1, 0xf0
+        ori     tmp1, FRAME_COMPLETE
 	mov	adlc_state, tmp1			; set ADLC state to FRAME COMPLETE
 
 	rjmp	adlc_irq_ret			; return from interrupt
@@ -562,7 +564,7 @@ process_rda:
 
 	;;  if we're receiving payload, we already decided this packet was good.  Nothing more to do.
         mov     tmp1, adlc_state
-        andi    tmp1, 7
+        andi    tmp1, 15
 	cpi	tmp1, RX_PAYLOAD
 	breq	adlc_irq_ret
 
