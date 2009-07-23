@@ -31,7 +31,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: main.c,v 1.11 2009/07/23 20:19:04 philb Exp $
+ * $Id: main.c,v 1.12 2009/07/23 21:42:09 philb Exp $
  *
  */
 
@@ -129,7 +129,7 @@ main(void)
 
     internet_poller();
 
-    uip_len = 0; //nic_poll();
+    uip_len = nic_poll();
 
     if(uip_len > 0) {
 
