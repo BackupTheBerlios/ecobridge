@@ -31,7 +31,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: main.c,v 1.12 2009/07/23 21:42:09 philb Exp $
+ * $Id: main.c,v 1.13 2009/07/23 21:43:12 markusher Exp $
  *
  */
 
@@ -132,7 +132,6 @@ main(void)
     uip_len = nic_poll();
 
     if(uip_len > 0) {
-
 
       if(BUF->type == htons(UIP_ETHTYPE_IP)) {
 	uip_arp_ipin();

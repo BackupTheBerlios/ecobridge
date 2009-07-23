@@ -298,17 +298,14 @@ void do_immediate(void)
 	   maps to.
 	*/
 	
-	SNet = (unsigned char) (&uip_buf+28);
-	SStn = (unsigned char) (&uip_buf+29);
-	DNet = (unsigned char) (&uip_buf+32);
-	DStn = (unsigned char) (&uip_buf+33);
+	SNet = (unsigned char) *(uip_buf+28);
+	SStn = (unsigned char) *(uip_buf+29);
+	DNet = (unsigned char) *(uip_buf+32);
+	DStn = (unsigned char) *(uip_buf+33);
 
 	/* update the routing table with the ethernet map */
-	rTableEth[SNet-127] = (uint32_t) (&uip_buf+26);
+	rTableEth[(SNet-127)] = (uint32_t) *(uip_buf+26);
 
-
-	serial_tx_hex(SNet);
-	serial_packet((&uip_buf+26),4);
 
 	// Get net and station
 
@@ -376,14 +373,14 @@ void foward_packet(void)
 	unsigned short buf_len;
 
 	buf_len = uip_len - UIP_LLH_LEN;
-
-	SNet = (unsigned char) (&uip_buf+28);
-	SStn = (unsigned char) (&uip_buf+29);
-	DNet = (unsigned char) (&uip_buf+32);
-	DStn = (unsigned char) (&uip_buf+33);
+	
+	SNet = (unsigned char) *(uip_buf+28);
+	SStn = (unsigned char) *(uip_buf+29);
+	DNet = (unsigned char) *(uip_buf+32);
+	DStn = (unsigned char) *(uip_buf+33);
 
 	/* update the routing table with the ethernet map */
-	rTableEth[SNet-127] = (uint32_t) (&uip_buf+26);
+	rTableEth[(SNet-127)] = (uint32_t) *(uip_buf+26);
 
 	DNet = ECONET_INTERFACE_NET;	// temporarily set the network to our network
 					// for testing
@@ -400,7 +397,6 @@ void foward_packet(void)
 	m->SNET = SNet;
 	m->CB = 0x80;
 	m->PORT = m->DATA1;
-
 
 	unsigned char x;
 	x = send_packet(m, buf_len+6);

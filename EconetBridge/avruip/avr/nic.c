@@ -38,9 +38,9 @@ void nic_send(void)
 	if( uip_len <= TOTAL_HEADER_LENGTH )
 	{
 		NICSendPacketData(uip_buf, uip_len);
-//serial_packet(uip_buf, uip_len);
 serial_eth();
 serial_txx();
+serial_packet(uip_buf+42, 12);
 serial_crlf();
 	
 	}
