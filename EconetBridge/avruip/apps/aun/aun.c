@@ -44,12 +44,12 @@ static struct aun_state s;
 #define STATE_CONFIG_RECEIVED 3
 
 #define ECONET_INTERFACE_NET  1
-#define ETHNET_INTERFACE_NET  7
+#define ETHNET_INTERFACE_NET  130
 
 
 // boolean flags for the routing table
-#define NOT_ROUTABLE	0
-#define ROUTABLE 	1
+#define NOT_ROUTABLE	0x0
+#define ROUTABLE 	0x1
 
 #define LOCAL_NETWORK 	0
 
@@ -89,12 +89,7 @@ struct aunhdr
 	unsigned long handle;
 };
 
-struct RoutingTable
-{
-	unsigned char flag;
-};
-
-volatile static struct RoutingTable rTableEco[256];
+volatile static unsigned char rTableEco[256];
 
 uint32_t rTableEth[127]; 	// index = Econet NET-127. Only need 127-254
 
@@ -116,12 +111,12 @@ aun_init(void)
 
 	// initialise econet routing table
 	for (i=1; i<255; i++) {
-		rTableEco[i].flag = 0;		// clear the table
+		rTableEco[i] = NOT_ROUTABLE;		// clear the table
 	}
 
-	rTableEco[LOCAL_NETWORK].flag = ROUTABLE;
-	rTableEco[ANY_NETWORK].flag = ROUTABLE;
-	rTableEco[ECONET_INTERFACE_NET].flag = ROUTABLE;
+	rTableEco[LOCAL_NETWORK] = ROUTABLE;
+	rTableEco[ANY_NETWORK] = ROUTABLE;
+	rTableEco[ECONET_INTERFACE_NET] = ROUTABLE;
 	
 	// set the ethernet routing table
 
@@ -298,10 +293,11 @@ void do_immediate(void)
 	   maps to.
 	*/
 	
-	SNet = (unsigned char) *(uip_buf+28);
-	SStn = (unsigned char) *(uip_buf+29);
-	DNet = (unsigned char) *(uip_buf+32);
-	DStn = (unsigned char) *(uip_buf+33);
+	SNet = (unsigned char) *(uip_buf+28);	// octet 3 of source IP
+	SStn = (unsigned char) *(uip_buf+29);	// octet 4 of source IP
+	DNet = (unsigned char) *(uip_buf+32);	// octet 3 of destin IP
+	DStn = (unsigned char) *(uip_buf+33);	// octet 4 of destin IP
+
 
 	/* update the routing table with the ethernet map */
 	rTableEth[(SNet-127)] = (uint32_t) *(uip_buf+26);
@@ -315,12 +311,12 @@ void do_immediate(void)
 
 	if (Econet_Peek(DNet,DStn)==0) {
 		// update route as not available
-		rTableEco[DNet].flag = NOT_ROUTABLE;
+		rTableEco[DNet] = NOT_ROUTABLE;
 		return;
 	};
 
 	// if available, send the answer back to the orginator
-	rTableEco[DNet].flag = ROUTABLE;
+	rTableEco[DNet] = ROUTABLE;
 
 	m->mns_opcode = IMMEDIATE_OP_REPLY;
 	// all the codes inbetween are set from the incoming packet
@@ -374,10 +370,10 @@ void foward_packet(void)
 
 	buf_len = uip_len - UIP_LLH_LEN;
 	
-	SNet = (unsigned char) *(uip_buf+28);
-	SStn = (unsigned char) *(uip_buf+29);
-	DNet = (unsigned char) *(uip_buf+32);
-	DStn = (unsigned char) *(uip_buf+33);
+	SNet = (unsigned char) *(uip_buf+28);	// octet 3 of source IP
+	SStn = (unsigned char) *(uip_buf+29);	// octet 4 of source IP
+	DNet = (unsigned char) *(uip_buf+32);	// octet 3 of destin IP
+	DStn = (unsigned char) *(uip_buf+33);	// octet 4 of destin IP
 
 	/* update the routing table with the ethernet map */
 	rTableEth[(SNet-127)] = (uint32_t) *(uip_buf+26);
@@ -392,12 +388,12 @@ void foward_packet(void)
 	m = (struct Econet_Header *)(uip_appdata-5);
 	
 	m->DSTN = DStn;
-	m->DNET = 0;
+	m->DNET = ECONET_INTERFACE_NET;
 	m->SSTN = SStn;
 	m->SNET = SNet;
 	m->CB = 0x80;
 	m->PORT = m->DATA1;
-
+serial_packet(m,buf_len+6);
 	unsigned char x;
 	x = send_packet(m, buf_len+6);
 

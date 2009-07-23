@@ -81,9 +81,9 @@ unsigned char nic_poll(void)
 	NICRetreivePacketData( uip_buf, packetLength );
 
 //serial_packet(uip_buf, packetLength);
-serial_eth();
-serial_rx();
-serial_crlf();
+//serial_eth();
+//serial_rx();
+//serial_crlf();
 
 
 	NICEndPacketRetreive();
