@@ -416,15 +416,18 @@ clean_list :
 # This may not work with other shells or other seds.
 #
 %.d: %.c
-	set -e; $(CC) -MM $(ALL_CFLAGS) $< \
-	| sed 's,\(.*\)\.o[ :]*,\1.o \1.d : ,g' > $@; \
+	dir=`dirname $<`; set -e; $(CC) -MM $(ALL_CFLAGS) $< \
+	| sed "s,\(.*\)\.o[ :]*,$$dir/\1.o $$dir/\1.d : ,g" > $@; \
 	[ -s $@ ] || rm -f $@
 
+%.d: %.S
+	dir=`dirname $<`; set -e; $(CC) -MM $(ALL_CFLAGS) $< \
+	| sed "s,\(.*\)\.o[ :]*,$$dir/\1.o $$dir/\1.d : ,g" > $@; \
+	[ -s $@ ] || rm -f $@
 
 # Remove the '-' if you want to see the dependency files generated.
--include $(SRC:.c=.d)
-
-
+include $(SRC:.c=.d)
+include $(ASRC:.S=.d)
 
 # Listing of phony targets.
 .PHONY : all begin finish end sizebefore sizeafter gccversion coff extcoff \
