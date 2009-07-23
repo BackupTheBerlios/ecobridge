@@ -59,7 +59,7 @@ ETHERNET = $(CS8900) ./avr/delay.c ./avr/nic.c
 #TELNETD = ./apps/telnetd/telnetd.c ./apps/telnetd/shell.c ./lib/memb.c
 #HELLOW = ./apps/hello-world/hello-world.c
 AUN = ./apps/aun/aun.c ./apps/aun/econet.c ./apps/aun/internet.c
-UIP = ./uip/uip.c ./uip/uip_arp.c ./uip/uiplib.c ./uip/clock.c ./uip/timer.c ./uip/uip-neighbor.c
+UIP = ./uip/uip.c ./uip/uip_arp.c ./uip/uiplib.c ./uip/clock.c ./uip/timer.c
 
 SRC	= ./unix/main.c $(ETHERNET) $(UIP) $(AUN) $(ADLC)
 
