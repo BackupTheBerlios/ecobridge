@@ -2,6 +2,7 @@
 #include <stdint.h>
 
 #include "adlc.h"
+#include "aun.h"
 #include "serial.h"
 #include "uip.h"
 
@@ -42,6 +43,8 @@ struct tx_record tx_buf[MAX_TX];
 struct rx_record rx_buf[MAX_RX];
 
 struct rx_record *current_rx;
+
+
 
 #define TX_OK		0
 #define LINE_JAMMED	1
@@ -203,8 +206,18 @@ int enqueue_tx(unsigned char *buf, int length)
 
 int should_bridge(uint16_t dest, uint32_t *ip_target)
 {
-  /* ... */
-  return 0;
+
+  /* if destination is reachable fill ip_target address */
+
+  if (rTableEth[(dest-127)] != 0)  
+  {
+    *ip_target = rTableEth[dest];
+    return 1;	
+  }
+  else {
+    return 0;
+  }
+
 }
 
 static unsigned char scout_buf[16];
