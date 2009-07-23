@@ -21,6 +21,16 @@
 #define __ADLC_H__
 
 
+struct scout_packet
+{
+  unsigned char DStn;
+  unsigned char DNet;
+  unsigned char SStn;
+  unsigned char SNet;
+  unsigned char ControlByte;
+  unsigned char Port;
+};
+
 void	adlc_poller(void);
 
 #define	ADLC_RS1		0			// PD0 Register Select 1			Econet Pin6
@@ -39,6 +49,7 @@ void	adlc_poller(void);
 #define	PACKET_Rx		1
 
 extern void adlc_ready_to_receive(void);
+extern unsigned char send_packet(unsigned char*, unsigned short length);
 
 #endif /* __ADLC_H__ */
 /** @} */

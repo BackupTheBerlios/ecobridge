@@ -3,6 +3,9 @@
 
 #include "adlc.h"
 #include "serial.h"
+#include "uip.h"
+
+#define BUF ((struct uip_tcpip_hdr *)&uip_buf[UIP_LLH_LEN])
 
 #define MAX_TX	8
 #define TX_RETRY_COUNT	16
@@ -18,9 +21,10 @@ struct tx_record
   int len;
   unsigned char retry_count;
   unsigned char retry_timer;
-  uint32_t requestor_ip;
+  unsigned short requestor_ip[2];
   uint32_t requestor_handle;
 };
+
 
 struct tx_record tx_buf[MAX_TX];
 
@@ -101,6 +105,9 @@ int enqueue_tx(unsigned char *buf, int length)
   if (length < 6)
     return -2;		// can't enqueue runt packets
 
+    struct mns_msg *m; 
+    m = (struct mns_msg *)uip_appdata;
+
   struct tx_record *tx = get_tx_buf();
   if (tx)
   {
@@ -108,6 +115,9 @@ int enqueue_tx(unsigned char *buf, int length)
     tx->retry_timer = 0;
     tx->len = length;
     tx->buf = buf;
+    tx->requestor_ip[0] = BUF->srcipaddr[0];
+    tx->requestor_ip[1] = BUF->srcipaddr[1];
+    tx->requestor_handle = m->mns_handle;
     return 0;
   }
   return -1;
@@ -202,3 +212,16 @@ void test_4way(void)
 
   enqueue_tx(buf, p - buf);
 }
+
+unsigned char send_packet(unsigned char* buffer, unsigned short length)
+{
+
+//	serial_packet((buffer),length);
+
+  	enqueue_tx(buffer, length);
+
+
+    return 1;
+}
+
+
