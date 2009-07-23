@@ -54,10 +54,10 @@ void aun_appcall(void);
 #define UIP_APPCALL aun_appcall
 #endif /* UIP_APPCALL */
 
-
 #include "uipopt.h"
 
 void aun_init(void);
+void foward_packet(void);
 
 typedef unsigned char	u_char;
 typedef unsigned int	u_int;
@@ -78,7 +78,6 @@ typedef unsigned long	u_long;
 /* machine types returned by Econet_PeekMachine SWI */
 #define MACHINE_TYPE_ARC      7
 #define MACHINE_TYPE_RISC_PC 15
-#define MACHINE_TYPE_BRIDGE  16
 
 extern unsigned char machine_type;
 
@@ -274,7 +273,8 @@ struct mns_msg
    u_char  mns_status;
 #define MSG_IS_RETRY    01
 #define MSG_IS_DATAGRAM 02
-   u_int   mns_handle;
+//   u_int   mns_handle;
+unsigned long   mns_handle;
    u_char	mns_machine;
    u_char	mns_pad;
    u_char	mns_release;

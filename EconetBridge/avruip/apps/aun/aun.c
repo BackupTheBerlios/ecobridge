@@ -25,6 +25,7 @@
 #include "aun.h"
 #include "uip.h"
 #include "serial.h"
+#include "adlc.h"
 #include "econet.h"
 #include <string.h>
 
@@ -34,6 +35,9 @@
 
 static struct aun_state s;
 
+	#define BUF ((struct EcoDest *)&uip_buf[UIP_LLH_LEN])
+
+
 
 #define STATE_INITIAL         0
 #define STATE_SENDING         1
@@ -41,7 +45,7 @@ static struct aun_state s;
 #define STATE_CONFIG_RECEIVED 3
 
 #define ECONET_INTERFACE_NET	1
-#define ETHNET_INTERFACE_NET  130
+#define ETHNET_INTERFACE_NET  7
 
 
 // boolean flags for the routing table
@@ -50,6 +54,12 @@ static struct aun_state s;
 
 #define LOCAL_NETWORK 	0
 
+struct EcoDest 
+{
+u_char	pad[UIP_LLH_LEN];
+u_char	Network;
+u_char	Station;
+};
 
 
 
@@ -151,6 +161,7 @@ aun_appcall(void)
 serial_eth();
 serial_rx();
 serial_packet(uip_buf+42, 12);
+//serial_packet(uip_appdata, 12);
 
 
    if(uip_aborted()) 
@@ -224,24 +235,25 @@ newdata(void)
 
 	switch (m->mns_opcode)
 	{
-	case BROADCAST_DATA_FRAME:
+	case BROADCAST_DATA_FRAME: 	//1
 		//
 		break;
-	case DATA_FRAME:
+	case DATA_FRAME:		//2
+		foward_packet();		
 		//
 		break;
-	case DATA_FRAME_ACK:
+	case DATA_FRAME_ACK:		//3
 		//
 		break;
-	case DATA_FRAME_REJ:
+	case DATA_FRAME_REJ:		//4
 		//
 		break;
-	case IMMEDIATE_OP:
+	case IMMEDIATE_OP:		//5
          if (m->mns_control == Econet_MachinePeek){
             do_immediate();
 		}
 		break;
-	case IMMEDIATE_OP_REPLY:
+	case IMMEDIATE_OP_REPLY:	//6
 		//
 		break;
 	default:
@@ -269,20 +281,11 @@ void do_immediate(void)
  */
 {
 
-struct EcoDest 
-{
-u_char	pad[UIP_LLH_LEN];
-u_char	Network;
-u_char	Station;
-};
+	struct mns_msg *m; 
 
-	struct mns_msg2 *m; 
-
-	m = (struct mns_msg2 *)uip_appdata;
+	m = (struct mns_msg *)uip_appdata;
 
 	unsigned char Net, Stn;
-
-	#define BUF ((struct EcoDest *)&uip_buf[UIP_LLH_LEN])
 
 	/* traditionally the network and station would be x.x.NET.STN of 
 	   the IP address. This may not be correct, and the sender should
@@ -342,6 +345,48 @@ void do_atp(unsigned char *Net, unsigned char *Stn)
 	atp->atpb_station = *Stn;
 
 
+}
+
+/******************************************************************************/
+
+/******************************************************************************/
+
+void foward_packet(void) 
+
+{
+	// Get net and station
+
+	unsigned char DNet, DStn;
+	unsigned char SNet, SStn;
+	struct scout_packet *m; 
+	unsigned short buf_len;
+
+	#define BUF ((struct EcoDest *)&uip_buf[UIP_LLH_LEN])
+	
+	buf_len = uip_len - UIP_LLH_LEN;
+
+//	Net = (BUF->Network);
+	DNet = ECONET_INTERFACE_NET;	// temporarily set the network to our network
+					// for testing
+	DStn = 4;			// and fix the destination as Station 0x4
+	SStn = (BUF->Station);
+	SNet = ETHNET_INTERFACE_NET;
+
+	m = (struct scout_packet *)(uip_appdata-4);
+	
+	m->DStn = DStn;
+	m->DNet = 0;
+	m->SStn = SStn;
+	m->SNet = SNet;
+	m->ControlByte = 0x80;
+
+
+
+
+	unsigned char x;
+	x = send_packet(m, buf_len+6);
+
+	return;
 }
 
 /*
