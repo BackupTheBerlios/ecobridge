@@ -15,6 +15,11 @@ volatile unsigned char ECONET_RX_BUF[2000];
 volatile unsigned short adlc_rx_ptr;
 volatile register unsigned char adlc_state	asm("r15");
 
+#define MACHINE_VENDOR          0x50
+#define MACHINE_TYPE            0x50
+#define MACHINE_VER_LOW         0x01
+#define MACHINE_VER_HIGH        0x00
+
 struct tx_record
 {
   unsigned char *buf;
@@ -53,6 +58,7 @@ extern int adlc_await_idle(void);
 extern void adlc_tx_frame(unsigned char *buf, unsigned char *end, unsigned char type);
 
 static uint32_t ip_target;
+static uint16_t my_station = 0x0055;
 
 int do_tx_packet(struct tx_record *tx)
 {
@@ -133,6 +139,33 @@ int should_bridge(uint16_t dest, uint32_t *ip_target)
   return 0;
 }
 
+static unsigned char scout_buf[16];
+
+static void make_scout(void)
+{
+  scout_buf[0] = ECONET_RX_BUF[2];
+  scout_buf[1] = ECONET_RX_BUF[3];
+  scout_buf[2] = ECONET_RX_BUF[0];
+  scout_buf[3] = ECONET_RX_BUF[1];
+  scout_buf[4] = ECONET_RX_BUF[4];
+  scout_buf[5] = ECONET_RX_BUF[5];
+}
+
+static void do_local_immediate (uint8_t cb)
+{
+  switch (cb & 0x7f)
+  {
+  case Econet_MachinePeek:
+    make_scout ();
+    scout_buf[6] = MACHINE_TYPE;
+    scout_buf[7] = MACHINE_VENDOR;
+    scout_buf[8] = MACHINE_VER_LOW;
+    scout_buf[9] = MACHINE_VER_HIGH;
+    adlc_tx_frame (scout_buf, scout_buf + 10, 1);
+    break;
+  }
+}
+
 void adlc_poller(void)
 {
   if (adlc_state == RX_IDLE)
@@ -165,16 +198,21 @@ void adlc_poller(void)
   else if (adlc_state == (RX_SCOUT | FRAME_COMPLETE))
   {
     uint16_t dst = *((uint16_t *)ECONET_RX_BUF);
+    uint8_t cb = ECONET_RX_BUF[6];
+    uint8_t port = ECONET_RX_BUF[7];
     if (should_bridge (dst, &ip_target))
     {
-      static unsigned char scout_buf[6];
-      scout_buf[0] = ECONET_RX_BUF[2];
-      scout_buf[1] = ECONET_RX_BUF[3];
-      scout_buf[2] = ECONET_RX_BUF[0];
-      scout_buf[3] = ECONET_RX_BUF[1];
-      scout_buf[4] = ECONET_RX_BUF[4];
-      scout_buf[5] = ECONET_RX_BUF[5];
+      make_scout ();
       adlc_tx_frame (scout_buf, scout_buf + 6, 1);
+    }
+    else if ((my_station & 0xff) != 0 && dst == my_station)
+    {
+      serial_tx_str ("pkt ");
+      serial_tx_hex (port);
+      serial_tx_hex (cb);
+      serial_crlf ();
+      if (port == 0)
+        do_local_immediate (cb);
     }
     adlc_ready_to_receive();
   }

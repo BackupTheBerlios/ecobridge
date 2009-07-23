@@ -4,9 +4,6 @@
 #include <avr/sleep.h>
 #include "serial.h"
 
-extern void serial_tx(uint8_t mask);
-extern void serial_tx_hex(uint8_t mask);
-
 void serial_short(unsigned short val)
 {
 
@@ -109,6 +106,12 @@ void serial_crlf(void)
 	serial_tx(10);		// lf
 
 	return;
+}
+
+void serial_tx_str(char *msg)
+{
+  while (*msg)
+    serial_tx (*(msg++));
 }
 
 void serial_packet(unsigned short pktbuff, unsigned short pktlen)
