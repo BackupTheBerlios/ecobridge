@@ -22,6 +22,8 @@
 
 #ifndef __ASSEMBLER__
 
+#include <stdint.h>
+
 struct scout_packet
 {
   unsigned char DStn;
@@ -33,8 +35,11 @@ struct scout_packet
 };
 
 extern void adlc_poller(void);
-extern void adlc_ready_to_receive(void);
+extern void adlc_ready_to_receive(uint8_t what);
 extern unsigned char send_packet(unsigned char*, unsigned short length);
+extern uint8_t setup_rx(uint8_t port, uint8_t stn, uint8_t net, unsigned char *ptr, unsigned int length);
+extern uint8_t poll_rx(uint8_t i, uint8_t *stn, uint8_t *net);
+extern void close_rx(uint8_t i);
 
 #endif
 
@@ -50,6 +55,11 @@ extern unsigned char send_packet(unsigned char*, unsigned short length);
 #define RX_DATA_ACK     (3 << 4)
 
 #define DISCONTINUED    64
+
+#define RXCB_INVALID	0
+#define RXCB_READY	1
+#define RXCB_RECEIVING	2
+#define RXCB_RECEIVED	3
 
 // pin definitions
 #define	ADLC_RS1		0			// PD0 Register Select 1			Econet Pin6

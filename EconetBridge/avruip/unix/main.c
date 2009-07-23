@@ -31,7 +31,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: main.c,v 1.10 2009/07/23 18:39:36 philb Exp $
+ * $Id: main.c,v 1.11 2009/07/23 20:19:04 philb Exp $
  *
  */
 
@@ -118,6 +118,7 @@ main(void)
   my_station = 0x0051;
 
   aun_init();
+  internet_init();
 
   test_4way();
 
@@ -125,6 +126,8 @@ main(void)
 
 // check the econet for complete packets
     adlc_poller();
+
+    internet_poller();
 
     uip_len = 0; //nic_poll();
 

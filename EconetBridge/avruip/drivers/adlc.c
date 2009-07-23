@@ -8,6 +8,7 @@
 #define BUF ((struct uip_tcpip_hdr *)&uip_buf[UIP_LLH_LEN])
 
 #define MAX_TX	8
+#define MAX_RX	4
 #define ADLC_TX_RETRY_COUNT	16
 #define ADLC_TX_RETRY_DELAY	128
 
@@ -30,8 +31,17 @@ struct tx_record
   uint32_t requestor_handle;
 };
 
+struct rx_record
+{
+  uint8_t state, port, stn, net;
+  unsigned char *buf;
+  int len;
+};
 
 struct tx_record tx_buf[MAX_TX];
+struct rx_record rx_buf[MAX_RX];
+
+struct rx_record *current_rx;
 
 #define TX_OK		0
 #define LINE_JAMMED	1
@@ -51,6 +61,40 @@ struct tx_record *get_tx_buf(void)
       return &tx_buf[i];
   }
   return NULL;
+}
+
+uint8_t setup_rx(uint8_t port, uint8_t stn, uint8_t net, unsigned char *ptr, unsigned int length)
+{
+  int i;
+  for (i = 0; i < MAX_RX; i++)
+  {
+    struct rx_record *rx = &rx_buf[i];
+    if (rx->state == RXCB_INVALID)
+    {
+      rx->port = port;
+      rx->stn = stn;
+      rx->net = net;
+      rx->buf = ptr;
+      rx->len = length;
+      rx->state = RXCB_READY;
+      return i + 1;
+    }
+  }
+  return 0;
+}
+
+uint8_t poll_rx(uint8_t i, uint8_t *stn, uint8_t *net)
+{
+  if (i == 0 || i > MAX_RX)
+    return RXCB_INVALID;
+  *stn = rx_buf[i].stn;
+  *net = rx_buf[i].net;
+  return rx_buf[i-1].state;
+}
+
+void close_rx(uint8_t i)
+{
+  rx_buf[i].state = RXCB_INVALID;
 }
 
 extern int get_adlc_state(void);
@@ -79,7 +123,7 @@ int do_tx_packet(struct tx_record *tx)
 
   if (type == BROADCAST) {
     adlc_tx_frame (tx->buf, tx->buf + tx->len, 1);
-    adlc_ready_to_receive ();
+    adlc_ready_to_receive (RX_SCOUT);
     serial_crlf();
     return TX_OK;
   }
@@ -107,14 +151,31 @@ int do_tx_packet(struct tx_record *tx)
 
     do {
       state = get_adlc_state();
-    } while (state != RX_IDLE && state != (RX_SCOUT_ACK | FRAME_COMPLETE));
+    } while (state != RX_IDLE && state != (RX_DATA_ACK | FRAME_COMPLETE));
   }
+
+  serial_tx ('V');
     
-  adlc_ready_to_receive ();
+  adlc_ready_to_receive (RX_SCOUT);
 
   serial_crlf();
 
   return ((state & 0xf) == FRAME_COMPLETE) ? TX_OK : NET_ERROR;
+}
+
+struct rx_record *find_local_rxcb(uint8_t port, uint8_t station, uint8_t net)
+{
+  int i;
+  for (i = 0; i < MAX_RX; i++) 
+  {
+    struct rx_record *rx = &rx_buf[i];
+    if (rx->state == RXCB_READY 
+	&& (rx->port == port || rx->port == 0)
+	&& ((rx->stn == 0 && rx->net == 0)
+	    || (rx->stn == station && rx->net == net)))
+      return rx;
+  }
+  return NULL;
 }
 
 int enqueue_tx(unsigned char *buf, int length)
@@ -200,23 +261,57 @@ void adlc_poller(void)
       }
     }
   }
-  else if (adlc_state == (RX_SCOUT | FRAME_COMPLETE))
+  else if ((adlc_state & 0x0f) == FRAME_COMPLETE)
   {
-    uint16_t dst = *((uint16_t *)ECONET_RX_BUF);
-    uint8_t cb = ECONET_RX_BUF[4];
-    uint8_t port = ECONET_RX_BUF[5];
-    if (should_bridge (dst, &ip_target))
+    if (adlc_state == (RX_SCOUT | FRAME_COMPLETE))
     {
-      serial_tx ('B');
-      make_scout ();
-      adlc_tx_frame (scout_buf, scout_buf + 4, 1);
+      int frame_length = adlc_rx_ptr - (int)ECONET_RX_BUF;
+      if (frame_length < 6) {
+	adlc_ready_to_receive (RX_SCOUT);
+	return;
+      }
+      uint16_t dst = *((uint16_t *)ECONET_RX_BUF);
+      uint8_t cb = ECONET_RX_BUF[4];
+      uint8_t port = ECONET_RX_BUF[5];
+      if (should_bridge (dst, &ip_target))
+      {
+	serial_tx ('B');
+	make_scout ();
+	adlc_tx_frame (scout_buf, scout_buf + 4, 1);
+	adlc_ready_to_receive (RX_DATA);
+	return;
+      }
+      else if ((my_station & 0xff) && (dst == my_station))
+      {
+	if (port == 0)
+	{
+	  do_local_immediate (cb);
+	}
+	else
+	{
+	  current_rx = find_local_rxcb (port, ECONET_RX_BUF[2], ECONET_RX_BUF[3]);
+	  if (current_rx)
+	  {
+	    current_rx->state = RXCB_RECEIVING;
+	    make_scout ();
+	    adlc_tx_frame (scout_buf, scout_buf + 4, 1);
+	    adlc_ready_to_receive (RX_DATA);
+	    return;
+	  }
+	}
+      }
+      adlc_ready_to_receive (RX_SCOUT);
     }
-    else if ((my_station & 0xff) && (dst == my_station))
+    else if (adlc_state == (RX_DATA | FRAME_COMPLETE))
     {
-      if (port == 0)
-        do_local_immediate (cb);
+      adlc_ready_to_receive (RX_SCOUT);
     }
-    adlc_ready_to_receive();
+    else if ((adlc_state & 15) == FRAME_COMPLETE)
+    {
+      serial_tx_hex (adlc_state);
+      serial_crlf ();
+      adlc_ready_to_receive (RX_SCOUT);
+    }
   }
 }
 

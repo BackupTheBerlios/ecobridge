@@ -391,6 +391,8 @@ await_end:
 	brbc	6, await_end
 
 	ldi	tmp1, (RX_SCOUT_ACK | RX_IDLE)
+	sbrs	r21, 0
+	ldi	tmp1, (RX_DATA_ACK | RX_IDLE)	
 	mov	adlc_state, tmp1
 
 	; reset tx
@@ -407,7 +409,8 @@ await_end:
 ;
 rx_overrun:
 	ldi	serial_tx_arg, 0x6F				; "o" - overrun
-	rcall serial_tx				; 
+	rcall serial_tx
+	ldi	r24, RX_SCOUT				; 
 	rcall 	adlc_ready_to_receive  
 	rjmp	adlc_irq_ret
 	
@@ -452,6 +455,19 @@ abandon_rx:
 process_idle:
 	clr	adlc_state
 	rcall	adlc_clear_rx			; clear Rx Status Register
+	lds	XH, current_rx + 1
+	lds	XL, current_rx
+	cpi	XH, 0
+	brne	yes_current_rx
+	cpi	XL, 0
+	breq	no_current_rx
+yes_current_rx:	
+	ldi	tmp1, RXCB_READY
+	st	X, tmp1
+	clr	tmp1
+	sts	current_rx, tmp1
+	sts	current_rx + 1, tmp1
+no_current_rx:
 	rjmp	adlc_irq_ret			; clean up routine for interrupt handling
 
 ; -----------------------------------------------------------------------------------------
@@ -520,7 +536,17 @@ process_fv:
 ; The address field is the first 8 bits following the opening flag, so will always be the
 ; first byte of the packet. This byte being present causes the Rx Interrupt if enabled.
 
+discontinue_again:
+	ldi	tmp1, ADLC_CR1
+	ldi	tmp2, CR1_TXRESET | CR1_RIE | CR1_DISCONTINUE
+	rcall	adlc_write
+	rjmp	adlc_irq_ret	
+	
 process_ap:
+	ldi	tmp1, DISCONTINUED
+	cp	tmp1, adlc_state
+	breq	discontinue_again
+	
 	lds	XL, adlc_rx_ptr			; put the Rx buffer pointer address in X
 	lds	XH, adlc_rx_ptr + 1
 
@@ -577,8 +603,6 @@ process_rda:
 	cpi	tmp1, RX_CHECK_NET2
 	breq	check_dst_net
 
-	rjmp	adlc_irq_ret
-	
 	;; if we get here, something is wrong.  Reset and start over.
 	rjmp	discontinue
 
@@ -593,8 +617,6 @@ check_dst_net:
 	cp	tmp2, tmp1
 	brne	discontinue
 
-	inc	adlc_state
-	
 	rjmp	adlc_irq_ret			; return from interrupt
 
 discontinue:
@@ -602,11 +624,8 @@ discontinue:
 	ldi	tmp2, CR1_TXRESET | CR1_RIE | CR1_DISCONTINUE
 	rcall	adlc_write
 
-        ldi     tmp1, DISCONTINUED              ; process_idle will set this back to RX_IDLE
-        mov     adlc_state, tmp1
-
-adlc_rx_reset:	
-	clr	adlc_state
+	ldi	tmp1, DISCONTINUED
+	mov	adlc_state, tmp1
 
 	; reset rx buffer pointer
 	ldi	XL, lo8(ECONET_RX_BUF)		; set XL with the lowbyte of the Econet receive buffer
@@ -746,7 +765,7 @@ adlc_init:
 .global	adlc_ready_to_receive
 adlc_ready_to_receive:
 	;initialise the adlc_state
-	clr	adlc_state
+	mov	adlc_state, r24
 
 	; initialise the Rx Buffer pointer
 	ldi	XL, lo8(ECONET_RX_BUF)		; set XL with the lowbyte of the Econet receive buffer
