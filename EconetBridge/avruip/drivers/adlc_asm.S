@@ -357,8 +357,8 @@ skip:
 	inc	r23
 	cpi	r23, 5
 	breq	skip
-;	cpi	r23, 6
-;	breq	skip
+	cpi	r23, 6
+	breq	skip
 	
 not_data:	
 	cp	XL, YL

@@ -282,23 +282,6 @@ unsigned long   mns_handle;
    u_short	mns_padend;
 };
 
-struct mns_msg2
-{
-   u_char  mns_opcode;
-   u_char  mns_port;
-   u_char  mns_control;
-#define Econet_MachinePeek        8
-   u_char  mns_status;
-#define MSG_IS_RETRY    01
-#define MSG_IS_DATAGRAM 02
-   u_int   mns_handle;
-   u_int   mns_pad2;
-   u_char	mns_machine;
-   u_char	mns_pad;
-   u_char	mns_release;
-   u_char   mns_version;
-   u_short	mns_padend;
-};
 
 #define UNHDRSIZE  8
 

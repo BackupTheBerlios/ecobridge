@@ -35,8 +35,7 @@
 
 static struct aun_state s;
 
-	#define BUF ((struct EcoDest *)&uip_buf[UIP_LLH_LEN])
-
+#define BUF ((struct EcoDest *)&uip_buf[UIP_LLH_LEN])
 
 
 #define STATE_INITIAL         0
@@ -44,7 +43,7 @@ static struct aun_state s;
 #define STATE_OFFER_RECEIVED  2
 #define STATE_CONFIG_RECEIVED 3
 
-#define ECONET_INTERFACE_NET	1
+#define ECONET_INTERFACE_NET  1
 #define ETHNET_INTERFACE_NET  7
 
 
@@ -358,11 +357,9 @@ void foward_packet(void)
 
 	unsigned char DNet, DStn;
 	unsigned char SNet, SStn;
-	struct scout_packet *m; 
+	struct Econet_Header *m; 
 	unsigned short buf_len;
 
-	#define BUF ((struct EcoDest *)&uip_buf[UIP_LLH_LEN])
-	
 	buf_len = uip_len - UIP_LLH_LEN;
 
 //	Net = (BUF->Network);
@@ -372,15 +369,16 @@ void foward_packet(void)
 	SStn = (BUF->Station);
 	SNet = ETHNET_INTERFACE_NET;
 
-	m = (struct scout_packet *)(uip_appdata-4);
+	// use Econet header structure instead of scout packet structure 
+	// so the Port byte can easily be duplicated.
+	m = (struct Econet_Header *)(uip_appdata-5);
 	
-	m->DStn = DStn;
-	m->DNet = 0;
-	m->SStn = SStn;
-	m->SNet = SNet;
-	m->ControlByte = 0x80;
-
-
+	m->DSTN = DStn;
+	m->DNET = 0;
+	m->SSTN = SStn;
+	m->SNET = SNet;
+	m->CB = 0x80;
+	m->PORT = m->DATA1;
 
 
 	unsigned char x;
