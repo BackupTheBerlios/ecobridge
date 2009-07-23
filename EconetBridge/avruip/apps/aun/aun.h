@@ -41,7 +41,6 @@ typedef int uip_tcp_appstate_t;
 
 typedef struct aun_state uip_udp_appstate_t;
 
-
 /* Finally we define the application function to be called by uIP. */
 void aun_appcall(void);
 
@@ -58,6 +57,8 @@ void aun_appcall(void);
 
 void aun_init(void);
 void foward_packet(void);
+
+extern uint32_t rTableEth[127];
 
 typedef unsigned char	u_char;
 typedef unsigned int	u_int;

@@ -53,7 +53,7 @@ static struct aun_state s;
 
 #define LOCAL_NETWORK 	0
 
-struct EcoDest 
+struct EconetRouting 
 {
 u_char	pad[UIP_LLH_LEN];
 u_char	Network;
@@ -89,14 +89,14 @@ struct aunhdr
 	unsigned long handle;
 };
 
-
 struct RoutingTable
 {
 	unsigned char flag;
 };
 
+volatile static struct RoutingTable rTableEco[256];
 
-volatile static struct RoutingTable rTableEco[255];
+uint32_t rTableEth[127]; 	// index = Econet NET-127. Only need 127-254
 
 
 unsigned char machine_type =  MACHINE_TYPE_ARC;
@@ -123,6 +123,12 @@ aun_init(void)
 	rTableEco[ANY_NETWORK].flag = ROUTABLE;
 	rTableEco[ECONET_INTERFACE_NET].flag = ROUTABLE;
 	
+	// set the ethernet routing table
+
+	for (i=0; i<128; i++) {
+		rTableEth[i] = 0;	// clear the table
+	}
+
 
 	s.state = LISTENING;
 
@@ -154,7 +160,7 @@ aun_init(void)
 void
 aun_appcall(void)
 {
-	
+
   if(uip_udp_conn->rport == HTONS(MNSDATAPORT)) {
 
 serial_eth();
@@ -281,35 +287,43 @@ void do_immediate(void)
 {
 
 	struct mns_msg *m; 
-
 	m = (struct mns_msg *)uip_appdata;
 
-	unsigned char Net, Stn;
+	unsigned char SNet, SStn;
+	unsigned char DNet, DStn;
 
 	/* traditionally the network and station would be x.x.NET.STN of 
 	   the IP address. This may not be correct, and the sender should
 	   be queried as to its AUN MAP and what exactly this IP address 
 	   maps to.
 	*/
+	
+	SNet = (unsigned char) (&uip_buf+28);
+	SStn = (unsigned char) (&uip_buf+29);
+	DNet = (unsigned char) (&uip_buf+32);
+	DStn = (unsigned char) (&uip_buf+33);
+
+	/* update the routing table with the ethernet map */
+	rTableEth[SNet-127] = (uint32_t) (&uip_buf+26);
+
+
+	serial_tx_hex(SNet);
+	serial_packet((&uip_buf+26),4);
 
 	// Get net and station
 
-//	Net = (BUF->Network);
-	Net = ECONET_INTERFACE_NET;	// temporarily set the network to our network
+//	DNet = DNet;
+	DNet = ECONET_INTERFACE_NET;	// temporarily set the network to our network
 					// for testing
-	Stn = (BUF->Station);
-	
 
-	// If in our routing table, machine peek the target
-	if (rTableEco[Net].flag == NOT_ROUTABLE) {
-		return;
-	}
-
-	if (Econet_Peek(&Net,&Stn)==0) {
+	if (Econet_Peek(DNet,DStn)==0) {
+		// update route as not available
+		rTableEco[DNet].flag = NOT_ROUTABLE;
 		return;
 	};
 
 	// if available, send the answer back to the orginator
+	rTableEco[DNet].flag = ROUTABLE;
 
 	m->mns_opcode = IMMEDIATE_OP_REPLY;
 	// all the codes inbetween are set from the incoming packet
@@ -357,16 +371,23 @@ void foward_packet(void)
 
 	unsigned char DNet, DStn;
 	unsigned char SNet, SStn;
+
 	struct Econet_Header *m; 
 	unsigned short buf_len;
 
 	buf_len = uip_len - UIP_LLH_LEN;
 
-//	Net = (BUF->Network);
+	SNet = (unsigned char) (&uip_buf+28);
+	SStn = (unsigned char) (&uip_buf+29);
+	DNet = (unsigned char) (&uip_buf+32);
+	DStn = (unsigned char) (&uip_buf+33);
+
+	/* update the routing table with the ethernet map */
+	rTableEth[SNet-127] = (uint32_t) (&uip_buf+26);
+
 	DNet = ECONET_INTERFACE_NET;	// temporarily set the network to our network
 					// for testing
 	DStn = 4;			// and fix the destination as Station 0x4
-	SStn = (BUF->Station);
 	SNet = ETHNET_INTERFACE_NET;
 
 	// use Econet header structure instead of scout packet structure 
@@ -386,6 +407,8 @@ void foward_packet(void)
 
 	return;
 }
+
+
 
 /*
 static void 
