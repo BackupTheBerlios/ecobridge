@@ -426,8 +426,8 @@ clean_list :
 	[ -s $@ ] || rm -f $@
 
 # Remove the '-' if you want to see the dependency files generated.
-include $(SRC:.c=.d)
-include $(ASRC:.S=.d)
+-include $(SRC:.c=.d)
+-include $(ASRC:.S=.d)
 
 # Listing of phony targets.
 .PHONY : all begin finish end sizebefore sizeafter gccversion coff extcoff \
