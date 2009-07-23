@@ -80,12 +80,10 @@ unsigned char nic_poll(void)
 	// copy the packet data into the uIP packet buffer
 	NICRetreivePacketData( uip_buf, packetLength );
 
-#if 0
 //serial_packet(uip_buf, packetLength);
 serial_eth();
 serial_rx();
 serial_crlf();
-#endif
 
 
 	NICEndPacketRetreive();
