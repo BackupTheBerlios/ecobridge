@@ -31,7 +31,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: main.c,v 1.9 2009/07/21 18:47:13 philb Exp $
+ * $Id: main.c,v 1.10 2009/07/23 18:39:36 philb Exp $
  *
  */
 
@@ -114,16 +114,19 @@ main(void)
   uip_ipaddr(ipaddr, 255,255,0,0);
   uip_setnetmask(ipaddr);
 
+  extern uint16_t my_station;
+  my_station = 0x0051;
+
   aun_init();
 
-  test_bcast();
+  test_4way();
 
   while(1) {
 
 // check the econet for complete packets
     adlc_poller();
 
-    uip_len = nic_poll();
+    uip_len = 0; //nic_poll();
 
     if(uip_len > 0) {
 

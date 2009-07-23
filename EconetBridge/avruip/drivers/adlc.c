@@ -58,7 +58,7 @@ extern int adlc_await_idle(void);
 extern void adlc_tx_frame(unsigned char *buf, unsigned char *end, unsigned char type);
 
 static uint32_t ip_target;
-static uint16_t my_station = 0x0055;
+uint16_t my_station;
 
 int do_tx_packet(struct tx_record *tx)
 {
@@ -73,7 +73,6 @@ int do_tx_packet(struct tx_record *tx)
   serial_tx('t');
   serial_tx('x');
   serial_tx_hex (type);
-  serial_crlf();
 
   if (adlc_await_idle())
     return LINE_JAMMED;
@@ -81,6 +80,7 @@ int do_tx_packet(struct tx_record *tx)
   if (type == BROADCAST) {
     adlc_tx_frame (tx->buf, tx->buf + tx->len, 1);
     adlc_ready_to_receive ();
+    serial_crlf();
     return TX_OK;
   }
 
@@ -94,8 +94,13 @@ int do_tx_packet(struct tx_record *tx)
     state = get_adlc_state();
   } while (state != RX_IDLE && state != (RX_SCOUT_ACK | FRAME_COMPLETE));
 
-  if (state == RX_IDLE)
+  if (state == RX_IDLE) {
+    serial_tx ('N');
+    serial_crlf();
     return NOT_LISTENING;
+  }
+
+  serial_tx ('S');
 
   if (type == NORMAL_PACKET) {
     adlc_tx_frame (tx->buf, tx->buf + tx->len, 0);
@@ -106,6 +111,8 @@ int do_tx_packet(struct tx_record *tx)
   }
     
   adlc_ready_to_receive ();
+
+  serial_crlf();
 
   return ((state & 0xf) == FRAME_COMPLETE) ? TX_OK : NET_ERROR;
 }
@@ -147,8 +154,6 @@ static void make_scout(void)
   scout_buf[1] = ECONET_RX_BUF[3];
   scout_buf[2] = ECONET_RX_BUF[0];
   scout_buf[3] = ECONET_RX_BUF[1];
-  scout_buf[4] = ECONET_RX_BUF[4];
-  scout_buf[5] = ECONET_RX_BUF[5];
 }
 
 static void do_local_immediate (uint8_t cb)
@@ -157,11 +162,11 @@ static void do_local_immediate (uint8_t cb)
   {
   case Econet_MachinePeek:
     make_scout ();
-    scout_buf[6] = MACHINE_TYPE;
-    scout_buf[7] = MACHINE_VENDOR;
-    scout_buf[8] = MACHINE_VER_LOW;
-    scout_buf[9] = MACHINE_VER_HIGH;
-    adlc_tx_frame (scout_buf, scout_buf + 10, 1);
+    scout_buf[4] = MACHINE_TYPE;
+    scout_buf[5] = MACHINE_VENDOR;
+    scout_buf[6] = MACHINE_VER_LOW;
+    scout_buf[7] = MACHINE_VER_HIGH;
+    adlc_tx_frame (scout_buf, scout_buf + 8, 1);
     break;
   }
 }
@@ -198,19 +203,16 @@ void adlc_poller(void)
   else if (adlc_state == (RX_SCOUT | FRAME_COMPLETE))
   {
     uint16_t dst = *((uint16_t *)ECONET_RX_BUF);
-    uint8_t cb = ECONET_RX_BUF[6];
-    uint8_t port = ECONET_RX_BUF[7];
+    uint8_t cb = ECONET_RX_BUF[4];
+    uint8_t port = ECONET_RX_BUF[5];
     if (should_bridge (dst, &ip_target))
     {
+      serial_tx ('B');
       make_scout ();
-      adlc_tx_frame (scout_buf, scout_buf + 6, 1);
+      adlc_tx_frame (scout_buf, scout_buf + 4, 1);
     }
-    else if ((my_station & 0xff) != 0 && dst == my_station)
+    else if ((my_station & 0xff) && (dst == my_station))
     {
-      serial_tx_str ("pkt ");
-      serial_tx_hex (port);
-      serial_tx_hex (cb);
-      serial_crlf ();
       if (port == 0)
         do_local_immediate (cb);
     }
@@ -239,7 +241,7 @@ void test_immediate(void)
   unsigned char *p = buf;
   *(p++) = 0xfe;
   *(p++) = 0x00;
-  *(p++) = 0x51;
+  *(p++) = my_station;
   *(p++) = 0x00;
   *(p++) = 0x88;
   *(p++) = 0x00;
@@ -256,7 +258,7 @@ void test_4way(void)
   unsigned char *p = buf;
   *(p++) = 0xfe;
   *(p++) = 0x00;
-  *(p++) = 0x51;
+  *(p++) = my_station;
   *(p++) = 0x00;
   *(p++) = 0x80;
   *(p++) = 0x99;

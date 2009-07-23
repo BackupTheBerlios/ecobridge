@@ -408,9 +408,8 @@ await_end:
 rx_overrun:
 	ldi	serial_tx_arg, 0x6F				; "o" - overrun
 	rcall serial_tx				; 
-	;rcall 	adlc_ready_to_receive  
-	;rjmp	adlc_irq_ret
-	rjmp	process_fv
+	rcall 	adlc_ready_to_receive  
+	rjmp	adlc_irq_ret
 	
 ; -----------------------------------------------------------------------------------------
 ; ADLC process_dcd - No Clock
@@ -587,8 +586,15 @@ check_dst_net:
 	lds	tmp1, ECONET_RX_BUF + 1
 	rcall	interesting_network
 	brcs	adlc_irq_ret
+	breq	discontinue
+
+	lds	tmp2, my_station
+	lds	tmp1, ECONET_RX_BUF
+	cp	tmp2, tmp1
 	brne	discontinue
 
+	inc	adlc_state
+	
 	rjmp	adlc_irq_ret			; return from interrupt
 
 discontinue:
