@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "adlc.h"
 #include "aun.h"
@@ -34,7 +35,7 @@ struct tx_record
 
 struct rx_record
 {
-  uint8_t state, port, stn, net;
+  uint8_t state, port, cb, stn, net;
   unsigned char *buf;
   int len;
 };
@@ -90,9 +91,10 @@ uint8_t poll_rx(uint8_t i, uint8_t *stn, uint8_t *net)
 {
   if (i == 0 || i > MAX_RX)
     return RXCB_INVALID;
-  *stn = rx_buf[i].stn;
-  *net = rx_buf[i].net;
-  return rx_buf[i-1].state;
+  struct rx_record *rx = &rx_buf[i-1];
+  *stn = rx->stn;
+  *net = rx->net;
+  return rx->state;
 }
 
 void close_rx(uint8_t i)
@@ -286,6 +288,22 @@ void adlc_poller(void)
       uint16_t dst = *((uint16_t *)ECONET_RX_BUF);
       uint8_t cb = ECONET_RX_BUF[4];
       uint8_t port = ECONET_RX_BUF[5];
+      if ((dst & 0xff) == 0xff)
+      {
+	struct rx_record *rx = find_local_rxcb (port, ECONET_RX_BUF[2], ECONET_RX_BUF[3]);
+	if (rx)
+	{
+	  if (rx->len >= (frame_length - 6))
+	  {
+	    memcpy (rx->buf, ECONET_RX_BUF + 6, frame_length - 6);
+	    rx->stn = ECONET_RX_BUF[2];
+	    rx->net = ECONET_RX_BUF[3];
+	    rx->cb = cb;
+	    rx->port = port;
+	    rx->state = RXCB_RECEIVED;
+	  }
+	}	
+      } 
       if (should_bridge (dst, &ip_target))
       {
 	serial_tx ('B');

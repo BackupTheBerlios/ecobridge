@@ -40,6 +40,7 @@ extern unsigned char send_packet(unsigned char*, unsigned short length);
 extern uint8_t setup_rx(uint8_t port, uint8_t stn, uint8_t net, unsigned char *ptr, unsigned int length);
 extern uint8_t poll_rx(uint8_t i, uint8_t *stn, uint8_t *net);
 extern void close_rx(uint8_t i);
+extern int enqueue_tx(unsigned char *buf, int length);
 
 #endif
 
