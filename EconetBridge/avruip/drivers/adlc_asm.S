@@ -6,30 +6,9 @@
 #define __SFR_OFFSET 0     /* Required for port labels to work as expected */
 #include <avr/io.h>        /* Contains I/O port declarations */
 
-
-#define	RX_IDLE		0
-#define	RX_CHECK_NET1	1
-#define	RX_CHECK_NET2	2
-#define	RX_DATA		3
-#define	RX_SCOUT_ACK1	16
-#define	RX_SCOUT_ACK2	17
-#define	FRAME_COMPLETE	32
-#define	PACKET_Rx		1
-
-
-
-#define	EGPIO_ADLC_RESET		0x3			// ADLC Reset
-#define	EGPIO_SET			0x80			// flag to set
+#include "adlc.h"
 
 // The ADLC has four control registers and two status registers.
-#define	ADLC_RS1		0			// PD0 Register Select 1			Econet Pin6
-#define	ADLC_RnW		1			// PD1 Read/Write Control			Econet Pin2
-#define	ADLC_RS0		4			// PD4 Register Select 0			Econet Pin5
-#define	ADLC_nCE		0			// PE0						Econet Pin3
-#define	ADLC_D0		2			// PE2						Econet Pin7
-
-
-
 #define	ADLC_CR1		0
 #define	ADLC_CR2		1			// control bit 0
 #define	ADLC_CR3		1 			// control bit 1
@@ -411,7 +390,7 @@ await_end:
 	bst	tmp2, 6				; FC?
 	brbc	6, await_end
 
-	ldi	tmp1, RX_SCOUT_ACK1
+	ldi	tmp1, (RX_SCOUT_ACK | RX_IDLE)
 	mov	adlc_state, tmp1
 
 	; reset tx
@@ -582,16 +561,15 @@ process_rda:
 	sts	adlc_rx_ptr + 1, XH		; 
 
 	;;  if we're receiving payload, we already decided this packet was good.  Nothing more to do.
-	mov	tmp1, adlc_state
-	cpi	tmp1, RX_DATA
+        mov     tmp1, adlc_state
+        andi    tmp1, 7
+	cpi	tmp1, RX_PAYLOAD
 	breq	adlc_irq_ret
 
 	inc	adlc_state
 
 	;;  if this was the first RDA event for a frame, we need more data.
 	cpi	tmp1, RX_CHECK_NET1
-	breq	adlc_irq_ret
-	cpi	tmp1, RX_SCOUT_ACK1
 	breq	adlc_irq_ret
 
 	;;  now we have the full destination address, check if this is a packet we wanted
@@ -615,6 +593,9 @@ discontinue:
 	ldi	tmp1, ADLC_CR1
 	ldi	tmp2, CR1_TXRESET | CR1_RIE | CR1_DISCONTINUE
 	rcall	adlc_write
+
+        ldi     tmp1, DISCONTINUED              ; process_idle will set this back to RX_IDLE
+        mov     adlc_state, tmp1
 
 adlc_rx_reset:	
 	clr	adlc_state
