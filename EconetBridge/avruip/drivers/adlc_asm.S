@@ -332,7 +332,7 @@ adlc_tx_frame:
 	mov	YH, r23
 	mov	YL, r22
 	mov	r21, r20
-		
+
 	ldi	r23, 0
 	; go on the wire and start transmitting
 	ldi	tmp1, ADLC_CR1
@@ -585,7 +585,16 @@ process_rda:
 	st	X+, tmp2				; store the data read in the Rx buffer
 
 	sts	adlc_rx_ptr, XL			; store the incremented Rx buffer pointer
-	sts	adlc_rx_ptr + 1, XH		; 
+	sts	adlc_rx_ptr + 1, XH		;
+
+	ldi	tmp1, hi8(ECONET_RX_BUF + 1024)
+	cp	XH, tmp1
+	brcs	not_full
+	breq	is_full
+	ldi	tmp1, lo8(ECONET_RX_BUF + 1024)
+	cp	XH, tmp1
+	brcc	is_full
+not_full:	
 
 	;;  if we're receiving payload, we already decided this packet was good.  Nothing more to do.
         mov     tmp1, adlc_state
@@ -604,6 +613,11 @@ process_rda:
 	breq	check_dst_net
 
 	;; if we get here, something is wrong.  Reset and start over.
+	rjmp	discontinue
+
+is_full:
+	ldi	serial_tx_arg, 0x4f
+	rcall	serial_tx
 	rjmp	discontinue
 
 check_dst_net:	
@@ -798,8 +812,38 @@ adlc_ready_to_receive:
 interesting_network:
 	cpi	tmp1, 0xff
 	breq	yes_network
-	cpi	tmp1, 0x01
-	breq	yes_network		
+	cpi	tmp1, 0x0
+	breq	maybe_network
+	subi	tmp1, 0x80
+	brcs	no_network
+	ldi	tmp2, 0
+	lsl	tmp1
+	rol	tmp2
+	lsl	tmp1
+	rol	tmp2
+	push	YL
+	push	YH
+	ldi	YL, lo8(rTableEth)
+	ldi	YH, hi8(rTableEth)
+	add	YL, tmp1
+	adc	YH, tmp2
+	ld	tmp1, Y
+	ldd	tmp2, Y+1
+	or	tmp1, tmp2
+	ldd	tmp2, Y+2
+	or	tmp1, tmp2
+	ldd	tmp2, Y+3
+	or	tmp1, tmp2
+	pop	YH
+	pop	YL
+	cpi	tmp1, 0
+	brne	yes_network
+no_network:
+	sez
+	clc
+	ret
+
+maybe_network:	
 	clc
 	clz
 	ret
@@ -807,11 +851,6 @@ interesting_network:
 yes_network:
 	sec
 	clz
-	ret
-
-no_network:
-	sez
-	clc
 	ret
 
 	.globl	get_adlc_state
