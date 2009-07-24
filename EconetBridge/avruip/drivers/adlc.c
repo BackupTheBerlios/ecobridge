@@ -160,6 +160,7 @@ int do_tx_packet(struct tx_record *tx)
   }
 
   serial_tx ('V');
+  tx->buf = NULL;
     
   adlc_ready_to_receive (RX_SCOUT);
 
