@@ -61,7 +61,6 @@ u_char	Station;
 };
 
 
-
 struct Econet_Header {
 	unsigned char DSTN;
 	unsigned char DNET;
@@ -368,6 +367,7 @@ void foward_packet(void)
 
 	unsigned char DNet, DStn;
 	unsigned char SNet, SStn;
+	unsigned char Port;
 
 	struct Econet_Header *m; 
 	unsigned short buf_len;
@@ -392,22 +392,26 @@ void foward_packet(void)
 		DNet = LOCAL_NETWORK;
 	}
 
-	DStn = 4;			// and fix the destination as Station 0x4
+	DStn = 254;			// and fix the destination as Station 0x4
 	SNet = ETHNET_INTERFACE_NET;
+//	SNet = 0;
 
 	// use Econet header structure instead of scout packet structure 
 	// so the Port byte can easily be duplicated.
-	m = (struct Econet_Header *)(uip_appdata-5);
-	
+	m = (struct Econet_Header *)(uip_appdata);
+	Port = m->DNET;
+
+	m = (struct Econet_Header *)(uip_appdata-2);
+
 	m->DSTN = DStn;
 	m->DNET = DNet;
 	m->SSTN = SStn;
 	m->SNET = SNet;
 	m->CB = 0x80;
-	m->PORT = m->DATA1;
-serial_packet(m,buf_len+6);
+	m->PORT = Port;
+
 	unsigned char x;
-	x = send_packet(m, buf_len+6);
+	x = send_packet(m,buf_len+2 );
 
 	return;
 }
