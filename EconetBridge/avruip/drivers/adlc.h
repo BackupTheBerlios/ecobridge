@@ -41,8 +41,16 @@ extern uint8_t setup_rx(uint8_t port, uint8_t stn, uint8_t net, unsigned char *p
 extern uint8_t poll_rx(uint8_t i, uint8_t *stn, uint8_t *net);
 extern void close_rx(uint8_t i);
 extern int enqueue_tx(unsigned char *buf, int length);
+extern volatile short adlc_rx_ptr;
 
 #endif
+
+#define TX_OK		0
+#define LINE_JAMMED	1
+#define NOT_LISTENING	2
+#define NET_ERROR	3
+#define COLLIDED        4
+#define NO_CLOCK        5
 
 #define	RX_IDLE		0
 #define	RX_CHECK_NET1	1

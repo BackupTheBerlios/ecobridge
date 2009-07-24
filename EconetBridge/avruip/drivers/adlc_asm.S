@@ -858,3 +858,8 @@ get_adlc_state:
 	mov	r24, adlc_state
 	ret
 	
+
+        .section        .data
+        .globl  adlc_rx_ptr
+adlc_rx_ptr:
+        .word   0

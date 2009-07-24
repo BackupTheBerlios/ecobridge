@@ -31,7 +31,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: main.c,v 1.14 2009/07/24 18:28:15 philb Exp $
+ * $Id: main.c,v 1.15 2009/07/24 18:45:34 philb Exp $
  *
  */
 
@@ -120,8 +120,6 @@ main(void)
 
   aun_init();
   internet_init();
-
-  test_4way();
 
   while(1) {
 

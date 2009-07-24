@@ -31,7 +31,6 @@ void internet_poller(void)
   uint8_t stn, net;
   if (poll_rx (find_server_rxcb, &stn, &net) == RXCB_RECEIVED)
   {
-    int i;
     if (memcmp (bcast_buf, MY_SERVER_TYPE, 8) == 0
 	|| memcmp (bcast_buf, WILDCARD_SERVER_TYPE, 8) == 0)
     {
@@ -44,9 +43,9 @@ void internet_poller(void)
       response_buffer[6] = 0;
       response_buffer[7] = 0xd2;
       response_buffer[8] = 1;
-      strcpy (response_buffer + 9, MY_SERVER_TYPE);
+      strcpy ((char *)response_buffer + 9, MY_SERVER_TYPE);
       response_buffer[17] = strlen(MY_SERVER_NAME);
-      strcpy (response_buffer + 18, MY_SERVER_NAME);
+      strcpy ((char *)response_buffer + 18, MY_SERVER_NAME);
       enqueue_tx (response_buffer, 18 + strlen(MY_SERVER_NAME));
     }
     close_rx (find_server_rxcb);
