@@ -2,7 +2,7 @@
 #define __SFR_OFFSET 0     /* Required for port labels to work as expected */
 #include <avr/io.h>        /* Contains I/O port declarations */
 
-
+#include "egpio.h"
 
 
 //  Make these functions visible to other source files.
@@ -29,21 +29,6 @@
 ; =======================================================================
 
 	; 115200bps bit time = 8.68us =~ 70 cycles @ 8MHz
-
-; =======================================================================
-; == External GPIO ======================================================
-; =======================================================================
-
-#define	EGPIO_ECONET_RED		0x0			// Econet Red LED
-#define	EGPIO_ECONET_GREEN	0x1			// Econet Green LED
-#define	EGPIO_STATUS_RED		0x2			// Status Red LED
-#define	EGPIO_ADLC_RESET		0x3			// ADLC Reset
-#define	EGPIO_CLOCK_ENABLE	0x4			// Econet Clock Enable
-#define	EGPIO_STATUS_GREEN	0x5			// Status Green LED
-#define	EGPIO_ETHER_RESET		0x6			// Ethernet Reset
-#define	EGPIO_TP1			0x7			// Serial TX Output
-
-#define	EGPIO_SET			0x80			// flag to set
 
 #define	EGPIO_BASE			0xC000
 
@@ -105,6 +90,9 @@ delay_loop:
 ; r16 [6:0] address [7] data 
 
 egpio_write:
+	push	XH
+	push	XL
+	
 	ldi	XH, EGPIO_BASE >> 8		; high byte of EGPIO base location
 	mov	XL, r24				; low byte from r16
 							; this may have been ORed with the EGPIO_SET
@@ -116,6 +104,9 @@ egpio_write:
 	clr	r24					; clear r16
 	bld	r24, 0				; load T to bit 0 of r16, so will have a 0 or 1 value
 	st	X, r24				; store r16 in data space location
+	pop	XL
+	pop	XH
+	
 	ret
 
 

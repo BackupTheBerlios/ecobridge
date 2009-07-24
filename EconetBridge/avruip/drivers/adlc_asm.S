@@ -7,6 +7,7 @@
 #include <avr/io.h>        /* Contains I/O port declarations */
 
 #include "adlc.h"
+#include "egpio.h"
 
 // The ADLC has four control registers and two status registers.
 #define	ADLC_CR1		0
@@ -333,6 +334,9 @@ adlc_tx_frame:
 	mov	YL, r22
 	mov	r21, r20
 
+	ldi	r24, EGPIO_ECONET_GREEN | EGPIO_SET
+	rcall	egpio_write
+
 	ldi	r23, 0
 	; go on the wire and start transmitting
 	ldi	tmp1, ADLC_CR1
@@ -547,6 +551,9 @@ process_ap:
 	cp	tmp1, adlc_state
 	breq	discontinue_again
 	
+	ldi	r24, EGPIO_ECONET_GREEN | EGPIO_SET
+	rcall	egpio_write
+
 	lds	XL, adlc_rx_ptr			; put the Rx buffer pointer address in X
 	lds	XH, adlc_rx_ptr + 1
 
@@ -798,7 +805,10 @@ adlc_ready_to_receive:
 
 	ldi	tmp2, CR1_RIE | CR1_TXRESET	; Enable Receive interrupts | Reset the TX status
 	ldi	tmp1, ADLC_CR1			; set to write to Control Register 1
-	rjmp	adlc_write				; write to the ADLC
+	rcall	adlc_write				; write to the ADLC
+
+	ldi	r24, EGPIO_ECONET_GREEN
+	rjmp	egpio_write
 
 ; -----------------------------------------------------------------------------------------
 ; Examine the network number and figure out whether it's something we are interested in.

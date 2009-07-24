@@ -127,7 +127,6 @@ int do_tx_packet(struct tx_record *tx)
   serial_eco();
   serial_tx('t');
   serial_tx('x');
-  serial_crlf();
 
   stats.tx_attempts++;
 
