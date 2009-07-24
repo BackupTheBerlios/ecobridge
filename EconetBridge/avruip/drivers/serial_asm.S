@@ -52,20 +52,32 @@
 .section .text             ; Start program section
 
 egpio_init:
-	ldi	r16, EGPIO_ADLC_RESET   	; 3
+	ldi	r24, EGPIO_ADLC_RESET   	; 3
 	rcall	egpio_write
 
-	ldi	r16, EGPIO_ETHER_RESET | EGPIO_SET 	
+	ldi	r24, EGPIO_ETHER_RESET | EGPIO_SET 	
 							; 6 force high until the chip is ready to be initialised
 	rcall	egpio_write
 
 	; wait
 	rcall delay_65536
 
-	ldi	r16, EGPIO_ETHER_RESET		; unreset chip
+	ldi	r24, EGPIO_ETHER_RESET		; unreset chip
 	rcall	egpio_write
 
 	rcall delay_65536
+
+	ldi	r24, EGPIO_ECONET_RED
+	rcall	egpio_write
+
+	ldi	r24, EGPIO_ECONET_GREEN
+	rcall	egpio_write
+
+	ldi	r24, EGPIO_STATUS_RED | EGPIO_SET
+	rcall	egpio_write
+
+	ldi	r24, EGPIO_STATUS_GREEN | EGPIO_SET
+	rcall	egpio_write
 
 	rcall crlf
 

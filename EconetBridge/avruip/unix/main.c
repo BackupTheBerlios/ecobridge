@@ -31,7 +31,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: main.c,v 1.13 2009/07/23 21:43:12 markusher Exp $
+ * $Id: main.c,v 1.14 2009/07/24 18:28:15 philb Exp $
  *
  */
 
@@ -97,6 +97,7 @@ main(void)
   struct timer periodic_timer, arp_timer;
 
   AVR_init();
+  egpio_init();
   clock_init();
   adlc_init();
   GICR = (1 << INT0);
