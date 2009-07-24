@@ -298,25 +298,29 @@ void do_immediate(void)
 	DNet = (unsigned char) *(uip_buf+32);	// octet 3 of destin IP
 	DStn = (unsigned char) *(uip_buf+33);	// octet 4 of destin IP
 
+	DNet = ECONET_INTERFACE_NET; // for testing
+
 
 	/* update the routing table with the ethernet map */
 	rTableEth[(SNet-127)] = (uint32_t) *(uip_buf+26);
 
+	/* if the destination econet network is the same as the network
+	   definition on this network interface, change it to 0, the 
+	   local network */
 
-	// Get net and station
+	if (DNet == ECONET_INTERFACE_NET){
+		DNet = LOCAL_NETWORK;
+	}
 
-//	DNet = DNet;
-	DNet = ECONET_INTERFACE_NET;	// temporarily set the network to our network
-					// for testing
-
+	// is the station available?
 	if (Econet_Peek(DNet,DStn)==0) {
-		// update route as not available
-		rTableEco[DNet] = NOT_ROUTABLE;
 		return;
-	};
+	}
 
-	// if available, send the answer back to the orginator
-	rTableEco[DNet] = ROUTABLE;
+	// if station found, send a reply back to the orginator
+	if ( DNet != LOCAL_NETWORK ) {
+		rTableEco[DNet] = ROUTABLE;
+	}
 
 	m->mns_opcode = IMMEDIATE_OP_REPLY;
 	// all the codes inbetween are set from the incoming packet
@@ -375,11 +379,19 @@ void foward_packet(void)
 	DNet = (unsigned char) *(uip_buf+32);	// octet 3 of destin IP
 	DStn = (unsigned char) *(uip_buf+33);	// octet 4 of destin IP
 
+	DNet = ECONET_INTERFACE_NET; // for testing
+
 	/* update the routing table with the ethernet map */
 	rTableEth[(SNet-127)] = (uint32_t) *(uip_buf+26);
 
-	DNet = ECONET_INTERFACE_NET;	// temporarily set the network to our network
-					// for testing
+	/* if the destination econet network is the same as the network
+	   definition on this network interface, change it to 0, the 
+	   local network */
+
+	if (DNet == ECONET_INTERFACE_NET) {
+		DNet = LOCAL_NETWORK;
+	}
+
 	DStn = 4;			// and fix the destination as Station 0x4
 	SNet = ETHNET_INTERFACE_NET;
 
@@ -388,7 +400,7 @@ void foward_packet(void)
 	m = (struct Econet_Header *)(uip_appdata-5);
 	
 	m->DSTN = DStn;
-	m->DNET = ECONET_INTERFACE_NET;
+	m->DNET = DNet;
 	m->SSTN = SStn;
 	m->SNET = SNet;
 	m->CB = 0x80;

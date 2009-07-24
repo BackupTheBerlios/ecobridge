@@ -32,7 +32,7 @@ struct aun_state {
   char state;
 };
 
-#define NOT_LISTEING	0
+#define NOT_LISTENING	0
 #define LISTENING	1
 
 
