@@ -426,7 +426,10 @@ void foward_packet(void)
 	return;
 }
 
-
+void aun_send_packet (uint32_t dest_ip, uint16_t data_length)
+{
+  adlc_forwarding_complete (TX_OK);
+}
 
 /*
 static void 

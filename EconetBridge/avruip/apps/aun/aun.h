@@ -439,6 +439,7 @@ struct txcb
 
 void do_immediate(void) ;
 
+extern void aun_send_packet (uint32_t dest_ip, uint16_t data_length);
 
 #endif /* __AUN_H__ */
 /** @} */

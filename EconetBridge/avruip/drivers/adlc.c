@@ -290,10 +290,10 @@ void adlc_poller(void)
   }
   else if ((adlc_state & 0x0f) == FRAME_COMPLETE)
   {
+    uint16_t frame_length = adlc_rx_ptr - (int)ECONET_RX_BUF;
     stats.frames_in++;
     if (adlc_state == (RX_SCOUT | FRAME_COMPLETE))
     {
-      int frame_length = adlc_rx_ptr - (int)ECONET_RX_BUF;
       if (frame_length < 6) {
         stats.short_scouts++;
 	adlc_ready_to_receive (RX_SCOUT);
@@ -353,7 +353,8 @@ void adlc_poller(void)
     }
     else if (adlc_state == (RX_DATA | FRAME_COMPLETE))
     {
-      /* ... */
+      memcpy (uip_appdata + 6, ECONET_RX_BUF + 4, frame_length - 4);
+      aun_send_packet (ip_target, frame_length - 4);
     }
     else
     {
@@ -362,6 +363,17 @@ void adlc_poller(void)
     }
     adlc_ready_to_receive (RX_SCOUT);
   }
+}
+
+void adlc_forwarding_complete(uint8_t result)
+{
+  if (result == TX_OK)
+  {
+    make_scout (ECONET_RX_BUF[2], ECONET_RX_BUF[3]);
+    adlc_tx_frame (scout_buf, scout_buf + 4, 1);
+  }
+ 
+  adlc_ready_to_receive (RX_SCOUT);
 }
 
 unsigned char send_packet(unsigned char* buffer, unsigned short length)

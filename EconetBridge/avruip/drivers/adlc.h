@@ -47,6 +47,7 @@ extern uint8_t poll_rx(uint8_t i, struct rx_control *rxc);
 extern void close_rx(uint8_t i);
 extern int enqueue_tx(unsigned char *buf, int length);
 extern volatile short adlc_rx_ptr;
+extern void adlc_forwarding_complete(uint8_t result);
 
 #endif
 
