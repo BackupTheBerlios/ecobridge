@@ -267,19 +267,19 @@ extern struct mns mns;
 
 struct mns_msg
 {
-   u_char  mns_opcode;
-   u_char  mns_port;
-   u_char  mns_control;
+   u_char	mns_opcode;
+   u_char	mns_port;
+   u_char	mns_control;
 #define Econet_MachinePeek        8
-   u_char  mns_status;
+   u_char	mns_status;
 #define MSG_IS_RETRY    01
 #define MSG_IS_DATAGRAM 02
-//   u_int   mns_handle;
-unsigned long   mns_handle;
+// u_int	mns_handle;
+   u_long	mns_handle;
    u_char	mns_machine;
    u_char	mns_pad;
    u_char	mns_release;
-   u_char   mns_version;
+   u_char	mns_version;
    u_short	mns_padend;
 };
 
@@ -299,20 +299,20 @@ unsigned long   mns_handle;
 
 struct atp_block
 {
-   u_char   atpb_net;
-   u_char   atpb_station;
-   u_long   atpb_ipadr;
-   char     atpb_sitename[ITEM_NAMELEN];
-   char     atpb_netname[ITEM_NAMELEN];
+   u_char	atpb_net;
+   u_char	atpb_station;
+   u_long   	atpb_ipadr;
+   char		atpb_sitename[ITEM_NAMELEN];
+   char		atpb_netname[ITEM_NAMELEN];
 };
 
 struct atp_msg
 {
-   u_char    atp_opcode;
+   u_char	atp_opcode;
 #define MNS_TRANSFORM_REQUEST       1
 #define MNS_TRANSFORM_REPLY         2
-   u_char   atp_count;
-   u_char   atp_address;
+   u_char	atp_count;
+   u_char	atp_address;
 };
 
 struct address_q

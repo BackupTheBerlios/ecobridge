@@ -392,7 +392,7 @@ void foward_packet(void)
 		DNet = LOCAL_NETWORK;
 	}
 
-	DStn = 254;			// and fix the destination as Station 0x4
+//	DStn = 254;			// and fix the destination as Station 0x4
 	SNet = ETHNET_INTERFACE_NET;
 //	SNet = 0;
 
@@ -401,7 +401,7 @@ void foward_packet(void)
 	m = (struct Econet_Header *)(uip_appdata);
 	Port = m->DNET;
 
-	m = (struct Econet_Header *)(uip_appdata-2);
+	m = (struct Econet_Header *)(uip_appdata+2);
 
 	m->DSTN = DStn;
 	m->DNET = DNet;
@@ -409,7 +409,15 @@ void foward_packet(void)
 	m->SNET = SNet;
 	m->CB = 0x80;
 	m->PORT = Port;
-
+/*
+	m->DATA1 = 0x0D;
+	m->DATA2 = 0x00;
+	m->DATA3 = 0x00;
+	m->DATA4 = 0x00;
+	m->DATA5 = 0x00;
+	m->DATA6 = 0x00;
+	m->DATA7 = 0x00;
+*/
 	unsigned char x;
 	x = send_packet(m,buf_len+2 );
 
