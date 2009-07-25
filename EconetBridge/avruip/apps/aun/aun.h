@@ -22,6 +22,10 @@
 #ifndef __AUN_H__
 #define __AUN_H__
 
+typedef unsigned char	u_char;
+typedef unsigned int	u_int;
+typedef unsigned short	u_short;
+typedef unsigned long	u_long;
 
 /* Since this file will be included by uip.h, we cannot include uip.h
    here. But we might need to include uipopt.h if we need the u8_t and
@@ -30,10 +34,11 @@
 struct aun_state {
   struct uip_udp_conn *conn;
   char state;
+  u_long handle;
 };
 
-#define AUN_NOT_LISTENING	0
-#define AUN_LISTENING	1
+#define ETH_NOT_LISTENING	0
+#define ETH_LISTENING	1
 
 
 //dummy as not using tcp at the moment
@@ -59,11 +64,6 @@ void aun_init(void);
 void foward_packet(void);
 
 extern uint32_t rTableEth[127];
-
-typedef unsigned char	u_char;
-typedef unsigned int	u_int;
-typedef unsigned short	u_short;
-typedef unsigned long	u_long;
 
 
 /* module.h
@@ -434,12 +434,12 @@ struct txcb
  * (defined at the end of the code).
  */
 
+static void newdata(void);
 //static void check_entries(void);
 
 
 void do_immediate(void) ;
 
-extern void aun_send_packet (uint32_t dest_ip, uint16_t data_length);
 
 #endif /* __AUN_H__ */
 /** @} */

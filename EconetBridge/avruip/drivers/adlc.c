@@ -172,7 +172,7 @@ int do_tx_packet(struct tx_record *tx)
 
   serial_tx ('V');
   tx->buf = NULL;
-    
+
   adlc_ready_to_receive (RX_SCOUT);
 
   serial_crlf();
@@ -183,10 +183,10 @@ int do_tx_packet(struct tx_record *tx)
 struct rx_record *find_local_rxcb(uint8_t port, uint8_t station, uint8_t net)
 {
   int i;
-  for (i = 0; i < MAX_RX; i++) 
+  for (i = 0; i < MAX_RX; i++)
   {
     struct rx_record *rx = &rx_buf[i];
-    if (rx->state == RXCB_READY 
+    if (rx->state == RXCB_READY
 	&& (rx->port == port || rx->port == 0)
 	&& ((rx->stn == 0 && rx->net == 0)
 	    || (rx->stn == station && rx->net == net)))
@@ -200,7 +200,7 @@ int enqueue_tx(unsigned char *buf, int length)
   if (length < 6)
     return -2;		// can't enqueue runt packets
 
-    struct mns_msg *m; 
+    struct mns_msg *m;
     m = (struct mns_msg *)uip_appdata;
 
   struct tx_record *tx = get_tx_buf();
@@ -223,10 +223,10 @@ int should_bridge(uint16_t dest, uint32_t *ip_target)
 
   /* if destination is reachable fill ip_target address */
 
-  if (rTableEth[(dest-127)] != 0)  
+  if (rTableEth[(dest-127)] != 0)
   {
     *ip_target = rTableEth[dest];
-    return 1;	
+    return 1;
   }
   else {
     return 0;
@@ -320,7 +320,7 @@ void adlc_poller(void)
 	    rx->state = RXCB_RECEIVED;
 	  }
 	}
-      } 
+      }
       if (port != 0x9c && should_bridge (dst, &ip_target))
       {
 	serial_tx ('B');
@@ -372,19 +372,6 @@ void adlc_forwarding_complete(uint8_t result)
     make_scout (ECONET_RX_BUF[2], ECONET_RX_BUF[3]);
     adlc_tx_frame (scout_buf, scout_buf + 4, 1);
   }
- 
+
   adlc_ready_to_receive (RX_SCOUT);
 }
-
-unsigned char send_packet(unsigned char* buffer, unsigned short length)
-{
-
-//	serial_packet((buffer),length);
-
-  	enqueue_tx(buffer, length);
-
-
-    return 1;
-}
-
-

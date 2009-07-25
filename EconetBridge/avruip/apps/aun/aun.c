@@ -53,7 +53,7 @@ static struct aun_state s;
 
 #define LOCAL_NETWORK 	0
 
-struct EconetRouting 
+struct EconetRouting
 {
 u_char	pad[UIP_LLH_LEN];
 u_char	Network;
@@ -94,9 +94,7 @@ uint32_t rTableEth[127]; 	// index = Econet NET-127. Only need 127-254
 
 
 unsigned char machine_type =  MACHINE_TYPE_ARC;
-uint8_t econet_net_nr = ECONET_INTERFACE_NET;
 
-static void newdata(void);
 
 /*---------------------------------------------------------------------------*/
 /*
@@ -107,7 +105,7 @@ static void newdata(void);
 void
 aun_init(void)
 {
-  
+
 	unsigned char i;
 
 	// initialise econet routing table
@@ -118,7 +116,7 @@ aun_init(void)
 	rTableEco[LOCAL_NETWORK] = ROUTABLE;
 	rTableEco[ANY_NETWORK] = ROUTABLE;
 	rTableEco[ECONET_INTERFACE_NET] = ROUTABLE;
-	
+
 	// set the ethernet routing table
 
 	for (i=0; i<128; i++) {
@@ -126,7 +124,7 @@ aun_init(void)
 	}
 
 
-	s.state = AUN_LISTENING;
+	s.state = ETH_LISTENING;
 
 	// remove any open connections
 	if (s.conn != NULL) {
@@ -165,19 +163,19 @@ serial_packet(uip_buf+42, 12);
 //serial_packet(uip_appdata, 12);
 
 
-   if(uip_aborted()) 
+   if(uip_aborted())
    {}
-   if(uip_timedout()) 
+   if(uip_timedout())
    {}
-   if(uip_closed()) 
+   if(uip_closed())
    {}
-   if(uip_connected()) 
+   if(uip_connected())
    {}
-   if(uip_acked()) 
+   if(uip_acked())
    {}
-   if(uip_poll()) 
+   if(uip_poll())
    {}
-   if(uip_newdata()) 
+   if(uip_newdata())
    {
       newdata();
     }
@@ -192,19 +190,19 @@ serial_packet(uip_buf+42, 12);
 
   if(uip_udp_conn->rport == HTONS(MNSATPPORT)) {
 
-   if(uip_aborted()) 
+   if(uip_aborted())
    {}
-   if(uip_timedout()) 
+   if(uip_timedout())
    {}
-   if(uip_closed()) 
+   if(uip_closed())
    {}
-   if(uip_connected()) 
+   if(uip_connected())
    {}
-   if(uip_acked()) 
+   if(uip_acked())
    {}
-   if(uip_poll()) 
+   if(uip_poll())
    {}
-   if(uip_newdata()) 
+   if(uip_newdata())
    {
       newdata();
     }
@@ -230,7 +228,7 @@ static void
 newdata(void)
 {
 
-	struct mns_msg *m; 
+	struct mns_msg *m;
 
 	m = (struct mns_msg *)uip_appdata;
 
@@ -240,7 +238,7 @@ newdata(void)
 		//
 		break;
 	case DATA_FRAME:		//2
-		foward_packet();		
+		foward_packet();
 		//
 		break;
 	case DATA_FRAME_ACK:		//3
@@ -269,7 +267,7 @@ newdata(void)
 
 /******************************************************************************/
 
-void do_immediate(void) 
+void do_immediate(void)
 /*
  * Deal with a machine type peek received
  *
@@ -282,18 +280,18 @@ void do_immediate(void)
  */
 {
 
-	struct mns_msg *m; 
+	struct mns_msg *m;
 	m = (struct mns_msg *)uip_appdata;
 
 	unsigned char SNet, SStn;
 	unsigned char DNet, DStn;
 
-	/* traditionally the network and station would be x.x.NET.STN of 
+	/* traditionally the network and station would be x.x.NET.STN of
 	   the IP address. This may not be correct, and the sender should
-	   be queried as to its AUN MAP and what exactly this IP address 
+	   be queried as to its AUN MAP and what exactly this IP address
 	   maps to.
 	*/
-	
+
 	SNet = (unsigned char) *(uip_buf+28);	// octet 3 of source IP
 	SStn = (unsigned char) *(uip_buf+29);	// octet 4 of source IP
 	DNet = (unsigned char) *(uip_buf+32);	// octet 3 of destin IP
@@ -306,7 +304,7 @@ void do_immediate(void)
 	rTableEth[(SNet-127)] = (uint32_t) *(uip_buf+26);
 
 	/* if the destination econet network is the same as the network
-	   definition on this network interface, change it to 0, the 
+	   definition on this network interface, change it to 0, the
 	   local network */
 
 	if (DNet == ECONET_INTERFACE_NET){
@@ -343,11 +341,11 @@ void do_immediate(void)
 
 /******************************************************************************/
 
-void do_atp(unsigned char *Net, unsigned char *Stn) 
+void do_atp(unsigned char *Net, unsigned char *Stn)
 
 {
 
-	struct atp_block *atp; 
+	struct atp_block *atp;
 
 
 	atp = ((struct atp_block *)&uip_buf[UIP_LLH_LEN]);
@@ -362,7 +360,7 @@ void do_atp(unsigned char *Net, unsigned char *Stn)
 
 /******************************************************************************/
 
-void foward_packet(void) 
+void foward_packet(void)
 
 {
 	// Get net and station
@@ -371,11 +369,12 @@ void foward_packet(void)
 	unsigned char SNet, SStn;
 	unsigned char Port;
 
-	struct Econet_Header *m; 
+	struct aunhdr *ah;
+	struct Econet_Header *eh;
 	unsigned short buf_len;
 
 	buf_len = uip_len - UIP_LLH_LEN;
-	
+
 	SNet = (unsigned char) *(uip_buf+28);	// octet 3 of source IP
 	SStn = (unsigned char) *(uip_buf+29);	// octet 4 of source IP
 	DNet = (unsigned char) *(uip_buf+32);	// octet 3 of destin IP
@@ -387,7 +386,7 @@ void foward_packet(void)
 	rTableEth[(SNet-127)] = (uint32_t) *(uip_buf+26);
 
 	/* if the destination econet network is the same as the network
-	   definition on this network interface, change it to 0, the 
+	   definition on this network interface, change it to 0, the
 	   local network */
 
 	if (DNet == ECONET_INTERFACE_NET) {
@@ -398,41 +397,28 @@ void foward_packet(void)
 	SNet = ETHNET_INTERFACE_NET;
 //	SNet = 0;
 
-	// use Econet header structure instead of scout packet structure 
+	// use Econet header structure instead of scout packet structure
 	// so the Port byte can easily be duplicated.
-	m = (struct Econet_Header *)(uip_appdata);
-	Port = m->DNET;
+	ah = (struct aunhdr *)(uip_appdata);
+	eh = (struct Econet_Header *)(uip_appdata+2);
 
-	m = (struct Econet_Header *)(uip_appdata+2);
+	eh->DSTN = DStn;
+	eh->DNET = DNet;
+	eh->SSTN = SStn;
+	eh->SNET = SNet;
+	eh->CB = 0x80;
+	eh->PORT = ah->port;
 
-	m->DSTN = DStn;
-	m->DNET = DNet;
-	m->SSTN = SStn;
-	m->SNET = SNet;
-	m->CB = 0x80;
-	m->PORT = Port;
-/*
-	m->DATA1 = 0x0D;
-	m->DATA2 = 0x00;
-	m->DATA3 = 0x00;
-	m->DATA4 = 0x00;
-	m->DATA5 = 0x00;
-	m->DATA6 = 0x00;
-	m->DATA7 = 0x00;
-*/
-	unsigned char x;
-	x = send_packet(m,buf_len+2 );
+	int x;
+	x = enqueue_tx(eh, buf_len-2 );
 
 	return;
 }
 
-void aun_send_packet (uint32_t dest_ip, uint16_t data_length)
-{
-  adlc_forwarding_complete (TX_OK);
-}
+
 
 /*
-static void 
+static void
 check_entries(void)
 {
 	char i;
