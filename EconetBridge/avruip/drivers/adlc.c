@@ -48,7 +48,7 @@ struct tx_record
 
 struct rx_record
 {
-  uint8_t state, port, cb, stn, net;
+  uint8_t state, port, cb, stn, net, rx_port;
   unsigned char *buf;
   int len;
 };
@@ -93,13 +93,15 @@ uint8_t setup_rx(uint8_t port, uint8_t stn, uint8_t net, unsigned char *ptr, uns
   return 0;
 }
 
-uint8_t poll_rx(uint8_t i, uint8_t *stn, uint8_t *net)
+uint8_t poll_rx(uint8_t i, struct rx_control *rxc)
 {
   if (i == 0 || i > MAX_RX)
     return RXCB_INVALID;
   struct rx_record *rx = &rx_buf[i-1];
-  *stn = rx->stn;
-  *net = rx->net;
+  rxc->stn = rx->stn;
+  rxc->net = rx->net;
+  rxc->cb = rx->cb;
+  rxc->port = rx->rx_port;
   return rx->state;
 }
 
@@ -314,12 +316,12 @@ void adlc_poller(void)
 	    rx->stn = src_stn;
 	    rx->net = src_net;
 	    rx->cb = cb;
-	    rx->port = port;
+	    rx->rx_port = port;
 	    rx->state = RXCB_RECEIVED;
 	  }
-	}	
+	}
       } 
-      if (should_bridge (dst, &ip_target))
+      if (port != 0x9c && should_bridge (dst, &ip_target))
       {
 	serial_tx ('B');
 	make_scout (src_stn, src_net);
@@ -339,6 +341,8 @@ void adlc_poller(void)
 	  if (current_rx)
 	  {
 	    current_rx->state = RXCB_RECEIVING;
+	    current_rx->cb = cb;
+	    current_rx->rx_port = port;
 	    make_scout (src_stn, src_net);
 	    adlc_tx_frame (scout_buf, scout_buf + 4, 1);
 	    adlc_ready_to_receive (RX_DATA);

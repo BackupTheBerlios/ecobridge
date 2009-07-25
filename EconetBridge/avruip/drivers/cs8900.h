@@ -192,14 +192,4 @@ unsigned int cs8900BeginPacketRetreive(void);
 void cs8900RetreivePacketData(unsigned char * , unsigned int );
 void cs8900EndPacketRetreive(void);
 
-static unsigned short ReadPPRegister(unsigned short);
-void WritePPRegister(unsigned short, unsigned short);
-unsigned short ReadRxStatusLengthRegister(void);
-void WriteIORegister(unsigned short , unsigned short );
-unsigned short ReadIORegister(unsigned short );
-int cs8900_poll_init(unsigned short);
-int cs8900_reset(void);
-void outportb( unsigned short, unsigned char);
-unsigned short inportb(unsigned short);
-
 #endif /* _CS8900_H_ */

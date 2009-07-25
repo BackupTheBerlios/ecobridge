@@ -32,8 +32,8 @@ struct aun_state {
   char state;
 };
 
-#define NOT_LISTENING	0
-#define LISTENING	1
+#define AUN_NOT_LISTENING	0
+#define AUN_LISTENING	1
 
 
 //dummy as not using tcp at the moment
@@ -434,7 +434,6 @@ struct txcb
  * (defined at the end of the code).
  */
 
-static void newdata(void);
 //static void check_entries(void);
 
 

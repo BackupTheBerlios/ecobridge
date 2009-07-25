@@ -94,7 +94,9 @@ uint32_t rTableEth[127]; 	// index = Econet NET-127. Only need 127-254
 
 
 unsigned char machine_type =  MACHINE_TYPE_ARC;
+uint8_t econet_net_nr = ECONET_INTERFACE_NET;
 
+static void newdata(void);
 
 /*---------------------------------------------------------------------------*/
 /*
@@ -124,7 +126,7 @@ aun_init(void)
 	}
 
 
-	s.state = LISTENING;
+	s.state = AUN_LISTENING;
 
 	// remove any open connections
 	if (s.conn != NULL) {

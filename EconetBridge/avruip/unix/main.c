@@ -31,7 +31,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: main.c,v 1.15 2009/07/24 18:45:34 philb Exp $
+ * $Id: main.c,v 1.16 2009/07/25 09:55:28 philb Exp $
  *
  */
 
@@ -44,8 +44,11 @@
 #include "timer.h"
 #include "clock.h"
 
+#include "egpio.h"
 #include "serial.h"
 #include "adlc.h"
+#include "internet.h"
+#include "bridge.h"
 
 extern void adlc_irq(void);
 extern void adlc_access(void);
@@ -120,6 +123,7 @@ main(void)
 
   aun_init();
   internet_init();
+  bridge_init();
 
   while(1) {
 
@@ -127,6 +131,7 @@ main(void)
     adlc_poller();
 
     internet_poller();
+    bridge_poller ();
 
     uip_len = nic_poll();
 

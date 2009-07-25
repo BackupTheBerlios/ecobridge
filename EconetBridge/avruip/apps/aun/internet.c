@@ -28,14 +28,14 @@ void internet_init(void)
 
 void internet_poller(void)
 {
-  uint8_t stn, net;
-  if (poll_rx (find_server_rxcb, &stn, &net) == RXCB_RECEIVED)
+  struct rx_control rxc;
+  if (poll_rx (find_server_rxcb, &rxc) == RXCB_RECEIVED)
   {
     if (memcmp (bcast_buf, MY_SERVER_TYPE, 8) == 0
 	|| memcmp (bcast_buf, WILDCARD_SERVER_TYPE, 8) == 0)
     {
-      response_buffer[0] = stn;
-      response_buffer[1] = net;
+      response_buffer[0] = rxc.stn;
+      response_buffer[1] = rxc.net;
       response_buffer[2] = my_station;
       response_buffer[3] = 0;
       response_buffer[4] = 0x80;
