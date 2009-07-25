@@ -22,48 +22,41 @@ History:
 extern void serial_tx(uint8_t mask);
 extern void serial_tx_hex(uint8_t mask);
 
-extern void egpio_init(void);
-
-extern void aWriteIORegister(void);
-extern void aReadIORegister(void);
-/*
-extern unsigned char	addr_lo;
-extern unsigned char	addr_hi;
-extern unsigned char	data;
-*/
-register uint8_t addr_lo	asm("r3");
-register uint8_t addr_hi	asm("r4");
-register uint8_t data		asm("r2");
-
-
 /* This should really be the same variable as in uip.c */
 unsigned char gEtherAddr[6] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55};
 
-unsigned char gPrevTxBidFail = 0;
+static unsigned char gPrevTxBidFail;
 
-static unsigned short ReadPPRegister(unsigned short);
-static void WritePPRegister(unsigned short, unsigned short);
-unsigned short ReadRxStatusLengthRegister(void);
-void WriteIORegister(unsigned short , unsigned short );
-unsigned short ReadIORegister(unsigned short );
-int cs8900_poll_init(unsigned short);
-int cs8900_reset(void);
-void outportb( unsigned short, unsigned char);
-unsigned short inportb(unsigned short);
+static unsigned short ReadPPRegister(unsigned short) __attribute__ (( noinline ));
+static void WritePPRegister(unsigned short, unsigned short) __attribute__ (( noinline ));
+static unsigned short ReadRxStatusLengthRegister(void);
+static void WriteIORegister(unsigned short , unsigned short );
+static unsigned short ReadIORegister(unsigned short );
+static int8_t cs8900_poll_init(unsigned short);
+static int8_t cs8900_reset(void);
 
 /* wrappers for the driver */
 
-void cs8900Init(void)
+/* functions for the driver code to access memory */
+static void outportb( unsigned short reg, unsigned char val)
 {
-	int status;
-	status = cs8900_poll_init(PP_TestCTL_FDX);
-	return;
+	*((volatile unsigned char *)reg) = val;
 }
 
-void cs8900BeginPacketSend(unsigned int packetLength)
+static unsigned short inportb(unsigned short reg)
+{
+	return *((volatile unsigned char *)reg);
+}
+
+void cs8900Init(void)
+{
+	cs8900_poll_init(PP_TestCTL_FDX);
+}
+
+void cs8900BeginPacketSend(uint16_t packetLength)
 {
 
-     int total_len = packetLength;
+     uint16_t total_len = packetLength;
      unsigned short stat;
 
 	//****** Step 0: First thing to do is to disable all interrupts
@@ -151,13 +144,11 @@ void cs8900BeginPacketSend(unsigned int packetLength)
 	return;
 }
 
-void cs8900SendPacketData(unsigned char * localBuffer, unsigned int length)
+void cs8900SendPacketData(unsigned char * localBuffer, uint16_t length)
 {
-	int len;
-	int total_len = length;
+	uint16_t len;
+	uint16_t total_len = length;
 	unsigned short *sdata;
-	unsigned short stat;
-	unsigned long i;
 
 	//***** Step 5: copy Tx data into CS8900's buffer
 	//
@@ -182,6 +173,13 @@ void cs8900SendPacketData(unsigned char * localBuffer, unsigned int length)
 		}
 	}
 
+}
+
+void cs8900EndPacketSend(void)
+{
+	unsigned short stat;
+	uint16_t i;
+
 	//***** Step 6: Poll the TxEvent Reg for the TX completed status
 	//
 	// This step is optional. If you don't wait until Tx compelete,
@@ -202,19 +200,9 @@ void cs8900SendPacketData(unsigned char * localBuffer, unsigned int length)
 	return;// total_len; /* return successful*/
      }
 
-     // Tx with Errors
-     //printf("cs8900_poll_send(): Tx Error! TxEvent=%x \n", stat);
-     // Tx Failed
-     return; // -1;
-
 }
 
-void cs8900EndPacketSend(void)
-{
-	return;
-}
-
-unsigned int cs8900BeginPacketRetreive(void)
+uint16_t cs8900BeginPacketRetreive(void)
 {
      unsigned short stat, totalLen, val;
 
@@ -278,7 +266,7 @@ unsigned int cs8900BeginPacketRetreive(void)
 	// uncomment printf for debug
 	// printf("RxEvent - stat: %x, len: %d\n", stat, totalLen);
 
-	return (unsigned int)totalLen;
+	return totalLen;
 }
 
 void cs8900RetreivePacketData(unsigned char * localBuffer, unsigned int length)
@@ -327,13 +315,6 @@ void cs8900RetreivePacketData(unsigned char * localBuffer, unsigned int length)
 	return;
 }
 
-void cs8900EndPacketRetreive(void)
-{
-	return;
-}
-
-
-
 /*******************************************************************/
 /* ReadPPRegister(): Read value from the Packet Pointer register   */
 /* at regOffset                                                    */
@@ -352,7 +333,7 @@ static unsigned short ReadPPRegister(unsigned short regOffset)
 /* WritePPRegister(): write value to the Packet Pointer register   */
 /* at regOffset                                                    */
 /*******************************************************************/
-void WritePPRegister(unsigned short regOffset, unsigned short val)
+static void WritePPRegister(unsigned short regOffset, unsigned short val)
 {
 
 	// write a 16 bit register offset to IO port CS8900_PPTR
@@ -371,7 +352,7 @@ void WritePPRegister(unsigned short regOffset, unsigned short val)
 /* high order byte first then the low order byte.  This special    */
 /* case is only used to read the RxStatus and RxLength registers   */
 /*******************************************************************/
-unsigned short ReadRxStatusLengthRegister()
+static unsigned short ReadRxStatusLengthRegister()
 {
 
 	// read 16 bits from IO port number CS8900_PPTR
@@ -383,7 +364,7 @@ unsigned short ReadRxStatusLengthRegister()
 /* WriteIORegister(): Write the 16 bit data in val to the register,*/
 /* reg                                                             */
 /*******************************************************************/
-void WriteIORegister(unsigned short reg, unsigned short val)
+static void WriteIORegister(unsigned short reg, unsigned short val)
 {
 
 	// Write the 16 bits of data in val to reg
@@ -395,7 +376,7 @@ void WriteIORegister(unsigned short reg, unsigned short val)
 /*******************************************************************/
 /* ReadIORegister(): Read 16 bits of data from the register, reg.  */
 /*******************************************************************/
-unsigned short ReadIORegister(unsigned short reg)
+static unsigned short ReadIORegister(unsigned short reg)
 {
 
 	return(inportb((unsigned short *)reg) | 
@@ -408,12 +389,12 @@ unsigned short ReadIORegister(unsigned short reg)
 /*******************************************************************/
 /*   cs8900_poll_init( ): start up CS8900 for Poll Mode            */
 /*******************************************************************/
-int cs8900_poll_init(unsigned short duplexMode)
+static int8_t cs8900_poll_init(unsigned short duplexMode)
 {
 	unsigned short chip_type, chip_rev;
  	unsigned short tmpAddr0, tmpAddr1, tmpAddr2;
 	unsigned short *ptr;
-	int status;
+	int8_t status;
 
 
 
@@ -486,9 +467,9 @@ int cs8900_poll_init(unsigned short duplexMode)
 /*******************************************************************/
 /*   cs8900_reset( ): software reset the CS8900 chip               */
 /*******************************************************************/
-int cs8900_reset(void)
+static int8_t cs8900_reset(void)
 {
-     int j;
+     unsigned short j;
      unsigned short status;
 
      // Reset chip
@@ -514,36 +495,6 @@ int cs8900_reset(void)
 
      // Failure
      return -1;
-}
-
-
-/* functions for the driver code to access memory */
-
-void outportb( unsigned short reg, unsigned char val)
-{
-
-	// write the value in val to the register
-	addr_lo=((unsigned char)(reg & 0x00FF));
-	addr_hi=((unsigned char)((reg & 0xFF00) >> 8));
-	data=val;
-
-	// call write routine
-	aWriteIORegister();
-	return;
-
-}
-
-unsigned short inportb(unsigned short reg)
-{
-
-	addr_lo=((unsigned char)(reg & 0x00FF));
-	addr_hi=((unsigned char)((reg & 0xFF00) >> 8));
-
-	// call read routine
-	aReadIORegister();
-
-	return data;
-
 }
 
 

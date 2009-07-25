@@ -33,27 +33,17 @@ static void do_bridge_reply(uint8_t stn, uint8_t reply_port)
   response_buf[5] = reply_port;
   response_buf[6] = econet_net_nr;
   response_buf[7] = 0x01;
-  enqueue_tx (response_buf, 8);
+  enqueue_tx (response_buf, 8, 0);
 }
 
-static int is_bridge(void)
+static uint8_t is_bridge(void)
 {
   static const char *bridge = "BRIDGE";
-  int i;
+  uint8_t i;
   for (i = 0; i < 6; i++)
   {
     if ((bcast_buf[i] & 0xdf) != bridge[i])
-    {
-      serial_tx_str ("not bridge: ");
-      serial_tx (bcast_buf[0]);
-      serial_tx (bcast_buf[1]);
-      serial_tx (bcast_buf[2]);
-      serial_tx (bcast_buf[3]);
-      serial_tx (bcast_buf[4]);
-      serial_tx (bcast_buf[5]);
-      serial_crlf ();
       return 0;
-    }
   }
   return 1;
 }

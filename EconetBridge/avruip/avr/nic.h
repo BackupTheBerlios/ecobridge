@@ -53,10 +53,10 @@
 #define NICInit cs8900Init
 #define NICBeginPacketSend cs8900BeginPacketSend
 #define NICSendPacketData cs8900SendPacketData
-#define NICEndPacketSend cs8900EndPacketSend
+#define NICEndPacketSend() cs8900EndPacketSend
 #define NICBeginPacketRetreive cs8900BeginPacketRetreive
 #define NICRetreivePacketData cs8900RetreivePacketData
-#define NICEndPacketRetreive cs8900EndPacketRetreive
+#define NICEndPacketRetreive() do { } while (0)
 #endif
 
 /*****************************************************************************

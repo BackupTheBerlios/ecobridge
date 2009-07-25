@@ -42,6 +42,7 @@ struct tx_record
   int len;
   unsigned char retry_count;
   unsigned char retry_timer;
+  unsigned char is_aun;
   unsigned short requestor_ip[2];
   uint32_t requestor_handle;
 };
@@ -62,20 +63,20 @@ struct rx_record *current_rx;
 #define BROADCAST	1
 #define IMMEDIATE	2
 
-struct tx_record *get_tx_buf(void)
+static uint8_t get_tx_buf(void)
 {
-  int i;
+  uint8_t i;
   for (i = 0; i < MAX_TX; i++)
   {
     if (tx_buf[i].buf == NULL)
-      return &tx_buf[i];
+      return i;
   }
-  return NULL;
+  return 0xff;
 }
 
 uint8_t setup_rx(uint8_t port, uint8_t stn, uint8_t net, unsigned char *ptr, unsigned int length)
 {
-  int i;
+  uint8_t i;
   for (i = 0; i < MAX_RX; i++)
   {
     struct rx_record *rx = &rx_buf[i];
@@ -110,15 +111,15 @@ void close_rx(uint8_t i)
   rx_buf[i].state = RXCB_INVALID;
 }
 
-extern int get_adlc_state(void);
-extern int adlc_await_idle(void);
+extern uint8_t get_adlc_state(void);
+extern uint8_t adlc_await_idle(void);
 extern void adlc_tx_frame(unsigned char *buf, unsigned char *end, unsigned char type);
 
 static uint32_t ip_target;
 uint16_t my_station;
 static uint8_t aun_cb, aun_port;
 
-int do_tx_packet(struct tx_record *tx)
+static int8_t do_tx_packet(struct tx_record *tx)
 {
   unsigned char *buf = tx->buf;
   unsigned char type = NORMAL_PACKET;
@@ -183,7 +184,7 @@ int do_tx_packet(struct tx_record *tx)
 
 struct rx_record *find_local_rxcb(uint8_t port, uint8_t station, uint8_t net)
 {
-  int i;
+  uint8_t i;
   for (i = 0; i < MAX_RX; i++)
   {
     struct rx_record *rx = &rx_buf[i];
@@ -196,30 +197,34 @@ struct rx_record *find_local_rxcb(uint8_t port, uint8_t station, uint8_t net)
   return NULL;
 }
 
-int enqueue_tx(unsigned char *buf, int length)
+int16_t enqueue_tx(unsigned char *buf, int length, unsigned char is_aun)
 {
   if (length < 6)
     return -2;		// can't enqueue runt packets
 
-    struct mns_msg *m;
-    m = (struct mns_msg *)uip_appdata;
+  struct mns_msg *m;
+  m = (struct mns_msg *)uip_appdata;
 
-  struct tx_record *tx = get_tx_buf();
-  if (tx)
+  uint8_t i = get_tx_buf();
+  if (i != 0xff)
   {
+    struct tx_record *tx = &tx_buf[i];
     tx->retry_count = ADLC_TX_RETRY_COUNT;
     tx->retry_timer = 0;
     tx->len = length;
     tx->buf = buf;
-    tx->requestor_ip[0] = BUF->srcipaddr[0];
-    tx->requestor_ip[1] = BUF->srcipaddr[1];
-    tx->requestor_handle = m->mns_handle;
-    return 0;
+    if (is_aun) {
+      tx->requestor_ip[0] = BUF->srcipaddr[0];
+      tx->requestor_ip[1] = BUF->srcipaddr[1];
+      tx->requestor_handle = m->mns_handle;
+    }
+    tx->is_aun = is_aun;
+    return i + 1;
   }
   return -1;
 }
 
-int should_bridge(uint16_t dest, uint32_t *ip_target)
+uint8_t should_bridge(uint16_t dest, uint32_t *ip_target)
 {
 
   /* if destination is reachable fill ip_target address */
@@ -264,7 +269,7 @@ void adlc_poller(void)
 {
   if (adlc_state == RX_IDLE)
   {
-    int i;
+    uint8_t i;
     for (i = 0; i < MAX_TX; i++)
     {
       struct tx_record *tx = &tx_buf[i];
@@ -272,7 +277,8 @@ void adlc_poller(void)
       {
 	if (tx->retry_timer == 0)
 	{
-	  switch (do_tx_packet (tx)) {
+	  int8_t state;
+	  switch (state = do_tx_packet (tx)) {
 	  default:
 	    if (tx->retry_count--) {
 	      tx->retry_timer = ADLC_TX_RETRY_DELAY;
@@ -280,6 +286,10 @@ void adlc_poller(void)
 	    }
 	  case TX_OK:
 	  case LINE_JAMMED:
+	    if (tx->is_aun)
+	    {
+	      aun_tx_complete (state, tx->requestor_ip[0], tx->requestor_ip[1], tx->requestor_handle);
+	    }
 	    tx->buf = NULL;
 	    break;
 	  }

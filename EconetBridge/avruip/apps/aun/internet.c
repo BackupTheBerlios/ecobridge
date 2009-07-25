@@ -51,7 +51,7 @@ void internet_poller(void)
       strcpy ((char *)response_buffer + 9, MY_SERVER_TYPE);
       response_buffer[17] = strlen(MY_SERVER_NAME);
       strcpy ((char *)response_buffer + 18, MY_SERVER_NAME);
-      enqueue_tx (response_buffer, 18 + strlen(MY_SERVER_NAME));
+      enqueue_tx (response_buffer, 18 + strlen(MY_SERVER_NAME), 0);
     }
     close_rx (find_server_rxcb);
     setup_find_server_rxcb ();

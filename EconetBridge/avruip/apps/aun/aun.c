@@ -413,7 +413,7 @@ void foward_packet(void)
 	eh->PORT = ah->port;
 
 	int x;
-	x = enqueue_tx(eh, buf_len-2 );
+	x = enqueue_tx(eh, buf_len-2, 1);
 
 	return;
 }
@@ -430,6 +430,10 @@ void aun_send_broadcast (uint8_t cb, uint8_t port, uint16_t data_length)
 void aun_send_immediate (uint8_t cb, uint32_t dest_ip, uint16_t data_length)
 {
   adlc_immediate_complete (NOT_LISTENING, NULL, 0);
+}
+
+void aun_tx_complete (int8_t status, uint16_t requestor_ip0, uint16_t requestor_ip1, uint32_t handle)
+{
 }
 
 /*

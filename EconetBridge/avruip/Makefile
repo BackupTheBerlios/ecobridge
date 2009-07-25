@@ -342,7 +342,7 @@ program: $(TARGET).hex $(TARGET).eep
 %.lss: %.elf
 	@echo
 	@echo $(MSG_EXTENDED_LISTING) $@
-	$(OBJDUMP) -h -S $< > $@
+	$(OBJDUMP) -h -d $< > $@
 
 # Create a symbol table from ELF output file.
 %.sym: %.elf

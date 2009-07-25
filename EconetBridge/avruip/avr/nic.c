@@ -31,7 +31,6 @@ void nic_init(void)
 
 void nic_send(void)
 {
-
 	NICBeginPacketSend(uip_len);
 
 	// send packet, using data in uip_appdata if over the IP+TCP header size
