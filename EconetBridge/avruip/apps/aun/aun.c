@@ -423,6 +423,9 @@ void aun_send_packet (uint32_t dest_ip, uint16_t data_length)
   adlc_forwarding_complete (TX_OK);
 }
 
+void aun_send_broadcast (uint16_t data_length)
+{
+}
 
 /*
 static void
