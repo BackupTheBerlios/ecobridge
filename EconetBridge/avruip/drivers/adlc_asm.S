@@ -824,8 +824,8 @@ interesting_network:
 	breq	yes_network
 	cpi	tmp1, 0x0
 	breq	maybe_network
-	subi	tmp1, 0x80
-	brcs	no_network
+;	subi	tmp1, 0x80
+;	brcs	no_network
 	ldi	tmp2, 0
 	lsl	tmp1
 	rol	tmp2

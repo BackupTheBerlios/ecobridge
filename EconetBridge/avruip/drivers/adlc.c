@@ -229,7 +229,7 @@ uint8_t should_bridge(uint16_t dest, uint32_t *ip_target)
 
   /* if destination is reachable fill ip_target address */
 
-  if (rTableEth[(dest-127)] != 0)
+  if (rTableEth[dest] != 0)
   {
     *ip_target = rTableEth[dest];
     return 1;
