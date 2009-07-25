@@ -58,7 +58,7 @@ void aun_appcall(void);
 void aun_init(void);
 void foward_packet(void);
 
-extern uint32_t rTableEth[127];
+extern uint32_t rTableEth[256];
 
 typedef unsigned char	u_char;
 typedef unsigned int	u_int;

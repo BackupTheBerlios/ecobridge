@@ -90,7 +90,7 @@ struct aunhdr
 
 volatile static unsigned char rTableEco[256];
 
-uint32_t rTableEth[127]; 	// index = Econet NET-127. Only need 127-254
+uint32_t rTableEth[256]; 	// index = Econet NET-127. Only need 127-254
 
 
 unsigned char machine_type =  MACHINE_TYPE_ARC;
@@ -114,6 +114,7 @@ aun_init(void)
 	// initialise econet routing table
 	for (i=1; i<255; i++) {
 		rTableEco[i] = NOT_ROUTABLE;		// clear the table
+		rTableEth[i] = NOT_ROUTABLE;	// clear the table
 	}
 
 	rTableEco[LOCAL_NETWORK] = ROUTABLE;
@@ -121,11 +122,7 @@ aun_init(void)
 	rTableEco[ECONET_INTERFACE_NET] = ROUTABLE;
 
 	// set the ethernet routing table
-
-	for (i=0; i<128; i++) {
-		rTableEth[i] = 0;	// clear the table
-	}
-
+	rTableEth[ETHNET_INTERFACE_NET] = ROUTABLE;
 
 	s.state = AUN_LISTENING;
 
@@ -304,7 +301,7 @@ void do_immediate(void)
 
 
 	/* update the routing table with the ethernet map */
-	rTableEth[(SNet-127)] = (uint32_t) *(uip_buf+26);
+	rTableEth[SNet] = (uint32_t) *(uip_buf+26);
 
 	/* if the destination econet network is the same as the network
 	   definition on this network interface, change it to 0, the
@@ -386,7 +383,7 @@ void foward_packet(void)
 	DNet = ECONET_INTERFACE_NET; // for testing
 
 	/* update the routing table with the ethernet map */
-	rTableEth[(SNet-127)] = (uint32_t) *(uip_buf+26);
+	rTableEth[SNet] = (uint32_t) *(uip_buf+26);
 
 	/* if the destination econet network is the same as the network
 	   definition on this network interface, change it to 0, the
@@ -398,7 +395,7 @@ void foward_packet(void)
 
 //	DStn = 254;			// and fix the destination as Station 0x4
 	SNet = ETHNET_INTERFACE_NET;
-//	SNet = 0;
+
 
 	// use Econet header structure instead of scout packet structure
 	// so the Port byte can easily be duplicated.
@@ -411,6 +408,14 @@ void foward_packet(void)
 	eh->SNET = SNet;
 	eh->CB = 0x80;
 	eh->PORT = ah->port;
+/*	eh->DATA1 = 0x90;
+	eh->DATA2 = 25;
+	eh->DATA3 = 0x00;
+	eh->DATA4 = 0x00;
+	eh->DATA5 = 0x00;
+	eh->DATA6 = 0x00;
+	eh->DATA7 = 0x00;
+*/
 
 	int x;
 	x = enqueue_tx(eh, buf_len-2, 1);
@@ -418,19 +423,34 @@ void foward_packet(void)
 	return;
 }
 
+/*
+aun_send_immediate() works in the same way as aun_send_packet() but, obviously, 
+for immediate ops. You need to call back to adlc_immediate_complete(), again 
+with either TX_OK or NOT_LISTENING.  If the result was TX_OK, and there was data 
+returned (i.e. from machine peek) then you need to supply a buffer and length as well. 
+*/
+void aun_send_immediate (uint8_t cb, uint32_t dest_ip, uint16_t data_length)
+{
+  adlc_immediate_complete (NOT_LISTENING, NULL, 0);
+}
+
+
 void aun_send_packet (uint8_t cb, uint8_t port, uint32_t dest_ip, uint16_t data_length)
 {
+  serial_packet(uip_appdata+6, data_length);
   adlc_forwarding_complete (TX_OK);
 }
+
+
+/* 
+   aun_send_broadcast() is for broadcast operations.
+   There's no acknowledgement for these, you just need to send them off.
+*/
 
 void aun_send_broadcast (uint8_t cb, uint8_t port, uint16_t data_length)
 {
 }
 
-void aun_send_immediate (uint8_t cb, uint32_t dest_ip, uint16_t data_length)
-{
-  adlc_immediate_complete (NOT_LISTENING, NULL, 0);
-}
 
 void aun_tx_complete (int8_t status, uint16_t requestor_ip0, uint16_t requestor_ip1, uint32_t handle)
 {
