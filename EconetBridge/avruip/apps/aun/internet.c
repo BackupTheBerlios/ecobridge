@@ -11,6 +11,11 @@ static unsigned char response_buffer[32];
 
 #define FIND_SERVER_PORT	0xb0
 #define FIND_SERVER_REPLY_PORT	0xb1
+#define IP_PORT			0xd2
+
+#define EcCb_ARP		0x21
+#define EcCb_ARPreply		0x22
+#define EcCb_Frame		0x01
 
 static const char *MY_SERVER_TYPE = "INTERNET";
 static const char *MY_SERVER_NAME = "TCP/IP Gateway";

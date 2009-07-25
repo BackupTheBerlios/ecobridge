@@ -47,6 +47,7 @@ extern void close_rx(uint8_t i);
 extern int enqueue_tx(unsigned char *buf, int length);
 extern volatile short adlc_rx_ptr;
 extern void adlc_forwarding_complete(uint8_t result);
+extern void adlc_immediate_complete(uint8_t result, uint8_t *buffer, uint16_t length);
 
 #endif
 

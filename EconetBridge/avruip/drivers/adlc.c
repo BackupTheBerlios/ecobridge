@@ -116,6 +116,7 @@ extern void adlc_tx_frame(unsigned char *buf, unsigned char *end, unsigned char 
 
 static uint32_t ip_target;
 uint16_t my_station;
+static uint8_t aun_cb, aun_port;
 
 int do_tx_packet(struct tx_record *tx)
 {
@@ -323,12 +324,20 @@ void adlc_poller(void)
 	if (port != 0x9c)
 	{
 	  memcpy (uip_appdata + 6, ECONET_RX_BUF + 4, frame_length - 4);
-	  aun_send_broadcast (frame_length - 4);
+	  aun_send_broadcast (cb, port, frame_length - 4);
 	}
       }
       else if (should_bridge (dst, &ip_target))
       {
 	serial_tx ('B');
+	if (port == 0)
+	{
+	  if ((cb & 0x7f) == Econet_MachinePeek)
+	    aun_send_immediate (cb, ECONET_RX_BUF + 4, frame_length - 4);
+	  return;
+	}
+	aun_cb = cb;
+	aun_port = port;
 	make_scout (src_stn, src_net);
 	adlc_tx_frame (scout_buf, scout_buf + 4, 1);
 	adlc_ready_to_receive (RX_DATA);
@@ -359,7 +368,7 @@ void adlc_poller(void)
     else if (adlc_state == (RX_DATA | FRAME_COMPLETE))
     {
       memcpy (uip_appdata + 6, ECONET_RX_BUF + 4, frame_length - 4);
-      aun_send_packet (ip_target, frame_length - 4);
+      aun_send_packet (aun_cb, aun_port, ip_target, frame_length - 4);
     }
     else
     {
@@ -376,6 +385,20 @@ void adlc_forwarding_complete(uint8_t result)
   {
     make_scout (ECONET_RX_BUF[2], ECONET_RX_BUF[3]);
     adlc_tx_frame (scout_buf, scout_buf + 4, 1);
+  }
+
+  adlc_ready_to_receive (RX_SCOUT);
+}
+
+void adlc_immediate_complete(uint8_t result, uint8_t *buffer, uint16_t length)
+{
+  if (result == TX_OK)
+  {
+    make_scout (ECONET_RX_BUF[2], ECONET_RX_BUF[3]);
+    if (length > 12)
+      length = 12;
+    memcpy (scout_buf + 4, buffer, length);
+    adlc_tx_frame (scout_buf, scout_buf + 4 + length, 1);
   }
 
   adlc_ready_to_receive (RX_SCOUT);

@@ -418,13 +418,18 @@ void foward_packet(void)
 	return;
 }
 
-void aun_send_packet (uint32_t dest_ip, uint16_t data_length)
+void aun_send_packet (uint8_t cb, uint8_t port, uint32_t dest_ip, uint16_t data_length)
 {
   adlc_forwarding_complete (TX_OK);
 }
 
-void aun_send_broadcast (uint16_t data_length)
+void aun_send_broadcast (uint8_t cb, uint8_t port, uint16_t data_length)
 {
+}
+
+void aun_send_immediate (uint8_t cb, uint32_t dest_ip, uint16_t data_length)
+{
+  adlc_immediate_complete (NOT_LISTENING, NULL, 0);
 }
 
 /*
