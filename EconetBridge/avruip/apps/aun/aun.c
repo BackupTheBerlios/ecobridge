@@ -94,6 +94,9 @@ uint32_t rTableEth[127]; 	// index = Econet NET-127. Only need 127-254
 
 
 unsigned char machine_type =  MACHINE_TYPE_ARC;
+uint8_t econet_net_nr = ECONET_INTERFACE_NET;
+
+static void newdata(void);
 
 
 /*---------------------------------------------------------------------------*/
@@ -124,7 +127,7 @@ aun_init(void)
 	}
 
 
-	s.state = ETH_LISTENING;
+	s.state = AUN_LISTENING;
 
 	// remove any open connections
 	if (s.conn != NULL) {
@@ -415,6 +418,10 @@ void foward_packet(void)
 	return;
 }
 
+void aun_send_packet (uint32_t dest_ip, uint16_t data_length)
+{
+  adlc_forwarding_complete (TX_OK);
+}
 
 
 /*
