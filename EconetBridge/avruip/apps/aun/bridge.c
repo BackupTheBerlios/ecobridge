@@ -1,5 +1,6 @@
 #include "internet.h"
 #include "adlc.h"
+#include "aun.h"
 #include "serial.h"
 #include <string.h>
 
@@ -78,9 +79,9 @@ void bridge_poller(void)
 	break;
       }
       uint8_t reply_port = bcast_buf[6];
-      if (rxc.cb == 0x82) {
-	do_bridge_reply (rxc.stn, reply_port);
-      }
+      if (rxc.cb == 0x83 && !rTableEth[bcast_buf[7]])
+	break;
+      do_bridge_reply (rxc.stn, reply_port);
       break;
     }
     
