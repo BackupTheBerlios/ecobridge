@@ -269,12 +269,14 @@ uint8_t should_bridge(uint16_t dest, uint32_t *ip_target)
 
 static unsigned char scout_buf[16];
 
-static void make_scout(uint8_t stn, uint8_t net)
+static void make_scout_acknowledge() __attribute__ ((noinline));
+
+static void make_scout_acknowledge()
 {
-  scout_buf[0] = stn;
-  scout_buf[1] = net;
-  scout_buf[2] = my_station & 0xff;
-  scout_buf[3] = my_station >> 8;
+  scout_buf[0] = ECONET_RX_BUF[2];
+  scout_buf[1] = ECONET_RX_BUF[3];
+  scout_buf[2] = ECONET_RX_BUF[0];
+  scout_buf[3] = ECONET_RX_BUF[1];
 }
 
 static void do_local_immediate (uint8_t cb, uint8_t stn, uint8_t net)
@@ -282,7 +284,7 @@ static void do_local_immediate (uint8_t cb, uint8_t stn, uint8_t net)
   switch (cb & 0x7f)
   {
   case Econet_MachinePeek:
-    make_scout (stn, net);
+    make_scout_acknowledge ();
     scout_buf[4] = MACHINE_TYPE;
     scout_buf[5] = MACHINE_VENDOR;
     scout_buf[6] = MACHINE_VER_LOW;
@@ -400,7 +402,7 @@ void adlc_poller(void)
 	    current_rx->state = RXCB_RECEIVING;
 	    current_rx->cb = cb;
 	    current_rx->rx_port = port;
-	    make_scout (src_stn, src_net);
+	    make_scout_acknowledge ();
 	    adlc_tx_frame (scout_buf, scout_buf + 4, 1);
 	    adlc_ready_to_receive (RX_DATA);
 	    return;
@@ -427,7 +429,7 @@ void adlc_forwarding_complete(uint8_t result)
 {
   if (result == TX_OK)
   {
-    make_scout (ECONET_RX_BUF[2], ECONET_RX_BUF[3]);
+    make_scout_acknowledge ();
     adlc_tx_frame (scout_buf, scout_buf + 4, 1);
   }
 
@@ -438,7 +440,7 @@ void adlc_immediate_complete(uint8_t result, uint8_t *buffer, uint16_t length)
 {
   if (result == TX_OK)
   {
-    make_scout (ECONET_RX_BUF[2], ECONET_RX_BUF[3]);
+    make_scout_acknowledge ();
     if (length > 12)
       length = 12;
     memcpy (scout_buf + 4, buffer, length);
