@@ -35,8 +35,6 @@
 
 static struct aun_state s;
 
-#define BUF ((struct EcoDest *)&uip_buf[UIP_LLH_LEN])
-
 
 #define STATE_INITIAL         0
 #define STATE_SENDING         1
@@ -49,7 +47,7 @@ static struct aun_state s;
 
 // boolean flags for the routing table
 #define NOT_ROUTABLE	0x0
-#define ROUTABLE 	0x1
+#define ROUTABLE 	0xFF
 
 #define LOCAL_NETWORK 	0
 
@@ -159,7 +157,8 @@ aun_appcall(void)
 
 serial_eth();
 serial_rx();
-serial_packet(uip_buf+42, 12);
+serial_packet(uip_buf+26, 12);
+//serial_packet(uip_buf+42, 12);
 //serial_packet(uip_appdata, 12);
 
 
@@ -371,9 +370,6 @@ void foward_packet(void)
 
 	struct aunhdr *ah;
 	struct Econet_Header *eh;
-	unsigned short buf_len;
-
-	buf_len = uip_len - UIP_LLH_LEN;
 
 	SNet = (unsigned char) *(uip_buf+28);	// octet 3 of source IP
 	SStn = (unsigned char) *(uip_buf+29);	// octet 4 of source IP
@@ -402,6 +398,8 @@ void foward_packet(void)
 	ah = (struct aunhdr *)(uip_appdata);
 	eh = (struct Econet_Header *)(uip_appdata+2);
 
+	s.handle = ah->handle;	// save the message packet handle for later
+
 	eh->DSTN = DStn;
 	eh->DNET = DNet;
 	eh->SSTN = SStn;
@@ -418,7 +416,7 @@ void foward_packet(void)
 */
 
 	int x;
-	x = enqueue_tx(eh, buf_len-2, 1);
+	x = enqueue_tx(eh, uip_len-2, 1);
 
 	return;
 }
@@ -437,7 +435,32 @@ void aun_send_immediate (uint8_t cb, uint32_t dest_ip, uint16_t data_length)
 
 void aun_send_packet (uint8_t cb, uint8_t port, uint32_t dest_ip, uint16_t data_length)
 {
-  serial_packet(uip_appdata+6, data_length);
+#define BUF ((struct uip_tcpip_hdr *)&uip_buf[UIP_LLH_LEN])
+
+  struct aunhdr *ah;
+  ah = (struct aunhdr *)(uip_appdata);
+
+  uip_ipaddr_t temp;
+
+
+  ah->code = DATA_FRAME;
+  ah->port = port;
+  ah->cb = cb;
+  ah->handle = s.handle;
+
+  //set source & dest ip
+
+  uip_ipaddr_copy(temp, BUF->srcipaddr);
+  uip_ipaddr_copy(BUF->srcipaddr, BUF->destipaddr);
+  uip_ipaddr_copy(BUF->destipaddr, temp);
+
+
+  serial_packet(uip_buf, 60);
+
+  uip_send(uip_appdata,data_length);
+  uip_arp_out();
+  nic_send();
+
   adlc_forwarding_complete (TX_OK);
 }
 

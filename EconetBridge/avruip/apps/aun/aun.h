@@ -30,6 +30,7 @@
 struct aun_state {
   struct uip_udp_conn *conn;
   char state;
+  unsigned long handle;
 };
 
 #define AUN_NOT_LISTENING	0
