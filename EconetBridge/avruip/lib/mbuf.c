@@ -36,6 +36,7 @@ void mbuf_free(struct mbuf *m)
   m->prev = NULL;
   if (free_list)
     free_list->prev = m;
+  m->length = 0;
   free_list = m;
 }
 
