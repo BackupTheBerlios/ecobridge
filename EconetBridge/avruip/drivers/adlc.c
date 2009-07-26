@@ -258,7 +258,7 @@ uint8_t should_bridge(uint16_t dest, uint32_t *ip_target)
 
   if (rTableEth[dest >> 8] != 0)
   {
-    *ip_target = rTableEth[dest >> 8] | (dest & 0xff);
+    *ip_target = rTableEth[dest >> 8] | ((dest & 0xff) << 24);
     return 1;
   }
   else {
@@ -368,10 +368,6 @@ void adlc_poller(void)
       }
       else if (should_bridge (dst, &ip_target))
       {
-	serial_tx ('B');
-	serial_tx_hex (dst >> 8);
-	serial_tx_hex (dst & 0xff);
-	serial_tx_hex (port);
 	if (port == 0)
 	{
 	  if ((cb & 0x7f) == Econet_MachinePeek)
@@ -412,8 +408,7 @@ void adlc_poller(void)
     }
     else if (adlc_state == (RX_DATA | FRAME_COMPLETE))
     {
-      serial_tx ('D');
-      memcpy (uip_appdata + 6, ECONET_RX_BUF + 4, frame_length - 4);
+      memcpy (uip_appdata + 8, ECONET_RX_BUF + 4, frame_length - 4);
       aun_send_packet (aun_cb, aun_port, ip_target, frame_length - 4);
     }
     else
