@@ -82,7 +82,7 @@ struct aunhdr
 	unsigned char code;		/* AUN magic protocol byte */
 	unsigned char port;
 	unsigned char cb;
-	unsigned char pad;
+	unsigned char status;
 	unsigned long handle;
 };
 
@@ -157,9 +157,8 @@ aun_appcall(void)
 
 serial_eth();
 serial_rx();
-serial_packet(uip_buf+26, 12);
-//serial_packet(uip_buf+42, 12);
-//serial_packet(uip_appdata, 12);
+//serial_packet(uip_buf+42, 16);
+serial_packet(uip_appdata, 16);
 
 
    if(uip_aborted())
@@ -367,6 +366,9 @@ void foward_packet(void)
 	unsigned char DNet, DStn;
 	unsigned char SNet, SStn;
 	unsigned char Port;
+	unsigned short buf_len;
+
+	buf_len = uip_len;
 
 	struct aunhdr *ah;
 	struct Econet_Header *eh;
@@ -399,6 +401,8 @@ void foward_packet(void)
 	eh = (struct Econet_Header *)(uip_appdata+2);
 
 	s.handle = ah->handle;	// save the message packet handle for later
+	s.status = ah->status;	// save the message packet status for later
+	aun_tx_complete (s.status, 0, 0, s.handle);
 
 	eh->DSTN = DStn;
 	eh->DNET = DNet;
@@ -406,17 +410,9 @@ void foward_packet(void)
 	eh->SNET = SNet;
 	eh->CB = 0x80;
 	eh->PORT = ah->port;
-/*	eh->DATA1 = 0x90;
-	eh->DATA2 = 25;
-	eh->DATA3 = 0x00;
-	eh->DATA4 = 0x00;
-	eh->DATA5 = 0x00;
-	eh->DATA6 = 0x00;
-	eh->DATA7 = 0x00;
-*/
 
 	int x;
-	x = enqueue_tx(eh, uip_len-2, 1);
+	x = enqueue_tx(eh, buf_len-2, 1);
 
 	return;
 }
@@ -435,30 +431,25 @@ void aun_send_immediate (uint8_t cb, uint32_t dest_ip, uint16_t data_length)
 
 void aun_send_packet (uint8_t cb, uint8_t port, uint32_t dest_ip, uint16_t data_length)
 {
+
 #define BUF ((struct uip_tcpip_hdr *)&uip_buf[UIP_LLH_LEN])
 
   struct aunhdr *ah;
   ah = (struct aunhdr *)(uip_appdata);
 
   uip_ipaddr_t temp;
-
-
-  ah->code = DATA_FRAME;
-  ah->port = port;
-  ah->cb = cb;
-  ah->handle = s.handle;
-
-  //set source & dest ip
-
   uip_ipaddr_copy(temp, BUF->srcipaddr);
   uip_ipaddr_copy(BUF->srcipaddr, BUF->destipaddr);
   uip_ipaddr_copy(BUF->destipaddr, temp);
 
-
-  serial_packet(uip_buf, 60);
+  ah->code = DATA_FRAME;
+  ah->port = port;
+  ah->cb = cb;
+  ah->status = s.status;
+  ah->handle = s.handle;
 
   uip_send(uip_appdata,data_length);
-  uip_arp_out();
+//  uip_arp_out();
   nic_send();
 
   adlc_forwarding_complete (TX_OK);
@@ -477,6 +468,30 @@ void aun_send_broadcast (uint8_t cb, uint8_t port, uint16_t data_length)
 
 void aun_tx_complete (int8_t status, uint16_t requestor_ip0, uint16_t requestor_ip1, uint32_t handle)
 {
+
+  struct aunhdr *ah;
+  ah = (struct aunhdr *)(uip_appdata);
+
+#define BUF ((struct uip_tcpip_hdr *)&uip_buf[UIP_LLH_LEN])
+  uip_ipaddr_t temp;
+
+  uip_ipaddr_copy(temp, BUF->srcipaddr);
+  uip_ipaddr_copy(BUF->srcipaddr, BUF->destipaddr);
+  uip_ipaddr_copy(BUF->destipaddr, temp);
+
+
+  ah->code = DATA_FRAME_ACK;
+
+ // uip_send(uip_appdata,8);
+//  uip_arp_out();
+  nic_send();
+  uip_len = 0;
+
+  uip_ipaddr_copy(temp, BUF->srcipaddr);
+  uip_ipaddr_copy(BUF->srcipaddr, BUF->destipaddr);
+  uip_ipaddr_copy(BUF->destipaddr, temp);
+
+
 }
 
 uint8_t aun_want_proxy_arp(uint16_t *ipaddr)

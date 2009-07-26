@@ -39,7 +39,7 @@ void nic_send(void)
 		NICSendPacketData(uip_buf, uip_len);
 serial_eth();
 serial_txx();
-serial_packet(uip_buf+42, 12);
+serial_packet(uip_buf+42, 16);
 serial_crlf();
 	
 	}
