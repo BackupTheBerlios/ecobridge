@@ -27,7 +27,7 @@ unsigned char gEtherAddr[6] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55};
 
 static unsigned char gPrevTxBidFail;
 
-static unsigned short ReadPPRegister(unsigned short) __attribute__ (( noinline ));
+extern unsigned short ReadPPRegister(unsigned short);
 static void WritePPRegister(unsigned short, unsigned short) __attribute__ (( noinline ));
 static unsigned short ReadRxStatusLengthRegister(void);
 static void WriteIORegister(unsigned short , unsigned short );
@@ -144,37 +144,6 @@ void cs8900BeginPacketSend(uint16_t packetLength)
 	return;
 }
 
-void cs8900SendPacketData(unsigned char * localBuffer, uint16_t length)
-{
-	uint16_t len;
-	uint16_t total_len = length;
-	unsigned short *sdata;
-
-	//***** Step 5: copy Tx data into CS8900's buffer
-	//
-	// This actually starts the Txmit
-	//
-	sdata = localBuffer;
-	len = total_len;
-	if (len > 0)
-	{
-		// Output contiguous words, two bytes at a time.
-		while (len > 1)
-		{
-			WriteIORegister(CS8900_RTDATA, *sdata);
-			sdata++;
-			len -= 2;
-		}
-
-		// If Odd bytes, copy the last one byte to chip.
-		if (len == 1)
-		{
-			outportb(CS8900_RTDATA, (*sdata) & 0x00ff);
-		}
-	}
-
-}
-
 void cs8900EndPacketSend(void)
 {
 	unsigned short stat;
@@ -267,66 +236,6 @@ uint16_t cs8900BeginPacketRetreive(void)
 	// printf("RxEvent - stat: %x, len: %d\n", stat, totalLen);
 
 	return totalLen;
-}
-
-void cs8900RetreivePacketData(unsigned char * localBuffer, unsigned int length)
-{
-
-	unsigned short totalLen, val;
-	int leftLen;
-	unsigned short *data;
-	unsigned char *cp;
-
-	totalLen=(unsigned int)length;
-
-	//***** Step 6: Read the Rx data from Chip and store it to
-	//              user buffer.
-	//
-	data = (unsigned short *)localBuffer;
-	leftLen = totalLen;
-
-
-	// Read 2 bytes at a time
-	while (leftLen >= 2)
-	{
-	*data++ = ReadIORegister(CS8900_RTDATA);
-//	serial_short(HTONS(*data));
-//	serial_tx(0x20);
-//	*data++;
-	leftLen -= 2;
-	}
-
-     // If odd bytes, read the last byte from chip
-     if (leftLen == 1)
-     {
-	// Read the last byte from chip
-	val = inportb(CS8900_RTDATA);
-//	serial_tx_hex(val);
-
-	// Point to the last one byte of the user buffer
-	cp = (unsigned char *)data;
-
-	// Truncate the word (2-bytes) read from chip to one byte.
-	*cp = (unsigned char)(val & 0xff);
-     }
-
-//serial_packet(localBuffer, totalLen);
-
-	return;
-}
-
-/*******************************************************************/
-/* ReadPPRegister(): Read value from the Packet Pointer register   */
-/* at regOffset                                                    */
-/*******************************************************************/
-static unsigned short ReadPPRegister(unsigned short regOffset)
-{
-      // write a 16 bit register offset to IO port CS8900_PPTR
-	outportb(CS8900_PPTR, (unsigned char)(regOffset & 0x00FF));
-	outportb(((CS8900_PPTR + 1)), (unsigned char)((regOffset & 0xFF00) >> 8));
-
-	// read 16 bits from IO port number CS8900_PPTR
-      return (inportb(CS8900_PDATA) | (unsigned short)(inportb((CS8900_PDATA + 1)) << 8));
 }
 
 /*******************************************************************/
