@@ -31,7 +31,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: main.c,v 1.16 2009/07/25 09:55:28 philb Exp $
+ * $Id: main.c,v 1.17 2009/07/26 14:57:25 philb Exp $
  *
  */
 
@@ -49,6 +49,7 @@
 #include "adlc.h"
 #include "internet.h"
 #include "bridge.h"
+#include "mbuf.h"
 
 extern void adlc_irq(void);
 extern void adlc_access(void);
@@ -102,6 +103,7 @@ main(void)
   AVR_init();
   egpio_init();
   clock_init();
+  mbuf_init();
   adlc_init();
   GICR = (1 << INT0);
 

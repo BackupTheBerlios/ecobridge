@@ -73,6 +73,7 @@ struct mbuf *copy_to_mbufs(uint8_t *buffer, uint16_t length)
     if (to_copy > length)
       to_copy = length;
     memcpy (m->data, buffer, to_copy);
+    m->length = to_copy;
     buffer += to_copy;
     length -= to_copy;
   }
