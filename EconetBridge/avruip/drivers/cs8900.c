@@ -31,7 +31,6 @@ extern unsigned short ReadPPRegister(unsigned short);
 static void WritePPRegister(unsigned short, unsigned short) __attribute__ (( noinline ));
 static unsigned short ReadRxStatusLengthRegister(void);
 static void WriteIORegister(unsigned short , unsigned short );
-static unsigned short ReadIORegister(unsigned short );
 static int8_t cs8900_poll_init(unsigned short);
 static int8_t cs8900_reset(void);
 
@@ -281,19 +280,6 @@ static void WriteIORegister(unsigned short reg, unsigned short val)
 	outportb(((unsigned short *)(reg + 1)), (unsigned char)((val & 0xFF00) >> 8));
 
 }
-
-/*******************************************************************/
-/* ReadIORegister(): Read 16 bits of data from the register, reg.  */
-/*******************************************************************/
-static unsigned short ReadIORegister(unsigned short reg)
-{
-
-	return(inportb((unsigned short *)reg) | 
-		(inportb((unsigned short *)(reg + 1)) << 8));
-
-}
-
-
 
 /*******************************************************************/
 /*   cs8900_poll_init( ): start up CS8900 for Poll Mode            */

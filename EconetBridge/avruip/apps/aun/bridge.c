@@ -75,7 +75,6 @@ void bridge_poller(void)
       break;
     }
     
-    close_rx (bridge_rxcb);
     setup_bridge_rxcb ();
   }
 }

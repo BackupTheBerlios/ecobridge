@@ -46,14 +46,14 @@ void internet_poller(void)
       response_buffer[4] = 0x80;
       response_buffer[5] = FIND_SERVER_REPLY_PORT;
       response_buffer[6] = 0;
-      response_buffer[7] = 0xd2;
+      response_buffer[7] = IP_PORT;
       response_buffer[8] = 1;
       strcpy ((char *)response_buffer + 9, MY_SERVER_TYPE);
       response_buffer[17] = strlen(MY_SERVER_NAME);
       strcpy ((char *)response_buffer + 18, MY_SERVER_NAME);
       enqueue_tx (response_buffer, 18 + strlen(MY_SERVER_NAME), 0);
     }
-    close_rx (find_server_rxcb);
+
     setup_find_server_rxcb ();
   }
 }

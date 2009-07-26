@@ -456,6 +456,20 @@ void aun_tx_complete (int8_t status, uint16_t requestor_ip0, uint16_t requestor_
 {
 }
 
+uint8_t aun_want_proxy_arp(uint16_t *ipaddr)
+{
+  serial_tx_str ("P?");
+  serial_tx_hex (ipaddr[0] >> 8);
+  serial_tx_hex (ipaddr[0] & 0xff);
+  serial_tx_hex (ipaddr[1] >> 8);
+  serial_tx_hex (ipaddr[1] & 0xff);
+  serial_crlf ();
+  if (ipaddr[0] == 0x0201
+      && rTableEco[ipaddr[1] & 0xff])
+    return 1;
+  return 0;
+}
+
 /*
 static void
 check_entries(void)

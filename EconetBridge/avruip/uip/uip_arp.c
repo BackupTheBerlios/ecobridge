@@ -54,7 +54,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uip_arp.c,v 1.1 2009/07/19 14:33:48 markusher Exp $
+ * $Id: uip_arp.c,v 1.2 2009/07/26 08:50:31 philb Exp $
  *
  */
 
@@ -288,7 +288,8 @@ uip_arp_arpin(void)
   case HTONS(ARP_REQUEST):
     /* ARP request. If it asked for our address, we send out a
        reply. */
-    if(uip_ipaddr_cmp(BUF->dipaddr, uip_hostaddr)) {
+    if(uip_ipaddr_cmp(BUF->dipaddr, uip_hostaddr)
+       || aun_want_proxy_arp(BUF->dipaddr)) {
       /* First, we register the one who made the request in our ARP
 	 table, since it is likely that we will do more communication
 	 with this host in the future. */
@@ -302,10 +303,11 @@ uip_arp_arpin(void)
       memcpy(BUF->ethhdr.src.addr, uip_ethaddr.addr, 6);
       memcpy(BUF->ethhdr.dest.addr, BUF->dhwaddr.addr, 6);
       
+      uint16_t dip0 = BUF->dipaddr[0], dip1 = BUF->dipaddr[1];
       BUF->dipaddr[0] = BUF->sipaddr[0];
       BUF->dipaddr[1] = BUF->sipaddr[1];
-      BUF->sipaddr[0] = uip_hostaddr[0];
-      BUF->sipaddr[1] = uip_hostaddr[1];
+      BUF->sipaddr[0] = dip0;
+      BUF->sipaddr[1] = dip1;
 
       BUF->ethhdr.type = HTONS(UIP_ETHTYPE_ARP);
       uip_len = sizeof(struct arp_hdr);
@@ -418,6 +420,18 @@ uip_arp_out(void)
   uip_len += sizeof(struct uip_eth_hdr);
 }
 /*-----------------------------------------------------------------------------------*/
+
+uint8_t uip_arp_entry_exists(uint16_t *ipaddr)
+{
+  struct arp_entry *tabptr;
+  for(i = 0; i < UIP_ARPTAB_SIZE; ++i) {
+    tabptr = &arp_table[i];
+    if(uip_ipaddr_cmp(ipaddr, tabptr->ipaddr)) {
+      return 1;
+    }
+  }
+  return 0;
+}
 
 /** @} */
 /** @} */

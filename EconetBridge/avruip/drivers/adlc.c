@@ -50,8 +50,11 @@ struct tx_record
 struct rx_record
 {
   uint8_t state, port, cb, stn, net, rx_port;
-  unsigned char *buf;
   int len;
+  union {
+    unsigned char *buf;
+    void (*callback)(int);
+  } d;
 };
 
 struct tx_record tx_buf[MAX_TX];
@@ -85,8 +88,28 @@ uint8_t setup_rx(uint8_t port, uint8_t stn, uint8_t net, unsigned char *ptr, uns
       rx->port = port;
       rx->stn = stn;
       rx->net = net;
-      rx->buf = ptr;
+      rx->d.buf = ptr;
       rx->len = length;
+      rx->state = RXCB_READY;
+      return i + 1;
+    }
+  }
+  return 0;
+}
+
+uint8_t setup_sync_rx(uint8_t port, uint8_t stn, uint8_t net, void (*callback)(int))
+{
+  uint8_t i;
+  for (i = 0; i < MAX_RX; i++)
+  {
+    struct rx_record *rx = &rx_buf[i];
+    if (rx->state == RXCB_INVALID)
+    {
+      rx->port = port;
+      rx->stn = stn;
+      rx->net = net;
+      rx->d.callback = callback;
+      rx->len = 0;
       rx->state = RXCB_READY;
       return i + 1;
     }
@@ -99,11 +122,15 @@ uint8_t poll_rx(uint8_t i, struct rx_control *rxc)
   if (i == 0 || i > MAX_RX)
     return RXCB_INVALID;
   struct rx_record *rx = &rx_buf[i-1];
-  rxc->stn = rx->stn;
-  rxc->net = rx->net;
-  rxc->cb = rx->cb;
-  rxc->port = rx->rx_port;
-  return rx->state;
+  uint8_t state = rx->state;
+  if (state == RXCB_RECEIVED) {
+    rxc->stn = rx->stn;
+    rxc->net = rx->net;
+    rxc->cb = rx->cb;
+    rxc->port = rx->rx_port;
+    rx->state = RXCB_INVALID;
+  }
+  return state;
 }
 
 void close_rx(uint8_t i)
@@ -323,7 +350,7 @@ void adlc_poller(void)
 	{
 	  if (rx->len >= (frame_length - 6))
 	  {
-	    memcpy (rx->buf, ECONET_RX_BUF + 6, frame_length - 6);
+	    memcpy (rx->d.buf, ECONET_RX_BUF + 6, frame_length - 6);
 	    rx->stn = src_stn;
 	    rx->net = src_net;
 	    rx->cb = cb;

@@ -42,6 +42,7 @@ struct rx_control
 extern void adlc_poller(void);
 extern void adlc_ready_to_receive(uint8_t what);
 extern uint8_t setup_rx(uint8_t port, uint8_t stn, uint8_t net, unsigned char *ptr, unsigned int length);
+extern uint8_t setup_sync_rx(uint8_t port, uint8_t stn, uint8_t net, void (*callback)(int));
 extern uint8_t poll_rx(uint8_t i, struct rx_control *rxc);
 extern void close_rx(uint8_t i);
 extern int enqueue_tx(unsigned char *buf, int length, unsigned char is_aun);

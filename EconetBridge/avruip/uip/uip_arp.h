@@ -45,7 +45,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uip_arp.h,v 1.1 2009/07/19 14:33:48 markusher Exp $
+ * $Id: uip_arp.h,v 1.2 2009/07/26 08:50:31 philb Exp $
  *
  */
 
@@ -106,6 +106,8 @@ void uip_arp_out(void);
 /* The uip_arp_timer() function should be called every ten seconds. It
    is responsible for flushing old entries in the ARP table. */
 void uip_arp_timer(void);
+
+uint8_t uip_arp_entry_exists(uint16_t *ipaddr);
 
 /** @} */
 

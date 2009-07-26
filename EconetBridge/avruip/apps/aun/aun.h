@@ -442,6 +442,7 @@ void do_immediate(void) ;
 extern void aun_send_packet (uint8_t cb, uint8_t port, uint32_t dest_ip, uint16_t data_length);
 extern void aun_send_immediate (uint8_t cb, uint32_t dest_ip, uint16_t data_length);
 extern void aun_send_broadcast (uint8_t cb, uint8_t port, uint16_t data_length);
+extern uint8_t aun_want_proxy_arp(uint16_t *ipaddr);
 
 #endif /* __AUN_H__ */
 /** @} */
