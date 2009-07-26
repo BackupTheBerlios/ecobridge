@@ -367,6 +367,9 @@ void adlc_poller(void)
       else if (should_bridge (dst, &ip_target))
       {
 	serial_tx ('B');
+	serial_tx_hex (dst >> 8);
+	serial_tx_hex (dst & 0xff);
+	serial_tx_hex (port);
 	if (port == 0)
 	{
 	  if ((cb & 0x7f) == Econet_MachinePeek)
@@ -375,7 +378,10 @@ void adlc_poller(void)
 	}
 	aun_cb = cb;
 	aun_port = port;
-	make_scout (src_stn, src_net);
+	scout_buf[0] = src_stn;
+	scout_buf[1] = src_net;
+	scout_buf[2] = dst & 0xff;
+	scout_buf[3] = dst >> 8;
 	adlc_tx_frame (scout_buf, scout_buf + 4, 1);
 	adlc_ready_to_receive (RX_DATA);
 	return;
@@ -404,6 +410,7 @@ void adlc_poller(void)
     }
     else if (adlc_state == (RX_DATA | FRAME_COMPLETE))
     {
+      serial_tx ('D');
       memcpy (uip_appdata + 6, ECONET_RX_BUF + 4, frame_length - 4);
       aun_send_packet (aun_cb, aun_port, ip_target, frame_length - 4);
     }
