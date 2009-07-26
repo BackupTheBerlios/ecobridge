@@ -362,7 +362,7 @@ void adlc_poller(void)
 	}
 	if (port != 0x9c)
 	{
-	  memcpy (uip_appdata + 6, ECONET_RX_BUF + 4, frame_length - 4);
+	  memcpy (uip_appdata + 8, ECONET_RX_BUF + 4, frame_length - 4);
 	  aun_send_broadcast (cb, port, frame_length - 4);
 	}
       }
