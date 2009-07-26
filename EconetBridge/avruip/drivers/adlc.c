@@ -229,9 +229,9 @@ uint8_t should_bridge(uint16_t dest, uint32_t *ip_target)
 
   /* if destination is reachable fill ip_target address */
 
-  if (rTableEth[dest] != 0)
+  if (rTableEth[dest >> 8] != 0)
   {
-    *ip_target = rTableEth[dest];
+    *ip_target = rTableEth[dest >> 8] | (dest & 0xff);
     return 1;
   }
   else {
