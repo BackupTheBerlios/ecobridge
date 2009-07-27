@@ -256,14 +256,14 @@ int16_t enqueue_aun_tx(unsigned char *buf, int length, unsigned long handle)
   return i;
 }
 
-static uint8_t should_bridge(uint16_t dest, uint32_t *ip_target)
+static uint8_t should_bridge(uint16_t dest, uint32_t *ip_targetp)
 {
 
   /* if destination is reachable fill ip_target address */
 
   if (rTableEth[dest >> 8] != 0)
   {
-    *ip_target = rTableEth[dest >> 8] | ((unsigned long)(dest & 0xff) << 24);
+    *ip_targetp = rTableEth[dest >> 8] | ((unsigned long)(dest & 0xff) << 24);
     return 1;
   }
   else {
