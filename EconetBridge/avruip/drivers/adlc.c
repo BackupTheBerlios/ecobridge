@@ -133,10 +133,12 @@ uint8_t poll_rx(uint8_t i, struct rx_control *rxc)
   return state;
 }
 
+#if 0
 void close_rx(uint8_t i)
 {
   rx_buf[i].state = RXCB_INVALID;
 }
+#endif
 
 extern uint8_t get_adlc_state(void);
 extern uint8_t adlc_await_idle(void);

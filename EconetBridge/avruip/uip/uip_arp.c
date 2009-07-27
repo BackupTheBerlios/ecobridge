@@ -54,7 +54,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uip_arp.c,v 1.2 2009/07/26 08:50:31 philb Exp $
+ * $Id: uip_arp.c,v 1.3 2009/07/27 16:25:49 philb Exp $
  *
  */
 
@@ -115,6 +115,8 @@ static u8_t tmpage;
 
 #define BUF   ((struct arp_hdr *)&uip_buf[0])
 #define IPBUF ((struct ethip_hdr *)&uip_buf[0])
+
+#if 0
 /*-----------------------------------------------------------------------------------*/
 /**
  * Initialize the ARP module.
@@ -128,6 +130,8 @@ uip_arp_init(void)
     memset(arp_table[i].ipaddr, 0, 4);
   }
 }
+#endif
+
 /*-----------------------------------------------------------------------------------*/
 /**
  * Periodic ARP processing function.
