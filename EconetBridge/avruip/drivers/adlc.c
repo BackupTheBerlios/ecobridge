@@ -251,7 +251,7 @@ int16_t enqueue_tx(unsigned char *buf, int length, unsigned char is_aun)
   return -1;
 }
 
-uint8_t should_bridge(uint16_t dest, uint32_t *ip_target)
+static uint8_t should_bridge(uint16_t dest, uint32_t *ip_target)
 {
 
   /* if destination is reachable fill ip_target address */
