@@ -153,6 +153,11 @@ void
 aun_appcall(void)
 {
 
+  if(uip_conn->lport == HTONS(23)) {
+        telnetd_appcall();
+        return;
+  }
+
   if(uip_udp_conn->rport == HTONS(MNSDATAPORT)) {
 
 serial_eth();

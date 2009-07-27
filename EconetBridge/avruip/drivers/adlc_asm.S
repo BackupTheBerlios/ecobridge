@@ -334,7 +334,7 @@ adlc_tx_frame:
 	mov	YL, r22
 	mov	r21, r20
 
-	ldi	r24, EGPIO_ECONET_GREEN | EGPIO_SET
+	ldi	r24, EGPIO_ECONET_GREEN
 	rcall	egpio_write
 
 	ldi	r23, 0
@@ -551,7 +551,7 @@ process_ap:
 	cp	tmp1, adlc_state
 	breq	discontinue_again
 	
-	ldi	r24, EGPIO_ECONET_GREEN | EGPIO_SET
+	ldi	r24, EGPIO_ECONET_GREEN
 	rcall	egpio_write
 
 	lds	XL, adlc_rx_ptr			; put the Rx buffer pointer address in X
@@ -807,7 +807,7 @@ adlc_ready_to_receive:
 	ldi	tmp1, ADLC_CR1			; set to write to Control Register 1
 	rcall	adlc_write				; write to the ADLC
 
-	ldi	r24, EGPIO_ECONET_GREEN
+	ldi	r24, EGPIO_ECONET_GREEN | EGPIO_SET
 	rjmp	egpio_write
 
 ; -----------------------------------------------------------------------------------------

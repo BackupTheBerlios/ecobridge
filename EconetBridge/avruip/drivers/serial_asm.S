@@ -43,10 +43,10 @@ egpio_init:
 
 	rcall delay_65536
 
-	ldi	r24, EGPIO_ECONET_RED
+	ldi	r24, EGPIO_ECONET_RED | EGPIO_SET
 	rcall	egpio_write
 
-	ldi	r24, EGPIO_ECONET_GREEN
+	ldi	r24, EGPIO_ECONET_GREEN | EGPIO_SET
 	rcall	egpio_write
 
 	ldi	r24, EGPIO_STATUS_RED | EGPIO_SET
