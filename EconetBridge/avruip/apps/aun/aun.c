@@ -416,7 +416,7 @@ void foward_packet(void)
 	eh->PORT = ah->port;
 
 	int x;
-	x = enqueue_tx(eh, buf_len-2, 1);
+	x = enqueue_aun_tx(eh, buf_len-2, s.handle);
 
 	return;
 }
@@ -474,27 +474,27 @@ void aun_tx_complete (int8_t status, uint16_t requestor_ip0, uint16_t requestor_
 {
 
   struct aunhdr *ah;
+  uip_appdata = &uip_buf[UIP_IPUDPH_LEN + UIP_LLH_LEN];
   ah = (struct aunhdr *)(uip_appdata);
 
 #define BUF ((struct uip_tcpip_hdr *)&uip_buf[UIP_LLH_LEN])
   uip_ipaddr_t temp;
 
-  uip_ipaddr_copy(temp, BUF->srcipaddr);
-  uip_ipaddr_copy(BUF->srcipaddr, BUF->destipaddr);
-  uip_ipaddr_copy(BUF->destipaddr, temp);
+  serial_short(requestor_ip0);
+  serial_short(requestor_ip1);
 
+  BUF->destipaddr[0] = requestor_ip0;
+  BUF->destipaddr[1] = requestor_ip1;
 
+  memset (ah, 0, sizeof (*ah));
   ah->code = DATA_FRAME_ACK;
+  ah->handle = handle;
 
-  uip_send(uip_appdata,8);
+  uip_udp_send((int)uip_appdata + 8 - (int)uip_buf);
+  uip_process(UIP_UDP_SEND_CONN);
   uip_arp_out();
   nic_send();
   uip_len = 0;
-
-  uip_ipaddr_copy(temp, BUF->srcipaddr);
-  uip_ipaddr_copy(BUF->srcipaddr, BUF->destipaddr);
-  uip_ipaddr_copy(BUF->destipaddr, temp);
-
 
 }
 

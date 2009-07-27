@@ -31,6 +31,10 @@ void nic_init(void)
 
 void nic_send(void)
 {
+	if (uip_len == 0) {
+		serial_tx_str ("tx empty packet?\r\n");
+		return;
+	}
 	NICBeginPacketSend(uip_len);
 
 	// send packet, using data in uip_appdata if over the IP+TCP header size
@@ -39,7 +43,7 @@ void nic_send(void)
 		NICSendPacketData(uip_buf, uip_len);
 serial_eth();
 serial_txx();
-serial_packet(uip_buf+42, 16);
+serial_packet(uip_buf, uip_len);
 serial_crlf();
 	
 	}

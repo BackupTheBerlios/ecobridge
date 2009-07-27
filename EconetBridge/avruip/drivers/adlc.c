@@ -242,15 +242,18 @@ int16_t enqueue_tx(unsigned char *buf, int length, unsigned char is_aun)
     tx->retry_timer = 0;
     tx->len = length;
     tx->buf = buf;
-    if (is_aun) {
-      tx->requestor_ip[0] = BUF->srcipaddr[0];
-      tx->requestor_ip[1] = BUF->srcipaddr[1];
-      tx->requestor_handle = m->mns_handle;
-    }
     tx->is_aun = is_aun;
     return i + 1;
   }
   return -1;
+}
+
+int16_t enqueue_aun_tx(unsigned char *buf, int length, unsigned long handle)
+{
+  int16_t i = enqueue_tx(buf, length, 1);
+  struct tx_record *tx = &tx_buf[i-1];
+  tx->requestor_handle = handle;
+  return i;
 }
 
 static uint8_t should_bridge(uint16_t dest, uint32_t *ip_target)
