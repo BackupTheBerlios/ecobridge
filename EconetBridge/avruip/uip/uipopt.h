@@ -53,7 +53,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uipopt.h,v 1.1 2009/07/19 14:33:48 markusher Exp $
+ * $Id: uipopt.h,v 1.2 2009/07/27 14:56:42 markusher Exp $
  *
  */
 
@@ -231,7 +231,7 @@
  *
  * \hideinitializer
  */
-#define UIP_ACTIVE_OPEN 0
+#define UIP_ACTIVE_OPEN 1
 
 /**
  * The maximum number of simultaneously open TCP connections.
@@ -243,7 +243,7 @@
  * \hideinitializer
  */
 #ifndef UIP_CONF_MAX_CONNECTIONS
-#define UIP_CONNS       2
+#define UIP_CONNS       1
 #else /* UIP_CONF_MAX_CONNECTIONS */
 #define UIP_CONNS UIP_CONF_MAX_CONNECTIONS
 #endif /* UIP_CONF_MAX_CONNECTIONS */

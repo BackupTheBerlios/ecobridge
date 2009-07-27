@@ -31,7 +31,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: main.c,v 1.17 2009/07/26 14:57:25 philb Exp $
+ * $Id: main.c,v 1.18 2009/07/27 14:56:42 markusher Exp $
  *
  */
 
@@ -123,6 +123,7 @@ main(void)
   extern uint16_t my_station;
   my_station = 0x0051;
 
+  telnetd_init();
   aun_init();
   internet_init();
   bridge_init();

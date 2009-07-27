@@ -402,7 +402,6 @@ void foward_packet(void)
 
 	s.handle = ah->handle;	// save the message packet handle for later
 	s.status = ah->status;	// save the message packet status for later
-	aun_tx_complete (s.status, 0, 0, s.handle);
 
 	eh->DSTN = DStn;
 	eh->DNET = DNet;
@@ -482,8 +481,8 @@ void aun_tx_complete (int8_t status, uint16_t requestor_ip0, uint16_t requestor_
 
   ah->code = DATA_FRAME_ACK;
 
- // uip_send(uip_appdata,8);
-//  uip_arp_out();
+  uip_send(uip_appdata,8);
+  uip_arp_out();
   nic_send();
   uip_len = 0;
 

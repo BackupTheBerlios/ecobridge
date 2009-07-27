@@ -41,7 +41,7 @@ TARGET = AVRuIP
 
 
 # APPS to include
-APPS = aun 
+APPS = aun telnetd
 
 # Optimization level, can be [0, 1, 2, 3, s]. 0 turns off optimization.
 # (Note: 3 is not always the best optimization level. See avr-libc FAQ.)
@@ -56,12 +56,12 @@ CS8900 = ./drivers/serial.c ./drivers/cs8900.c
 ADLC = ./drivers/adlc.c
 
 ETHERNET = $(CS8900) ./avr/delay.c ./avr/nic.c
-#TELNETD = ./apps/telnetd/telnetd.c ./apps/telnetd/shell.c ./lib/memb.c
+TELNETD = ./apps/telnetd/telnetd.c ./apps/telnetd/shell.c ./lib/memb.c
 #HELLOW = ./apps/hello-world/hello-world.c
 AUN = ./apps/aun/aun.c ./apps/aun/econet.c ./apps/aun/internet.c ./apps/aun/bridge.c
 UIP = ./uip/uip.c ./uip/uip_arp.c ./uip/uiplib.c ./uip/clock.c ./uip/timer.c ./lib/mbuf.c
 
-SRC	= ./unix/main.c $(ETHERNET) $(UIP) $(AUN) $(ADLC)
+SRC	= ./unix/main.c $(ETHERNET) $(UIP) $(AUN) $(ADLC) $(TELNETD)
 
 
 # If there is more than one source file, append them above, or modify and

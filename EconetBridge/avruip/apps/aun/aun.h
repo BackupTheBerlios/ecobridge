@@ -39,7 +39,7 @@ struct aun_state {
 
 
 //dummy as not using tcp at the moment
-typedef int uip_tcp_appstate_t;
+//typedef int uip_tcp_appstate_t;
 
 typedef struct aun_state uip_udp_appstate_t;
 

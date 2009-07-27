@@ -14,15 +14,6 @@
 .global egpio_init
 .global egpio_write
 
-// used by CS8900. 
-
-#  define addr_lo		r3
-#  define addr_hi		r4
-#  define data		r2
-
-.global aWriteIORegister
-.global aReadIORegister
-
 
 ; =======================================================================
 ; == Serial =============================================================
