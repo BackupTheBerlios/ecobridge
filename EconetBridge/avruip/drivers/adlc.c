@@ -260,7 +260,7 @@ static uint8_t should_bridge(uint16_t dest, uint32_t *ip_target)
 
   if (rTableEth[dest >> 8] != 0)
   {
-    *ip_target = rTableEth[dest >> 8] | ((dest & 0xff) << 24);
+    *ip_target = rTableEth[dest >> 8] | ((unsigned long)(dest & 0xff) << 24);
     return 1;
   }
   else {
@@ -271,9 +271,9 @@ static uint8_t should_bridge(uint16_t dest, uint32_t *ip_target)
 
 static unsigned char scout_buf[16];
 
-static void make_scout_acknowledge() __attribute__ ((noinline));
+static void make_scout_acknowledge(void) __attribute__ ((noinline));
 
-static void make_scout_acknowledge()
+static void make_scout_acknowledge(void)
 {
   scout_buf[0] = ECONET_RX_BUF[2];
   scout_buf[1] = ECONET_RX_BUF[3];
