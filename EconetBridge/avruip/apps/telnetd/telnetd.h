@@ -29,7 +29,7 @@
  *
  * This file is part of the uIP TCP/IP stack
  *
- * $Id: telnetd.h,v 1.1 2009/07/19 14:33:47 markusher Exp $
+ * $Id: telnetd.h,v 1.2 2009/08/04 14:32:09 markusher Exp $
  *
  */
 #ifndef __TELNETD_H__
@@ -57,7 +57,8 @@ struct telnetd_state {
 typedef struct telnetd_state uip_tcp_appstate_t;
 
 #ifndef UIP_APPCALL
-#define UIP_APPCALL     telnetd_appcall
+//#define UIP_APPCALL     telnetd_appcall
+#define UIP_APPCALL     aun_appcall
 #endif
 
 #endif /* __TELNETD_H__ */

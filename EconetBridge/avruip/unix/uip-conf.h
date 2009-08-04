@@ -42,7 +42,7 @@
  *
  * This file is part of the uIP TCP/IP stack
  *
- * $Id: uip-conf.h,v 1.2 2009/07/27 14:56:42 markusher Exp $
+ * $Id: uip-conf.h,v 1.3 2009/08/04 14:32:09 markusher Exp $
  */
 
 /**
@@ -90,21 +90,21 @@ typedef unsigned short uip_stats_t;
  *
  * \hideinitializer
  */
-#define UIP_CONF_MAX_CONNECTIONS 5
+#define UIP_CONF_MAX_CONNECTIONS 2
 
 /**
  * Maximum number of listening TCP ports.
  *
  * \hideinitializer
  */
-#define UIP_CONF_MAX_LISTENPORTS 5
+#define UIP_CONF_MAX_LISTENPORTS 2
 
 /**
  * uIP buffer size.
  *
  * \hideinitializer
  */
-#define UIP_CONF_BUFFER_SIZE     420
+#define UIP_CONF_BUFFER_SIZE     1500
 
 /**
  * CPU byte order.

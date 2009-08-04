@@ -23,6 +23,7 @@
 #ifndef __ASSEMBLER__
 
 #include <stdint.h>
+#include "globals.h"
 
 struct scout_packet
 {

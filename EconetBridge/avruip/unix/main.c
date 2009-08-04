@@ -31,11 +31,14 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: main.c,v 1.19 2009/07/27 16:25:49 philb Exp $
+ * $Id: main.c,v 1.20 2009/08/04 14:32:09 markusher Exp $
  *
  */
 
 #include "compiler.h"
+
+#include "globals.h"
+
 
 #include "uip.h"
 #include "uip_arp.h"
@@ -50,6 +53,8 @@
 #include "internet.h"
 #include "bridge.h"
 #include "mbuf.h"
+
+
 
 extern void adlc_irq(void);
 extern void adlc_access(void);
@@ -96,12 +101,18 @@ void AVR_init(void)
 int
 main(void)
 {
+  EEPROM_main();
+
   int i;
   uip_ipaddr_t ipaddr;
   struct timer periodic_timer, arp_timer;
+  struct uip_eth_addr uip_ethaddr = {
+  { eeGlobals.MAC_1, eeGlobals.MAC_2, eeGlobals.MAC_3, 
+    eeGlobals.MAC_4, eeGlobals.MAC_5 ,eeGlobals.MAC_6}};
 
   AVR_init();
   egpio_init();
+
   clock_init();
   mbuf_init();
   adlc_init();
@@ -113,15 +124,15 @@ main(void)
   nic_init();
   uip_init();
 
-  uip_ipaddr(ipaddr, 1,2,128,10);
+  uip_ipaddr(ipaddr, eeGlobals.IPAddr_1,eeGlobals.IPAddr_2,eeGlobals.IPAddr_3,eeGlobals.IPAddr_4);
   uip_sethostaddr(ipaddr);
-  uip_ipaddr(ipaddr, 1,2,128,14);
+  uip_ipaddr(ipaddr, eeGlobals.Gateway_1,eeGlobals.Gateway_2,eeGlobals.Gateway_3,eeGlobals.Gateway_4);
   uip_setdraddr(ipaddr);
-  uip_ipaddr(ipaddr, 255,255,0,0);
+  uip_ipaddr(ipaddr, eeGlobals.Subnet_1,eeGlobals.Subnet_2,eeGlobals.Subnet_3,eeGlobals.Subnet_4);
   uip_setnetmask(ipaddr);
 
   extern uint16_t my_station;
-  my_station = 0x0051;
+  my_station = eeGlobals.Station;
 
   telnetd_init();
   aun_init();

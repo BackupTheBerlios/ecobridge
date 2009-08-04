@@ -52,6 +52,9 @@
 
 ;***** Code
 
+.section .text             ; Start program section
+
+.global EEWrite
 EEWrite:
 	sbic	EECR,EEWE	;if EEWE not clear
 	rjmp	EEWrite		;    wait more
@@ -84,7 +87,7 @@ EEWrite:
 ;***************************************************************************
 
 ;***** Code
-
+.global EERead
 EERead:
 	sbic	EECR,EEWE	;if EEWE not clear
 	rjmp	EERead		;    wait more

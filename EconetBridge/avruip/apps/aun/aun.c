@@ -153,10 +153,14 @@ void
 aun_appcall(void)
 {
 
+// Handle TELNET packets
+
   if(uip_conn->lport == HTONS(23)) {
-        telnetd_appcall();
-        return;
+	telnetd_appcall();
+	return;
   }
+
+// Handle AUN Packets
 
   if(uip_udp_conn->rport == HTONS(MNSDATAPORT)) {
 
@@ -190,6 +194,7 @@ serial_packet(uip_appdata, 16);
 
   }
 
+// Handle AUN ATP requests
 
   if(uip_udp_conn->rport == HTONS(MNSATPPORT)) {
 

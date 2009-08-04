@@ -9,6 +9,7 @@
 #include "adlc.h"
 #include "egpio.h"
 
+
 // The ADLC has four control registers and two status registers.
 #define	ADLC_CR1		0
 #define	ADLC_CR2		1			// control bit 0

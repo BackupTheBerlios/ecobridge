@@ -1,8 +1,7 @@
 #include "internet.h"
 #include "adlc.h"
+#include "globals.h"
 #include <string.h>
-
-extern uint16_t my_station;
 
 static uint8_t find_server_rxcb;
 
@@ -41,7 +40,7 @@ void internet_poller(void)
     {
       response_buffer[0] = rxc.stn;
       response_buffer[1] = rxc.net;
-      response_buffer[2] = my_station;
+      response_buffer[2] = eeGlobals.Station;
       response_buffer[3] = 0;
       response_buffer[4] = 0x80;
       response_buffer[5] = FIND_SERVER_REPLY_PORT;

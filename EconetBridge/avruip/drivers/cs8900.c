@@ -16,14 +16,12 @@ History:
 #include "delay.h"
 #include "uip.h"
 #include "serial.h"
+#include "eeprom.h"
 
 /* register asm routines */
 
 extern void serial_tx(uint8_t mask);
 extern void serial_tx_hex(uint8_t mask);
-
-/* This should really be the same variable as in uip.c */
-unsigned char gEtherAddr[6] = {0x00, 0x11, 0x22, 0x33, 0x44, 0x55};
 
 static unsigned char gPrevTxBidFail;
 
@@ -34,7 +32,6 @@ static void WriteIORegister(unsigned short , unsigned short );
 static int8_t cs8900_poll_init(unsigned short);
 static int8_t cs8900_reset(void);
 
-/* wrappers for the driver */
 
 /* functions for the driver code to access memory */
 static void outportb( unsigned short reg, unsigned char val)
@@ -321,7 +318,7 @@ static int8_t cs8900_poll_init(unsigned short duplexMode)
     // use a for loop.  If WritePPRegister(PP_IA+i*2, *(ptr+i)) is
     // used, the value of *(ptr+i) is always 0.
     //
-    ptr = (unsigned short *)gEtherAddr;
+    ptr = (unsigned short *)&eeGlobals.MAC_1;
     tmpAddr0=*ptr;
     tmpAddr1=*(ptr+1);
     tmpAddr2=*(ptr+2);

@@ -53,7 +53,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uipopt.h,v 1.3 2009/07/27 16:25:49 philb Exp $
+ * $Id: uipopt.h,v 1.4 2009/08/04 14:32:09 markusher Exp $
  *
  */
 
@@ -257,7 +257,7 @@
  * \hideinitializer
  */
 #ifndef UIP_CONF_MAX_LISTENPORTS
-#define UIP_LISTENPORTS 1
+#define UIP_LISTENPORTS 5
 #else /* UIP_CONF_MAX_LISTENPORTS */
 #define UIP_LISTENPORTS UIP_CONF_MAX_LISTENPORTS
 #endif /* UIP_CONF_MAX_LISTENPORTS */
@@ -377,7 +377,7 @@
  * \hideinitializer
  */
 #ifndef UIP_CONF_BUFFER_SIZE
-#define UIP_BUFSIZE     400
+#define UIP_BUFSIZE     1500
 #else /* UIP_CONF_BUFFER_SIZE */
 #define UIP_BUFSIZE UIP_CONF_BUFFER_SIZE
 #endif /* UIP_CONF_BUFFER_SIZE */

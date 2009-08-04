@@ -49,7 +49,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uip.c,v 1.2 2009/07/21 22:14:21 markusher Exp $
+ * $Id: uip.c,v 1.3 2009/08/04 14:32:09 markusher Exp $
  *
  */
 
@@ -127,6 +127,8 @@ static const uip_ipaddr_t all_zeroes_addr =
   {0x0000,0x0000};
 #endif /* UIP_CONF_IPV6 */
 
+#include "eeprom.h"
+#include <avr\eeprom.h>
 
 #if UIP_FIXEDETHADDR
 const struct uip_eth_addr uip_ethaddr = {{UIP_ETHADDR0,

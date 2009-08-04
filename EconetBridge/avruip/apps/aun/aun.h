@@ -22,6 +22,7 @@
 #ifndef __AUN_H__
 #define __AUN_H__
 
+#include "globals.h"
 
 /* Since this file will be included by uip.h, we cannot include uip.h
    here. But we might need to include uipopt.h if we need the u8_t and
@@ -35,7 +36,7 @@ struct aun_state {
 };
 
 #define AUN_NOT_LISTENING	0
-#define AUN_LISTENING	1
+#define AUN_LISTENING		1
 
 
 //dummy as not using tcp at the moment
@@ -61,11 +62,6 @@ void aun_init(void);
 void foward_packet(void);
 
 extern uint32_t rTableEth[256];
-
-typedef unsigned char	u_char;
-typedef unsigned int	u_int;
-typedef unsigned short	u_short;
-typedef unsigned long	u_long;
 
 
 /* module.h
