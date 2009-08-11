@@ -157,10 +157,6 @@ static int8_t do_tx_packet(struct tx_record *tx)
   else if (buf[5] == 0)
     type = IMMEDIATE;
 
-  serial_eco();
-  serial_tx('t');
-  serial_tx('x');
-
   stats.tx_attempts++;
 
   if (adlc_await_idle()) {
@@ -171,7 +167,6 @@ static int8_t do_tx_packet(struct tx_record *tx)
   if (type == BROADCAST) {
     adlc_tx_frame (tx->buf, tx->buf + tx->len, 1);
     adlc_ready_to_receive (RX_SCOUT);
-    serial_crlf();
     return TX_OK;
   }
 
@@ -186,12 +181,8 @@ static int8_t do_tx_packet(struct tx_record *tx)
   } while (state != RX_IDLE && state != (RX_SCOUT_ACK | FRAME_COMPLETE));
 
   if (state == RX_IDLE) {
-    serial_tx ('N');
-    serial_crlf();
     return NOT_LISTENING;
   }
-
-  serial_tx ('S');
 
   if (type == NORMAL_PACKET) {
     adlc_tx_frame (tx->buf, tx->buf + tx->len, 0);
@@ -201,12 +192,9 @@ static int8_t do_tx_packet(struct tx_record *tx)
     } while (state != RX_IDLE && state != (RX_DATA_ACK | FRAME_COMPLETE));
   }
 
-  serial_tx ('V');
   tx->buf = NULL;
 
   adlc_ready_to_receive (RX_SCOUT);
-
-  serial_crlf();
 
   return ((state & 0xf) == FRAME_COMPLETE) ? TX_OK : NET_ERROR;
 }

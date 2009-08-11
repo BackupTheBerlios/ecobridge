@@ -318,27 +318,14 @@ static int8_t cs8900_poll_init(unsigned short duplexMode)
     // use a for loop.  If WritePPRegister(PP_IA+i*2, *(ptr+i)) is
     // used, the value of *(ptr+i) is always 0.
     //
-    ptr = (unsigned short *)&eeGlobals.MAC_1;
-    tmpAddr0=*ptr;
-    tmpAddr1=*(ptr+1);
-    tmpAddr2=*(ptr+2);
-
-    // Write 2 bytes of Ethernet address into the Individual Address
-    // register at a time
-    WritePPRegister(PP_IA, tmpAddr0 );
-    WritePPRegister(PP_IA+2, tmpAddr1 );
-    WritePPRegister(PP_IA+4, tmpAddr2 );
+    ptr = (unsigned short *)&eeGlobals.MAC[0];
+    cs8900LoadMac(ptr);
 
     //***** step 3: Configure RxCTL to receive good frames for
     //              Indivual Addr, Broadcast, and Multicast.
     //
-    // WritePPRegister(PP_RxCTL, PP_RxCTL_RxOK | PP_RxCTL_IA |
-    //                  PP_RxCTL_Broadcast | PP_RxCTL_Multicast);
-
-    //***** step 3: or set to Promiscuous mode to receive all
-    //              network traffic.
-    //
-    WritePPRegister(PP_RxCTL, PP_RxCTL_Promiscuous|PP_RxCTL_RxOK);
+    WritePPRegister(PP_RxCTL, PP_RxCTL_RxOK | PP_RxCTL_IA |
+		    PP_RxCTL_Broadcast | PP_RxCTL_Multicast);
 
 
     //***** step 4: Configure TestCTL (DuplexMode)

@@ -66,3 +66,34 @@ ReadPPRegister:
 	lds	r24, CS8900_PDATA
 	lds	r25, CS8900_PDATA+1
 	ret
+
+	.globl	WritePPRegister
+WritePPRegister:	
+	sts	CS8900_PPTR, r24
+	sts	CS8900_PPTR+1, r25
+	sts	CS8900_PDATA, r22
+	sts	CS8900_PDATA+1, r23
+	ret
+	
+
+#define PP_IA        0x0158  /* Individual address (MAC)*/
+
+	.global cs8900LoadMac
+cs8900LoadMac:
+	mov	r31, r25
+	mov	r30, r24
+	ldi	r24, lo8(PP_IA)
+	ldi	r25, hi8(PP_IA)
+	ld	r22, Z+
+	ld	r23, Z+
+	rcall	WritePPRegister
+	ld	r22, Z+
+	ld	r23, Z+
+	adiw	r24, 2
+	rcall	WritePPRegister
+	ld	r22, Z+
+	ld	r23, Z+
+	adiw	r24, 2
+	rjmp	WritePPRegister
+	
+	
