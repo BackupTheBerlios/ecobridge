@@ -13,7 +13,7 @@
 cs8900SendPacketData:
 	mov	r31, r25
 	mov	r30, r24
-	mov	r17, r22
+	mov	r18, r22
 	andi	r22, 0xfe
 	clr	r24
 	clr	r25
@@ -28,7 +28,7 @@ loop:
 	adiw	r24, 2
 	brcc	loop
 done:	
-	sbrs	r17, 0
+	sbrs	r18, 0
 	ret
 	ld	r20, Z
 	sts	CS8900_RTDATA, r20
@@ -38,7 +38,7 @@ done:
 cs8900RetreivePacketData:
 	mov	r31, r25
 	mov	r30, r24
-	mov	r17, r22
+	mov	r18, r22
 	andi	r22, 0xfe
 	clr	r24
 	clr	r25
@@ -53,7 +53,7 @@ cs8900RetreivePacketData:
 	adiw	r24, 2
 	brcc	1b	
 2:	
-	sbrs	r17, 0
+	sbrs	r18, 0
 	ret
 	lds	r20, CS8900_RTDATA
 	st	Z, r20
