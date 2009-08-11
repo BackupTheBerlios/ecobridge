@@ -28,7 +28,7 @@
  *
  * This file is part of the uIP TCP/IP stack
  *
- * $Id: telnetd.c,v 1.1 2009/07/19 14:33:47 markusher Exp $
+ * $Id: telnetd.c,v 1.2 2009/08/11 18:43:39 philb Exp $
  *
  */
 
@@ -308,8 +308,6 @@ void
 telnetd_appcall(void)
 {
   static unsigned int i;
-
-  serial_ok(7);
 
   if(uip_connected()) {
     /*    tcp_markconn(uip_conn, &s);*/

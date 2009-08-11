@@ -164,12 +164,6 @@ aun_appcall(void)
 
   if(uip_udp_conn->rport == HTONS(MNSDATAPORT)) {
 
-serial_eth();
-serial_rx();
-//serial_packet(uip_buf+42, 16);
-serial_packet(uip_appdata, 16);
-
-
    if(uip_aborted())
    {}
    if(uip_timedout())
@@ -503,12 +497,6 @@ void aun_tx_complete (int8_t status, uint16_t requestor_ip0, uint16_t requestor_
 
 uint8_t aun_want_proxy_arp(uint16_t *ipaddr)
 {
-  serial_tx_str ("P?");
-  serial_tx_hex (ipaddr[0] >> 8);
-  serial_tx_hex (ipaddr[0] & 0xff);
-  serial_tx_hex (ipaddr[1] >> 8);
-  serial_tx_hex (ipaddr[1] & 0xff);
-  serial_crlf ();
   if (ipaddr[0] == 0x0201
       && rTableEco[ipaddr[1] & 0xff])
     return 1;
