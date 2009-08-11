@@ -16,6 +16,7 @@
 
 #include "nic.h"
 #include "serial.h"
+#include "mbuf.h"
 
 
 
@@ -28,33 +29,45 @@ void nic_init(void)
 	NICInit();
 }
 
-
-void nic_send(void)
+void nic_send(struct mbuf *mb)
 {
-	if (uip_len == 0) {
-		serial_tx_str ("tx empty packet?\r\n");
-		return;
-	}
-	NICBeginPacketSend(uip_len);
+        uint8_t do_free = 0;
 
-	// send packet, using data in uip_appdata if over the IP+TCP header size
-	if( uip_len <= TOTAL_HEADER_LENGTH )
-	{
-		NICSendPacketData(uip_buf, uip_len);
-serial_eth();
-serial_txx();
-serial_packet(uip_buf, uip_len);
-serial_crlf();
-	
-	}
-	else
-	{
-      	uip_len -= TOTAL_HEADER_LENGTH;
-      	NICSendPacketData(uip_buf, TOTAL_HEADER_LENGTH);
-		NICSendPacketData((unsigned char *)uip_appdata, uip_len);
-	}
+        if (mb == NULL) {
+                if (uip_len <= TOTAL_HEADER_LENGTH) {
+                        mb = copy_to_mbufs (uip_buf, uip_len);
+                } else {
+                        mb = copy_to_mbufs (uip_buf, TOTAL_HEADER_LENGTH);
+                        struct mbuf *mb2 = copy_to_mbufs (uip_appdata, uip_len - TOTAL_HEADER_LENGTH);
+                        struct mbuf *mbp = mb;
+                        while (mbp->next) {
+                                mbp = mbp->next;
+                        }
+                        mbp->next = mb2;
+                        mb2->prev = mbp;
+                }
+
+                do_free = 1;
+        }
+
+        uint16_t length = 0;
+        struct mbuf *mbp = mb;
+        while (mbp) {
+                length += mbp->length;
+                mbp = mbp->next;
+        }
+
+	NICBeginPacketSend(length);
+        mbp = mb;
+        while (mbp) {
+                NICSendPacketData(mbp->data, mbp->length);
+                mbp = mbp->next;
+        }
 
 	NICEndPacketSend();
+
+        if (do_free)
+                mbuf_free_chain (mb);
 }
 
 

@@ -31,7 +31,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: main.c,v 1.20 2009/08/04 14:32:09 markusher Exp $
+ * $Id: main.c,v 1.21 2009/08/11 17:53:57 philb Exp $
  *
  */
 
@@ -97,6 +97,8 @@ void AVR_init(void)
 
 }
 
+int main(void) __attribute__ ((noreturn));
+
 /*---------------------------------------------------------------------------*/
 int
 main(void)
@@ -159,7 +161,7 @@ main(void)
 	   uip_len is set to a value > 0. */
 	if(uip_len > 0) {
 	  uip_arp_out();
-	  nic_send();
+	  nic_send(NULL);
 	}
       } else if(BUF->type == htons(UIP_ETHTYPE_ARP)) {
 	uip_arp_arpin();
@@ -167,7 +169,7 @@ main(void)
 	   should be sent out on the network, the global variable
 	   uip_len is set to a value > 0. */
 	if(uip_len > 0) {
-	  nic_send();
+	  nic_send(NULL);
 	}
       }
 
@@ -180,7 +182,7 @@ main(void)
 	   uip_len is set to a value > 0. */
 	if(uip_len > 0) {
 	  uip_arp_out();
-	  nic_send();
+	  nic_send(NULL);
 	}
       }
 
@@ -192,7 +194,7 @@ main(void)
 	   uip_len is set to a value > 0. */
 	if(uip_len > 0) {
 	  uip_arp_out();
-	  nic_send();
+	  nic_send(NULL);
 	}
       }
 #endif /* UIP_UDP */
@@ -204,7 +206,6 @@ main(void)
       }
     }
   }
-  return 0;
 }
 
 #ifdef __DHCPC_H__

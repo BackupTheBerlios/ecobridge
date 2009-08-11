@@ -18,6 +18,7 @@
 *****************************************************************************/
 
 #include "uip.h"
+#include "mbuf.h"
 
 
 #define RTL8019 1
@@ -75,7 +76,7 @@ void nic_init(void);
 *  Description: Sends the packet contained in uip_buf and uip_appdata over
 *                 the network
 *****************************************************************************/
-void nic_send(void);
+void nic_send(struct mbuf *mb);
 
 
 /*****************************************************************************
