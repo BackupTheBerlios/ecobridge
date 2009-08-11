@@ -119,7 +119,18 @@
 #define egpio_arg		r24
 #define serial_tx_arg		r24
 
+#define zero_reg                r1
+
 .section .text             ; Start program section
+
+addr_setup:
+	cbi	PORTD, ADLC_RS0			; clear RS0 on PORTD
+	cbi	PORTD, ADLC_RS1			; clear RS1 on PORTD
+	sbrc	tmp1, 0				; if bit 0 in the address field is not clear
+	sbi	PORTD, ADLC_RS0			;    set bit 0
+	sbrc	tmp1, 1				; if bit 1 in the address field is not clear
+	sbi	PORTD, ADLC_RS1			;    set bit 1
+        ret
 
 ; -----------------------------------------------------------------------------------------
 ; ADLC Read
@@ -129,12 +140,7 @@
 ; tmp2=data
 
 adlc_read:
-	cbi	PORTD, ADLC_RS0			; clear RS0 on PORTD
-	cbi	PORTD, ADLC_RS1			; clear RS1 on PORTD
-	sbrc	tmp1, 0				; if bit 0 in the address field is not clear
-	sbi	PORTD, ADLC_RS0			;    set bit 0
-	sbrc	tmp1, 1				; if bit 1 in the address field is not clear
-	sbi	PORTD, ADLC_RS1			;    set bit 1
+        rcall   addr_setup
 	sbi	PORTD, ADLC_RnW			; Read from ADLC
 
 	ldi	tmp1, 0x1				; make sure the ADLC_CLK at PB0 stays set
@@ -144,57 +150,8 @@ adlc_read:
 	out	PORTB, tmp1
 	sbi	PORTE, ADLC_D0
 
-	clc
-	
-	in	saved_gicr, GICR			; save the contents of the General Interrupt Control Register
-	ldi	r24, (1 << INT1)			; External INT1 enable
-adlc_read_prewait:
-        sbic    PIND, 3
-        rjmp    adlc_read_prewait
-	out	GIFR, r24				; write to the General Interrupt Flag Register
-	out	GICR, r24				; write to the General Interrupt Control Register
+        rcall   go_cycle
 
-        brcs    adlc_read_done
-        brcs    adlc_read_done
-        brcs    adlc_read_done
-        brcs    adlc_read_done
-
-        brcs    adlc_read_done
-        brcs    adlc_read_done
-        brcs    adlc_read_done
-        brcs    adlc_read_done
-
-        brcs    adlc_read_done
-        brcs    adlc_read_done
-        brcs    adlc_read_done
-        brcs    adlc_read_done
-
-        brcs    adlc_read_done
-        brcs    adlc_read_done
-        brcs    adlc_read_done
-        brcs    adlc_read_done
-
-        brcs    adlc_read_done
-        brcs    adlc_read_done
-        brcs    adlc_read_done
-        brcs    adlc_read_done
-
-        brcs    adlc_read_done
-        brcs    adlc_read_done
-        brcs    adlc_read_done
-        brcs    adlc_read_done
-
-        brcs    adlc_read_done
-        brcs    adlc_read_done
-        brcs    adlc_read_done
-        brcs    adlc_read_done
-
-        brcs    adlc_read_done
-        brcs    adlc_read_done
-        brcs    adlc_read_done
-        brcs    adlc_read_done
-
-adlc_read_done:
 	bst	tmp1, ADLC_D0			; Store the bit from ADLC_D0 in the T flag
 	bld	tmp2, 0				; load T into bit 0 of tmp2 to leave the byte read in tmp2
 
@@ -202,7 +159,6 @@ adlc_read_done:
 	out	DDRB, tmp1				; Port B
 	sbi	DDRE, ADLC_D0			; ADLC_DO pin on PORT E
 	ret
-
 
 ; -----------------------------------------------------------------------------------------
 ; ADLC Write
@@ -212,13 +168,8 @@ adlc_read_done:
 ; tmp2=data
 
 adlc_write:
-	; set the addressing
-	cbi	PORTD, ADLC_RS0			; clear RS0 on PORTD -
-	cbi	PORTD, ADLC_RS1			; clear RS1 on PORTD - ADLC Rx
-	sbrc	tmp1, 0				; if bit 0 in the address field is not clear
-	sbi	PORTD, ADLC_RS0			;    set bit 0
-	sbrc	tmp1, 1				; if bit 1 in the address field is not clear
-	sbi	PORTD, ADLC_RS1			;    set bit 1
+        rcall   addr_setup
+
 	cbi	PORTD, ADLC_RnW			; write to ADLC
 
 	; set the data
@@ -227,6 +178,7 @@ adlc_write:
 	sbrc	tmp2, 0				; if bit 0 in the data field is not clear
 	sbi	PORTE, ADLC_D0			;    set bit to 1
 
+go_cycle:
 	clc
 	
 	in	saved_gicr, GICR			; save the contents of the General Interrupt Control Register
@@ -279,7 +231,6 @@ adlc_write_prewait:
 
 adlc_write_done:
 	ret
-
 
 ; -----------------------------------------------------------------------------------------
 ; ADLC access
@@ -462,16 +413,14 @@ process_idle:
 	rcall	adlc_clear_rx			; clear Rx Status Register
 	lds	XH, current_rx + 1
 	lds	XL, current_rx
-	cpi	XH, 0
-	brne	yes_current_rx
-	cpi	XL, 0
-	breq	no_current_rx
+        cp      XL, zero_reg
+	cpc	XH, zero_reg
+	brcc	no_current_rx
 yes_current_rx:	
 	ldi	tmp1, RXCB_READY
 	st	X, tmp1
-	clr	tmp1
-	sts	current_rx, tmp1
-	sts	current_rx + 1, tmp1
+	sts	current_rx, zero_reg
+	sts	current_rx + 1, zero_reg
 no_current_rx:
 	rjmp	adlc_irq_ret			; clean up routine for interrupt handling
 
@@ -490,8 +439,7 @@ __vector_1:
 	push	XL
 
 	; disable adlc irq and re-enable global interrupts
-	clr	r24
-	out	GICR, r24
+	out	GICR, zero_reg
 	sei
 
 process_s2rq:	
@@ -825,8 +773,6 @@ interesting_network:
 	breq	yes_network
 	cpi	tmp1, 0x0
 	breq	maybe_network
-;	subi	tmp1, 0x80
-;	brcs	no_network
 	ldi	tmp2, 0
 	lsl	tmp1
 	rol	tmp2
@@ -847,10 +793,7 @@ interesting_network:
 	or	tmp1, tmp2
 	pop	YH
 	pop	YL
-	cpi	tmp1, 0
 	brne	yes_network
-no_network:
-	sez
 	clc
 	ret
 
@@ -868,7 +811,6 @@ yes_network:
 get_adlc_state:
 	mov	r24, adlc_state
 	ret
-	
 
         .section        .data
         .globl  adlc_rx_ptr
