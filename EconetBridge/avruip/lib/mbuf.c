@@ -17,18 +17,23 @@ void mbuf_init(void)
   }
 }
 
+struct mbuf *mbuf_alloc(void) __attribute__ ((noinline));
+
 struct mbuf *mbuf_alloc(void)
 {
   struct mbuf *m = free_list;
   if (m)
   {
     struct mbuf *next = m->next;
-    next->prev = NULL;
+    if (next)
+      next->prev = NULL;
     free_list = next;
     m->next = NULL;
   }
   return m;
 }
+
+void mbuf_free(struct mbuf *m) __attribute__ ((noinline));
 
 void mbuf_free(struct mbuf *m)
 {
@@ -62,8 +67,10 @@ struct mbuf *copy_to_mbufs(uint8_t *buffer, uint16_t length)
       mbuf_free_chain (first);
       return NULL;
     }
-    if (first)
+    if (first == NULL)
+    {
       first = m;
+    }
     else
     {
       m->prev = last;
