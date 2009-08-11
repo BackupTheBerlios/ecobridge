@@ -54,12 +54,14 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uip_arp.c,v 1.3 2009/07/27 16:25:49 philb Exp $
+ * $Id: uip_arp.c,v 1.4 2009/08/11 22:14:26 philb Exp $
  *
  */
 
 
 #include "uip_arp.h"
+#include "mbuf.h"
+#include "nic.h"
 
 #include <string.h>
 
@@ -102,8 +104,11 @@ struct arp_entry {
   u8_t time;
 };
 
-static const struct uip_eth_addr broadcast_ethaddr =
-  {{0xff,0xff,0xff,0xff,0xff,0xff}};
+static struct {
+  struct mbuf *mbuf;
+  uint16_t ip[2];
+} arp_lookaside;
+
 static const u16_t broadcast_ipaddr[2] = {0xffff,0xffff};
 
 static struct arp_entry arp_table[UIP_ARPTAB_SIZE];
@@ -219,6 +224,19 @@ uip_arp_update(u16_t *ipaddr, struct uip_eth_addr *ethaddr)
   memcpy(tabptr->ipaddr, ipaddr, 4);
   memcpy(tabptr->ethaddr.addr, ethaddr->addr, 6);
   tabptr->time = arptime;
+
+  if (uip_ipaddr_cmp(ipaddr, arp_lookaside.ip)) {
+    serial_tx_str("AL");
+    // This host has a queued packet.  Send it now.
+    struct ethip_hdr *IPBUF2 = arp_lookaside.mbuf->data;
+    memcpy(IPBUF2->ethhdr.dest.addr, tabptr->ethaddr.addr, 6);
+    memcpy(IPBUF2->ethhdr.src.addr, uip_ethaddr.addr, 6);
+    IPBUF2->ethhdr.type = HTONS(UIP_ETHTYPE_IP);
+
+    nic_send(arp_lookaside.mbuf);
+    mbuf_free_chain(arp_lookaside.mbuf);
+    memset (&arp_lookaside, 0, sizeof (arp_lookaside));
+  }
 }
 /*-----------------------------------------------------------------------------------*/
 /**
@@ -328,6 +346,17 @@ uip_arp_arpin(void)
 
   return;
 }
+
+static void
+push_arp_lookaside(struct mbuf *mb, uint16_t *ipaddr)
+{
+  if (arp_lookaside.mbuf) {
+    mbuf_free_chain(arp_lookaside.mbuf);
+  }
+  arp_lookaside.mbuf = mb;
+  uip_ipaddr_copy(&arp_lookaside.ip[0], ipaddr);
+}
+
 /*-----------------------------------------------------------------------------------*/
 /**
  * Prepend Ethernet header to an outbound IP packet and see if we need
@@ -361,6 +390,8 @@ uip_arp_out(void)
 {
   struct arp_entry *tabptr;
   
+  uip_len += sizeof(struct uip_eth_hdr);
+
   /* Find the destination IP address in the ARP table and construct
      the Ethernet header. If the destination IP addres isn't on the
      local network, we use the default router's IP address instead.
@@ -370,7 +401,7 @@ uip_arp_out(void)
 
   /* First check if destination is a local broadcast. */
   if(uip_ipaddr_cmp(IPBUF->destipaddr, broadcast_ipaddr)) {
-    memcpy(IPBUF->ethhdr.dest.addr, broadcast_ethaddr.addr, 6);
+    memset(IPBUF->ethhdr.dest.addr, 0xff, 6);
   } else {
     /* Check if the destination address is on the local network. */
     if(!uip_ipaddr_maskcmp(IPBUF->destipaddr, uip_hostaddr, uip_netmask)) {
@@ -393,6 +424,9 @@ uip_arp_out(void)
     if(i == UIP_ARPTAB_SIZE) {
       /* The destination address was not in our ARP table, so we
 	 overwrite the IP packet with an ARP request. */
+      
+      struct mbuf *mb = uip_to_mbufs();
+      push_arp_lookaside (mb, ipaddr);
 
       memset(BUF->ethhdr.dest.addr, 0xff, 6);
       memset(BUF->dhwaddr.addr, 0x00, 6);
@@ -420,8 +454,6 @@ uip_arp_out(void)
   memcpy(IPBUF->ethhdr.src.addr, uip_ethaddr.addr, 6);
   
   IPBUF->ethhdr.type = HTONS(UIP_ETHTYPE_IP);
-
-  uip_len += sizeof(struct uip_eth_hdr);
 }
 /*-----------------------------------------------------------------------------------*/
 
