@@ -31,10 +31,11 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: main.c,v 1.21 2009/08/11 17:53:57 philb Exp $
+ * $Id: main.c,v 1.22 2009/08/11 21:19:23 philb Exp $
  *
  */
 
+#include <string.h>
 #include "compiler.h"
 
 #include "globals.h"
@@ -108,9 +109,8 @@ main(void)
   int i;
   uip_ipaddr_t ipaddr;
   struct timer periodic_timer, arp_timer;
-  struct uip_eth_addr uip_ethaddr = {
-  { eeGlobals.MAC_1, eeGlobals.MAC_2, eeGlobals.MAC_3, 
-    eeGlobals.MAC_4, eeGlobals.MAC_5 ,eeGlobals.MAC_6}};
+
+  memcpy (&uip_ethaddr.addr[0], &eeGlobals.MAC[0], 6);
 
   AVR_init();
   egpio_init();

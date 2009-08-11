@@ -49,7 +49,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uip.c,v 1.4 2009/08/11 15:54:58 philb Exp $
+ * $Id: uip.c,v 1.5 2009/08/11 21:19:23 philb Exp $
  *
  */
 
@@ -112,8 +112,6 @@ uip_ipaddr_t uip_hostaddr, uip_draddr, uip_netmask, uip_tempaddr;
 
 #endif /* UIP_FIXEDADDR */
 
-static unsigned char uip_routing_flag;
-
 static const uip_ipaddr_t all_ones_addr =
 #if UIP_CONF_IPV6
   {0xffff,0xffff,0xffff,0xffff,0xffff,0xffff,0xffff,0xffff};
@@ -138,7 +136,7 @@ const struct uip_eth_addr uip_ethaddr = {{UIP_ETHADDR0,
 					  UIP_ETHADDR4,
 					  UIP_ETHADDR5}};
 #else
-struct uip_eth_addr uip_ethaddr = {{0x00,0x11,0x22,0x33,0x44,0x55}};
+struct uip_eth_addr uip_ethaddr;
 #endif
 
 #ifndef UIP_CONF_EXTERNAL_BUFFER
@@ -1144,20 +1142,6 @@ uip_process(u8_t flag)
 	  uip_ipaddr_cmp(uip_udp_conn->ripaddr, all_ones_addr) ||
 	  uip_ipaddr_cmp(BUF->srcipaddr, uip_udp_conn->ripaddr) ||
 	  uip_macaddr_cmp(uip_buf, uip_ethaddr)	  )) {
-
-	// flag if the packet is being routed. If so, store the destination
-	// IP address as it is needed for masquerading when replying to a
-	// psuedo econet immediate op
-
-	if ( uip_ipaddr_cmp(uip_hostaddr, BUF->destipaddr) ){
-		uip_routing_flag = 0;
-	}
-	else {
-		uip_ipaddr_copy(uip_tempaddr, BUF->destipaddr);
-		uip_routing_flag = 1;
-	}
-
-
       goto udp_found;
     }
   }
@@ -1221,17 +1205,7 @@ uip_process(u8_t flag)
   }
 
 
-// routing provision. replaced:
-// uip_ipaddr_copy(BUF->srcipaddr, uip_hostaddr);
-// with
-
-    if (uip_routing_flag == 0){
-	uip_ipaddr_copy(BUF->srcipaddr, uip_hostaddr);
-  } 
-  else {
-	uip_ipaddr_copy(BUF->srcipaddr, uip_tempaddr);
-  }
-
+  uip_ipaddr_copy(BUF->srcipaddr, uip_hostaddr);
 
   uip_appdata = &uip_buf[UIP_LLH_LEN + UIP_IPTCPH_LEN];
 
