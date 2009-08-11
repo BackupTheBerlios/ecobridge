@@ -111,7 +111,7 @@ CFLAGS = -g -O$(OPT) \
 -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums \
 -Wall -Wstrict-prototypes \
 -Wa,-adhlns=$(<:.c=.lst) \
-$(patsubst %,-I%,$(EXTRAINCDIRS)) -ffixed-r15
+$(patsubst %,-I%,$(EXTRAINCDIRS)) -ffixed-r15 -ffunction-sections
 
 
 # Set a "language standard" compiler flag.
@@ -139,7 +139,7 @@ ASFLAGS = -Wa,-adhlns=$(<:.S=.lst),-gstabs
 #  -Wl,...:   tell GCC to pass this to linker.
 #  -Map:      create map file
 #  --cref:    add cross reference to  map file
-LDFLAGS = -Wl,-Map=$(TARGET).map,--cref -Wl,--section-start,.bss=0x800500
+LDFLAGS = -Wl,-Map=$(TARGET).map,--cref -Wl,--section-start,.bss=0x800500 -Wl,--relax -Wl,--gc-sections
 
 
 
