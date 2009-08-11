@@ -26,24 +26,30 @@ void nic_init(void)
 	NICInit();
 }
 
+struct mbuf *uip_to_mbufs(void)
+{
+  struct mbuf *mb;
+  if (uip_len <= TOTAL_HEADER_LENGTH) {
+    mb = copy_to_mbufs (uip_buf, uip_len);
+  } else {
+    mb = copy_to_mbufs (uip_buf, TOTAL_HEADER_LENGTH);
+    struct mbuf *mb2 = copy_to_mbufs (uip_appdata, uip_len - TOTAL_HEADER_LENGTH);
+    struct mbuf *mbp = mb;
+    while (mbp->next) {
+      mbp = mbp->next;
+    }
+    mbp->next = mb2;
+    mb2->prev = mbp;
+  }
+  return mb;
+}
+
 void nic_send(struct mbuf *mb)
 {
         uint8_t do_free = 0;
 
         if (mb == NULL) {
-                if (uip_len <= TOTAL_HEADER_LENGTH) {
-                        mb = copy_to_mbufs (uip_buf, uip_len);
-                } else {
-                        mb = copy_to_mbufs (uip_buf, TOTAL_HEADER_LENGTH);
-                        struct mbuf *mb2 = copy_to_mbufs (uip_appdata, uip_len - TOTAL_HEADER_LENGTH);
-                        struct mbuf *mbp = mb;
-                        while (mbp->next) {
-                                mbp = mbp->next;
-                        }
-                        mbp->next = mb2;
-                        mb2->prev = mbp;
-                }
-
+		mb = uip_to_mbufs();
                 do_free = 1;
         }
 

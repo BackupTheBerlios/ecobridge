@@ -54,7 +54,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uip_arp.c,v 1.4 2009/08/11 22:14:26 philb Exp $
+ * $Id: uip_arp.c,v 1.5 2009/08/11 22:28:33 philb Exp $
  *
  */
 
@@ -226,7 +226,6 @@ uip_arp_update(u16_t *ipaddr, struct uip_eth_addr *ethaddr)
   tabptr->time = arptime;
 
   if (uip_ipaddr_cmp(ipaddr, arp_lookaside.ip)) {
-    serial_tx_str("AL");
     // This host has a queued packet.  Send it now.
     struct ethip_hdr *IPBUF2 = arp_lookaside.mbuf->data;
     memcpy(IPBUF2->ethhdr.dest.addr, tabptr->ethaddr.addr, 6);

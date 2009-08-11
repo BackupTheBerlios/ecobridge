@@ -95,4 +95,6 @@ unsigned short nic_poll(void);
 unsigned char nic_poll(void);
 #endif /* UIP_BUFSIZE > 255 */
 
+struct mbuf *uip_to_mbufs(void);
+
 #endif /* __RTL8019DEV_H__ */
