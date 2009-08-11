@@ -28,7 +28,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: shell.c,v 1.2 2009/08/04 14:32:09 markusher Exp $
+ * $Id: shell.c,v 1.3 2009/08/11 21:20:00 philb Exp $
  *
  */
 
@@ -43,7 +43,7 @@ struct ptentry {
   void (* pfunc)(char *str);
 };
 
-#define SHELL_PROMPT "BEE> "
+#define SHELL_PROMPT "> "
 
 /*---------------------------------------------------------------------------*/
 static void
@@ -60,7 +60,7 @@ parse(register char *str, struct ptentry *t)
 }
 /*---------------------------------------------------------------------------*/
 static void
-inttostr(register char *str, unsigned int i)
+inttostr(char *str, uint8_t i)
 {
   str[0] = '0' + i / 100;
   if(str[0] == '0') {
@@ -74,11 +74,20 @@ inttostr(register char *str, unsigned int i)
   str[3] = ' ';
   str[4] = 0;
 }
+
+#define hexdigit(x)	(((x) < 10) ? (x) + '0' : (x) + 'a' - 10)
+
+static void
+hextostr(char *str, uint8_t i)
+{
+  str[0] = hexdigit(i >> 4);
+  str[1] = hexdigit(i & 0xf);
+}
+
 /*---------------------------------------------------------------------------*/
 static void
 help(char *str)
 {
-  shell_output("Available commands:", "");
   shell_output("stats   - show network statistics", "");
   shell_output("conn    - show TCP connections", "");
   shell_output("config  - show configuration", "");
@@ -111,42 +120,33 @@ stats(char *str)
 static void
 config(char *str)
 {
+  char outstring[5];
+  char MAC_addr[13];
 
-  char outstring[4];
-  char MAC_addr[20];
+  uint8_t i;
+  for (i = 0; i < 6; i++) {
+    hextostr(MAC_addr + (i * 2), eeGlobals.MAC[i]);
+  }
+  MAC_addr[12] = 0;
 
-  inttostr(&outstring, eeGlobals.MAC_1);
-  MAC_addr[0] = 0x45;
-  MAC_addr[1] = 0x46;
-  MAC_addr[2] = 0x47;
-//  inttostr(&outstring, eeGlobals.MAC_2);
-//  MAC_addr[5] = ':';
-    
+  inttostr(outstring,eeGlobals.Econet_Network);
+  shell_output("Econet\n======\n\nNetwork\t\t: ", outstring);
 
-  shell_output("BEE Configuration", "\n");
-  shell_output("Econet", "");
-  shell_output("======", "\n");
-  inttostr(&outstring,eeGlobals.Econet_Network);
-  shell_output("Network Number\t: ", outstring);
+  inttostr(outstring,eeGlobals.Station);
+  shell_output("Station\t\t: ", outstring);
 
-  inttostr(&outstring,eeGlobals.Station);
-  shell_output("Station Number\t: ", outstring);
-
-  inttostr(&outstring,eeGlobals.ClockMultiplier);
+  inttostr(outstring,eeGlobals.ClockMultiplier);
   shell_output("Clock x\t\t: ", outstring);
 
-  shell_output("\nEthernet\t: ", outstring);
-  shell_output("========", "\n");
+  shell_output("\nEthernet\n========\n\n", "");
   shell_output("MAC Address\t: ", MAC_addr);
   shell_output("IP Address\t: ", outstring);
   shell_output("Subnet\t\t: ", outstring);
   shell_output("Gateway\t\t: ", outstring);
 
-  inttostr(&outstring,eeGlobals.Ethernet_Network);
+  inttostr(outstring,eeGlobals.Ethernet_Network);
   shell_output("AUN Network\t: ", outstring);
 
-  shell_output("\n\nhelp, ? - show help", "");
-  shell_output("exit    - exit shell", "");
 }/*---------------------------------------------------------------------------*/
 static void
 unknown(char *str)
@@ -160,7 +160,6 @@ static struct ptentry parsetab[] =
   {{"stats", stats},
    {"conn", help},
    {"config", config},
-   {"help", help},
    {"exit", shell_quit},
    {"?", help},
 
@@ -175,8 +174,8 @@ shell_init(void)
 void
 shell_start(void)
 {
-  shell_output("BEE command shell", "");
-  shell_output("Type '?' and return for help", "");
+  shell_output("BEE Gateway", "");
+  shell_output("'?' for help", "");
   shell_prompt(SHELL_PROMPT);
 }
 /*---------------------------------------------------------------------------*/
