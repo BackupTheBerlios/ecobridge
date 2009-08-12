@@ -37,12 +37,8 @@ typedef struct {
     uint8_t Gateway_2; 
     uint8_t Gateway_3; 
     uint8_t Gateway_4; 
-    uint8_t MAC_1;
-    uint8_t MAC_2; 
-    uint8_t MAC_3; 
-    uint8_t MAC_4; 
-    uint8_t MAC_5; 
-    uint8_t MAC_6; 
+    uint8_t MAC[6];
+    uint8_t WANRouter[4];
 } sDefaults_t; 
 
 

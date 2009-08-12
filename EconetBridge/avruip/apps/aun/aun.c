@@ -27,6 +27,8 @@
 #include "serial.h"
 #include "adlc.h"
 #include "econet.h"
+#include "nic.h"
+
 #include <string.h>
 
 #ifndef NULL
@@ -453,7 +455,7 @@ void aun_send_packet (uint8_t cb, uint8_t port, uint32_t dest_ip, uint16_t data_
   uip_udp_send((int)uip_appdata + 8 + data_length - (int)uip_buf);
   uip_process(UIP_UDP_SEND_CONN);
   uip_arp_out();
-  nic_send();
+  nic_send(NULL);
   uip_len = 0;
 
   adlc_forwarding_complete (TX_OK);
@@ -490,7 +492,7 @@ void aun_tx_complete (int8_t status, uint16_t requestor_ip0, uint16_t requestor_
   uip_udp_send((int)uip_appdata + 8 - (int)uip_buf);
   uip_process(UIP_UDP_SEND_CONN);
   uip_arp_out();
-  nic_send();
+  nic_send(NULL);
   uip_len = 0;
 
 }
