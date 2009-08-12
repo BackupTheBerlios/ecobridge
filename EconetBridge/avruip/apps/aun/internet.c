@@ -6,7 +6,6 @@
 static uint8_t find_server_rxcb;
 
 static unsigned char bcast_buf[8];
-static unsigned char response_buffer[32];
 
 #define FIND_SERVER_PORT	0xb0
 #define FIND_SERVER_REPLY_PORT	0xb1
@@ -38,6 +37,8 @@ void internet_poller(void)
     if (memcmp (bcast_buf, MY_SERVER_TYPE, 8) == 0
 	|| memcmp (bcast_buf, WILDCARD_SERVER_TYPE, 8) == 0)
     {
+      struct mbuf *mb = mbuf_alloc();
+      unsigned char *response_buffer = &mb->data[0];
       response_buffer[0] = rxc.stn;
       response_buffer[1] = rxc.net;
       response_buffer[2] = eeGlobals.Station;
@@ -50,7 +51,8 @@ void internet_poller(void)
       strcpy ((char *)response_buffer + 9, MY_SERVER_TYPE);
       response_buffer[17] = strlen(MY_SERVER_NAME);
       strcpy ((char *)response_buffer + 18, MY_SERVER_NAME);
-      enqueue_tx (response_buffer, 18 + strlen(MY_SERVER_NAME), 0);
+      mb->length = 18 + strlen(MY_SERVER_NAME);
+      enqueue_tx (mb);
     }
 
     setup_find_server_rxcb ();

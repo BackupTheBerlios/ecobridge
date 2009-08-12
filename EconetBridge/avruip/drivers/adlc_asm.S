@@ -238,14 +238,12 @@ adlc_write_done:
 ;
 ; perform one read or write access cycle
 .global __vector_2
-__vector_2:	
-	nop
-	cbi	PORTE, ADLC_nCE			; Clear the ADLC_nCE
-	nop	
-	nop
-	nop
-	nop
-	nop
+__vector_2:
+	rjmp	1f
+1:	cbi	PORTE, ADLC_nCE			; Clear the ADLC_nCE
+	rjmp	1f
+1:	rjmp	1f
+1:	nop	
 	in	tmp2, PINB				; read PortB to tmp2
 	in	tmp1, PINE				; read PortE to tmp1
 	nop
@@ -275,16 +273,14 @@ idle_wait_loop:
 ; ADLC Tx frame
 ; -----------------------------------------------------------------------------------------
 ;
+	;;  r24, r25  pointer to first mbuf
+	;;  r22=0 -> this is a data frame, skip the cb and scout bytes
 
 .globl	adlc_tx_frame
 adlc_tx_frame:
-	mov	XH, r25
-	mov	XL, r24
 	push	YH
 	push	YL
-	mov	YH, r23
-	mov	YL, r22
-	mov	r21, r20
+	movw	YL, r24
 
 	ldi	r24, EGPIO_ECONET_GREEN
 	rcall	egpio_write
@@ -299,6 +295,12 @@ adlc_tx_frame:
 	ldi	tmp2, CR2_RTS | CR2_FLAGIDLE
 	rcall	adlc_write
 
+tx_one_mbuf:
+	ld	XL, Y
+	ldd	XH, Y+1
+	ldd	r21, Y+4
+	adiw	YL, 6
+
 await_tdra:	
 	ldi	tmp1, ADLC_SR1
 	rcall	adlc_read
@@ -307,8 +309,8 @@ await_tdra:
 	brbc	6, await_tdra
 
 skip:	
-	ld	tmp2, X+
-	cpi	r21, 0
+	ld	tmp2, Y+
+	cpi	r22, 0
 	brne	not_data
 	inc	r23
 	cpi	r23, 5
@@ -316,17 +318,13 @@ skip:
 	cpi	r23, 6
 	breq	skip
 	
-not_data:	
-	cp	XL, YL
+not_data:
+	dec	r21
 	brne	not_end
-	cp	XH, YH
-	breq	tx_end
+	cpi	XL, 0
+	cpc	XH, r1
+	brne	not_end
 	
-not_end:	
-	ldi	tmp1, ADLC_TXCONTINUE
-	rcall	adlc_write
-	rjmp	await_tdra
-
 tx_end:	
 	ldi	tmp1, ADLC_TXTERMINATE
 	rcall	adlc_write
@@ -347,7 +345,7 @@ await_end:
 	brbc	6, await_end
 
 	ldi	tmp1, (RX_SCOUT_ACK | RX_IDLE)
-	sbrs	r21, 0
+	sbrs	r22, 0
 	ldi	tmp1, (RX_DATA_ACK | RX_IDLE)	
 	mov	adlc_state, tmp1
 
@@ -355,9 +353,22 @@ await_end:
 	ldi	tmp2, CR1_RIE | CR1_TXRESET	; Enable Receive interrupts | Reset the TX status
 	ldi	tmp1, ADLC_CR1			; set to write to Control Register 1
 	rcall	adlc_write				; write to the ADLC
+
+	ldi	r24, EGPIO_ECONET_GREEN | EGPIO_SET
+	rcall	egpio_write
+
 	pop	YL
 	pop	YH
 	ret
+
+not_end:	
+	ldi	tmp1, ADLC_TXCONTINUE
+	rcall	adlc_write
+	cpi	r21, 0
+	brne	await_tdra
+	movw	YL, XL
+	ori	r22, 2
+	rjmp	tx_one_mbuf
 
 ; -----------------------------------------------------------------------------------------
 ; ADLC rx_overrun
@@ -422,6 +433,8 @@ yes_current_rx:
 	sts	current_rx, zero_reg
 	sts	current_rx + 1, zero_reg
 no_current_rx:
+	ldi	r24, EGPIO_ECONET_GREEN | EGPIO_SET
+	rcall	egpio_write
 	rjmp	adlc_irq_ret			; clean up routine for interrupt handling
 
 ; -----------------------------------------------------------------------------------------

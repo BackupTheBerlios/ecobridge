@@ -417,7 +417,8 @@ void foward_packet(void)
 	eh->PORT = ah->port;
 
 	int x;
-	x = enqueue_aun_tx(eh, buf_len-2, s.handle);
+	struct mbuf *mb = copy_to_mbufs (eh, buf_len - 2);
+	x = enqueue_aun_tx(mb, s.handle);
 
 	return;
 }

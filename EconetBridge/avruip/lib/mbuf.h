@@ -9,7 +9,8 @@
 struct mbuf
 {
   struct mbuf *next, *prev;
-  uint16_t length;
+  uint8_t length;
+  uint8_t pad;
   uint8_t data[MBUF_SIZE];
 };
 

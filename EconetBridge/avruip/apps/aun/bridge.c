@@ -9,7 +9,6 @@ extern uint8_t econet_net_nr;
 static uint8_t bridge_rxcb;
 
 static unsigned char bcast_buf[8];
-static unsigned char response_buf[8];
 
 #define BRIDGE_PORT	0x9c
 
@@ -25,6 +24,8 @@ void bridge_init(void)
 
 static void do_bridge_reply(uint8_t stn, uint8_t reply_port)
 {
+  struct mbuf *mb = mbuf_alloc();
+  unsigned char *response_buf = &mb->data[0];
   response_buf[0] = stn;
   response_buf[1] = 0;
   response_buf[2] = 0;
@@ -33,7 +34,8 @@ static void do_bridge_reply(uint8_t stn, uint8_t reply_port)
   response_buf[5] = reply_port;
   response_buf[6] = econet_net_nr;
   response_buf[7] = 0x01;
-  enqueue_tx (response_buf, 8, 0);
+  mb->length = 8;
+  enqueue_tx (mb);
 }
 
 static uint8_t is_bridge(void)
