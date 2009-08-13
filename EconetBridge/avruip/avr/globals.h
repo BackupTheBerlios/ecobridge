@@ -39,6 +39,8 @@ typedef struct {
     uint8_t Gateway_4; 
     uint8_t MAC[6];
     uint8_t WANRouter[4];
+    uint8_t EconetIP[4];
+    uint8_t EconetMask[4];
 } sDefaults_t; 
 
 

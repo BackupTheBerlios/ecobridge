@@ -46,7 +46,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uip.h,v 1.1 2009/07/19 14:33:48 markusher Exp $
+ * $Id: uip.h,v 1.2 2009/08/13 20:14:49 philb Exp $
  *
  */
 
@@ -879,10 +879,19 @@ struct uip_udp_conn *uip_udp_new(uip_ipaddr_t *ripaddr, u16_t rport);
  * \hideinitializer
  */
 #if !UIP_CONF_IPV6
+#if 1
 #define uip_ipaddr_copy(dest, src) do { \
                      ((u16_t *)dest)[0] = ((u16_t *)src)[0]; \
                      ((u16_t *)dest)[1] = ((u16_t *)src)[1]; \
                   } while(0)
+#else
+#define uip_ipaddr_copy(dest, src) do { \
+                     ((u8_t *)dest)[0] = ((u8_t *)src)[0]; \
+                     ((u8_t *)dest)[1] = ((u8_t *)src)[1]; \
+                     ((u8_t *)dest)[2] = ((u8_t *)src)[2]; \
+                     ((u8_t *)dest)[3] = ((u8_t *)src)[3]; \
+                  } while(0)
+#endif
 #else /* !UIP_CONF_IPV6 */
 #define uip_ipaddr_copy(dest, src) memcpy(dest, src, sizeof(uip_ip6addr_t))
 #endif /* !UIP_CONF_IPV6 */

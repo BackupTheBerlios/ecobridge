@@ -122,7 +122,7 @@ aun_init(void)
 	rTableEco[ECONET_INTERFACE_NET] = ROUTABLE;
 
 	// set the ethernet routing table
-	rTableEth[ETHNET_INTERFACE_NET] = ROUTABLE;
+	rTableEth[ETHNET_INTERFACE_NET] = (uint32_t)(0x0201 | (uint32_t)((uint32_t)ETHNET_INTERFACE_NET << 16));
 
 	s.state = AUN_LISTENING;
 
@@ -386,8 +386,7 @@ void foward_packet(void)
 
 	DNet = ECONET_INTERFACE_NET; // for testing
 
-	/* update the routing table with the ethernet map */
-	rTableEth[SNet] = *((uint32_t *)(uip_buf+26));
+	uint32_t sender_ip = *((uint32_t *)(uip_buf+26));
 
 	/* if the destination econet network is the same as the network
 	   definition on this network interface, change it to 0, the
@@ -406,19 +405,19 @@ void foward_packet(void)
 	ah = (struct aunhdr *)(uip_appdata);
 	eh = (struct Econet_Header *)(uip_appdata+2);
 
-	s.handle = ah->handle;	// save the message packet handle for later
-	s.status = ah->status;	// save the message packet status for later
+	uint32_t handle = ah->handle;
+	uint8_t port = ah->port;
 
 	eh->DSTN = DStn;
 	eh->DNET = DNet;
 	eh->SSTN = SStn;
 	eh->SNET = SNet;
 	eh->CB = 0x80;
-	eh->PORT = ah->port;
+	eh->PORT = port;
 
 	int x;
 	struct mbuf *mb = copy_to_mbufs (eh, buf_len - 2);
-	x = enqueue_aun_tx(mb, s.handle);
+	x = enqueue_aun_tx(mb, sender_ip, handle);
 
 	return;
 }
@@ -435,23 +434,24 @@ void aun_send_immediate (uint8_t cb, uint32_t dest_ip, uint16_t data_length)
 }
 
 
-void aun_send_packet (uint8_t cb, uint8_t port, uint32_t dest_ip, uint16_t data_length)
+void aun_send_packet (uint8_t cb, uint8_t port, uint16_t src_stn_net, uint32_t dest_ip, uint16_t data_length)
 {
 
 #define BUF ((struct uip_tcpip_hdr *)&uip_buf[UIP_LLH_LEN])
 
   struct aunhdr *ah;
   ah = (struct aunhdr *)(uip_appdata);
-  static unsigned long h;
 
   ah->code = DATA_FRAME;
   ah->port = port;
   ah->cb = cb;
   ah->status = 0;
-  ah->handle = h++;
-
-  BUF->srcipaddr[0] = dest_ip & 0xffff;
-  BUF->srcipaddr[1] = dest_ip >> 16;
+  ah->handle = ++s.handle;
+  
+  uip_ipaddr_copy(BUF->srcipaddr, uip_hostaddr);
+  BUF->srcipaddr[1] = src_stn_net;
+  uip_ipaddr_copy(BUF->destipaddr, &dest_ip);
+  BUF->destport = BUF->srcport = HTONS(MNSDATAPORT);
 
   uip_udp_send((int)uip_appdata + 8 + data_length - (int)uip_buf);
   uip_process(UIP_UDP_SEND_CONN);
@@ -473,7 +473,7 @@ void aun_send_broadcast (uint8_t cb, uint8_t port, uint16_t data_length)
 }
 
 
-void aun_tx_complete (int8_t status, uint16_t requestor_ip0, uint16_t requestor_ip1, uint32_t handle)
+void aun_tx_complete (int8_t status, uint32_t requestor_ip, uint32_t handle)
 {
 
   struct aunhdr *ah;
@@ -483,8 +483,7 @@ void aun_tx_complete (int8_t status, uint16_t requestor_ip0, uint16_t requestor_
 #define BUF ((struct uip_tcpip_hdr *)&uip_buf[UIP_LLH_LEN])
   uip_ipaddr_t temp;
 
-  BUF->destipaddr[0] = requestor_ip0;
-  BUF->destipaddr[1] = requestor_ip1;
+  *((uint32_t *)(&BUF->destipaddr[0])) = requestor_ip;
 
   memset (ah, 0, sizeof (*ah));
   ah->code = DATA_FRAME_ACK;

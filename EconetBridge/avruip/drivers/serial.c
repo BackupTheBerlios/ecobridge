@@ -85,6 +85,14 @@ void serial_tx_str(char *msg)
 		serial_tx (*(msg++));
 }
 
+void serial_tx_ip(uint8_t *buf)
+{
+  serial_tx_hex(buf[3]);
+  serial_tx_hex(buf[2]);
+  serial_tx_hex(buf[1]);
+  serial_tx_hex(buf[0]);
+}
+
 void serial_packet(unsigned short pktbuff, unsigned short pktlen)
 {
 // print out packet content

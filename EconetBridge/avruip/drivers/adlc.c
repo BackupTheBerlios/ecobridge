@@ -43,7 +43,7 @@ struct tx_record
   unsigned char retry_count;
   unsigned char retry_timer;
   unsigned char is_aun;
-  unsigned short requestor_ip[2];
+  uint32_t requestor_ip;
   uint32_t requestor_handle;
 };
 
@@ -231,7 +231,7 @@ struct rx_record *find_local_rxcb(uint8_t port, uint8_t station, uint8_t net)
   return NULL;
 }
 
-int16_t enqueue_tx(struct mbuf *mb)
+uint8_t enqueue_tx(struct mbuf *mb)
 {
   uint8_t i = get_tx_buf();
   if (i != 0xff)
@@ -242,15 +242,18 @@ int16_t enqueue_tx(struct mbuf *mb)
     tx->mb = mb;
     return i + 1;
   }
-  return -1;
+  return 0;
 }
 
-int16_t enqueue_aun_tx(struct mbuf *mb, unsigned long handle)
+uint8_t enqueue_aun_tx(struct mbuf *mb, uint32_t ip, uint32_t handle)
 {
-  int16_t i = enqueue_tx(mb);
-  struct tx_record *tx = &tx_buf[i-1];
-  tx->is_aun = 1;
-  tx->requestor_handle = handle;
+  uint8_t i = enqueue_tx(mb);
+  if (i) {
+    struct tx_record *tx = &tx_buf[i-1];
+    tx->is_aun = 1;
+    tx->requestor_handle = handle;
+    tx->requestor_ip = ip;
+  }
   return i;
 }
 
@@ -319,7 +322,7 @@ void adlc_poller(void)
 	  case LINE_JAMMED:
 	    if (tx->is_aun)
 	    {
-	      aun_tx_complete (state, tx->requestor_ip[0], tx->requestor_ip[1], tx->requestor_handle);
+	      aun_tx_complete (state, tx->requestor_ip, tx->requestor_handle);
 	    }
 	    mbuf_free_chain(tx->mb);
 	    tx->mb = NULL;
@@ -419,7 +422,7 @@ void adlc_poller(void)
     else if (adlc_state == (RX_DATA | FRAME_COMPLETE))
     {
       memcpy (uip_appdata + 8, ECONET_RX_BUF + 4, frame_length - 4);
-      aun_send_packet (aun_cb, aun_port, ip_target, frame_length - 4);
+      aun_send_packet (aun_cb, aun_port, *((uint16_t *)(ECONET_RX_BUF + 2)), ip_target, frame_length - 4);
     }
     else
     {

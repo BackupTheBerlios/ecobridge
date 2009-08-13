@@ -54,7 +54,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uip_arp.c,v 1.5 2009/08/11 22:28:33 philb Exp $
+ * $Id: uip_arp.c,v 1.6 2009/08/13 20:14:49 philb Exp $
  *
  */
 
@@ -397,6 +397,9 @@ uip_arp_out(void)
 
      If not ARP table entry is found, we overwrite the original IP
      packet with an ARP request for the IP address. */
+
+  serial_tx_str ("arp out ");
+  serial_tx_ip (&IPBUF->destipaddr);
 
   /* First check if destination is a local broadcast. */
   if(uip_ipaddr_cmp(IPBUF->destipaddr, broadcast_ipaddr)) {

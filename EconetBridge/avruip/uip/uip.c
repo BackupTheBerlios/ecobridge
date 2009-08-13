@@ -49,7 +49,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uip.c,v 1.5 2009/08/11 21:19:23 philb Exp $
+ * $Id: uip.c,v 1.6 2009/08/13 20:14:49 philb Exp $
  *
  */
 
@@ -1175,37 +1175,6 @@ uip_process(u8_t flag)
 
   UDPBUF->udplen = HTONS(uip_slen + UIP_UDPH_LEN);
   UDPBUF->udpchksum = 0;
-
-/*
-  BUF->srcport  = uip_udp_conn->lport;
-  BUF->destport = uip_udp_conn->rport;
-
-  uip_ipaddr_copy(BUF->srcipaddr, uip_hostaddr);
-  uip_ipaddr_copy(BUF->destipaddr, uip_udp_conn->ripaddr);
-*/
-
-// added change from http://www.mail-archive.com/uip-users@sics.se/msg00196.html
-// to allow listen on all UDP
-
-/* If "any" remote port allowed, respond to sender */
-  if (uip_udp_conn->rport == 0) {
-     BUF->destport = BUF->srcport;
-  }
-  else {
-     BUF->destport = uip_udp_conn->rport;
-  }
-  BUF->srcport  = uip_udp_conn->lport;
-
-  /* If "any" remote addr allowed, respond to sender */
-  if (uip_ipaddr_cmp(uip_udp_conn->ripaddr, all_zeroes_addr)) {
-     uip_ipaddr_copy(BUF->destipaddr, BUF->srcipaddr);
-  }
-  else {
-     uip_ipaddr_copy(BUF->destipaddr, uip_udp_conn->ripaddr);
-  }
-
-
-  uip_ipaddr_copy(BUF->srcipaddr, uip_hostaddr);
 
   uip_appdata = &uip_buf[UIP_LLH_LEN + UIP_IPTCPH_LEN];
 

@@ -22,6 +22,7 @@
 #ifndef __AUN_H__
 #define __AUN_H__
 
+#include <stdint.h>
 #include "globals.h"
 
 /* Since this file will be included by uip.h, we cannot include uip.h
@@ -31,8 +32,7 @@
 struct aun_state {
   struct uip_udp_conn *conn;
   char state;
-  unsigned long handle;
-  unsigned char status;
+  uint16_t handle;
 };
 
 #define AUN_NOT_LISTENING	0
@@ -437,11 +437,11 @@ struct txcb
 
 void do_immediate(void) ;
 
-extern void aun_send_packet (uint8_t cb, uint8_t port, uint32_t dest_ip, uint16_t data_length);
+extern void aun_send_packet (uint8_t cb, uint8_t port, uint16_t src_stn_net, uint32_t dest_ip, uint16_t data_length);
 extern void aun_send_immediate (uint8_t cb, uint32_t dest_ip, uint16_t data_length);
 extern void aun_send_broadcast (uint8_t cb, uint8_t port, uint16_t data_length);
 extern uint8_t aun_want_proxy_arp(uint16_t *ipaddr);
-extern void aun_tx_complete (int8_t status, uint16_t requestor_ip0, uint16_t requestor_ip1, uint32_t handle);
+extern void aun_tx_complete (int8_t status, uint32_t requestor_ip, uint32_t handle);
 
 #endif /* __AUN_H__ */
 /** @} */
