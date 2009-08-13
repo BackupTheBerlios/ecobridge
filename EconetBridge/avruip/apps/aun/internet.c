@@ -15,9 +15,9 @@ static unsigned char bcast_buf[8];
 #define EcCb_ARPreply		0x22
 #define EcCb_Frame		0x01
 
-static const char *MY_SERVER_TYPE = "INTERNET";
-static const char *MY_SERVER_NAME = "TCP/IP Gateway";
-static const char *WILDCARD_SERVER_TYPE = "        ";
+#define MY_SERVER_TYPE "INTERNET"
+#define MY_SERVER_NAME "TCP/IP Gateway"
+#define WILDCARD_SERVER_TYPE "        "
 
 static void setup_find_server_rxcb(void)
 {
@@ -31,7 +31,7 @@ void internet_init(void)
 
 void internet_poller(void)
 {
-  struct rx_control rxc;
+  static struct rx_control rxc;
   if (poll_rx (find_server_rxcb, &rxc) == RXCB_RECEIVED)
   {
     if (memcmp (bcast_buf, MY_SERVER_TYPE, 8) == 0

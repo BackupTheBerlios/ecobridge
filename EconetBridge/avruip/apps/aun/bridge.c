@@ -52,7 +52,7 @@ static uint8_t is_bridge(void)
 
 void bridge_poller(void)
 {
-  struct rx_control rxc;
+  static struct rx_control rxc;
 
   if (poll_rx (bridge_rxcb, &rxc) == RXCB_RECEIVED)
   {
