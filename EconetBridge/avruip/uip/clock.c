@@ -49,8 +49,6 @@ ISR(TIMER3_COMPA_vect)
 
 	// reset interrupt flag
 	ETIFR = 0;
-//serial_short(timerCounter);
-	return;
 }
 
 

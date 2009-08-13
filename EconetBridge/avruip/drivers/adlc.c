@@ -336,7 +336,6 @@ void adlc_poller(void)
   }
   else if ((adlc_state & 0x0f) == FRAME_COMPLETE)
   {
-    serial_tx('s');
     uint16_t frame_length = adlc_rx_ptr - (int)ECONET_RX_BUF;
     stats.frames_in++;
     if (adlc_state == (RX_SCOUT | FRAME_COMPLETE))
@@ -375,7 +374,6 @@ void adlc_poller(void)
       }
       else if (should_bridge (dst, &ip_target))
       {
-	serial_tx('B');
 	if (port == 0)
 	{
 #if 0
@@ -423,6 +421,7 @@ void adlc_poller(void)
     {
       memcpy (uip_appdata + 8, ECONET_RX_BUF + 4, frame_length - 4);
       aun_send_packet (aun_cb, aun_port, *((uint16_t *)(ECONET_RX_BUF + 2)), ip_target, frame_length - 4);
+      return;
     }
     else
     {

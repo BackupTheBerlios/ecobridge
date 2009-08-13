@@ -100,6 +100,14 @@ uint8_t econet_net_nr = ECONET_INTERFACE_NET;
 static void newdata(void);
 
 
+static void do_uip_send(void)
+{
+  uip_process(UIP_UDP_SEND_CONN);
+  uip_arp_out();
+  nic_send(NULL);
+  uip_len = 0;
+}
+
 /*---------------------------------------------------------------------------*/
 /*
  * The initialization function. We must explicitly call this function
@@ -390,9 +398,9 @@ void foward_packet(void)
 	DNet = (unsigned char) *(uip_buf+32);	// octet 3 of destin IP
 	DStn = (unsigned char) *(uip_buf+33);	// octet 4 of destin IP
 
-	DNet = ECONET_INTERFACE_NET; // for testing
-
-	uint32_t sender_ip = *((uint32_t *)(uip_buf+26));
+	uint32_t sender_ip;
+	uint16_t *p = (uint16_t *)(uip_buf + 26);
+	sender_ip = p[0] | ((uint32_t)p[1] << 16);
 
 	/* if the destination econet network is the same as the network
 	   definition on this network interface, change it to 0, the
@@ -462,10 +470,7 @@ void aun_send_packet (uint8_t cb, uint8_t port, uint16_t src_stn_net, uint32_t d
   BUF->destport = BUF->srcport = HTONS(MNSDATAPORT);
 
   uip_udp_send((int)uip_appdata + 8 + data_length - (int)uip_buf);
-  uip_process(UIP_UDP_SEND_CONN);
-  uip_arp_out();
-  nic_send(NULL);
-  uip_len = 0;
+  do_uip_send();
 
   adlc_forwarding_complete (TX_OK);
 }
@@ -498,10 +503,7 @@ void aun_tx_complete (int8_t status, uint32_t requestor_ip, uint32_t handle)
   ah->handle = handle;
 
   uip_udp_send((int)uip_appdata + 8 - (int)uip_buf);
-  uip_process(UIP_UDP_SEND_CONN);
-  uip_arp_out();
-  nic_send(NULL);
-  uip_len = 0;
+  do_uip_send();
 
 }
 
