@@ -74,23 +74,13 @@ delay_loop:
 ; -----------------------------------------------------------------------------------------
 ;
 ; write to the EGPIO memory map with status data
-; r16 [6:0] address [7] data
 
 egpio_write:
-	ldi	XH, EGPIO_BASE >> 8		; high byte of EGPIO base location
-	mov	XL, r24				; low byte from r16
-							; this may have been ORed with the EGPIO_SET
-	cbr	XL, EGPIO_SET			; clear top bit giving the correct address in X
-							; of BASE + Select (0-7)
-							; retrieve the data from bit7 which may have been set
-	bst	r24, 7				; stores bit7 of r16 in T flag
-							; T:0 if bit 7 of r16 is cleared. Set to 1 otherwise.
-	clr	r24					; clear r16
-	bld	r24, 0				; load T to bit 0 of r16, so will have a 0 or 1 value
-	st	X, r24				; store r16 in data space location
+	ldi	XH, EGPIO_BASE >> 8
+	mov	XL, r24
+	lsr	XL
+	st	X, r24
 	ret
-
-
 
 
 ; -----------------------------------------------------------------------------------------
@@ -117,7 +107,7 @@ serial_tx:
 	ldi	r25, 8				; set to loop through the 8 bits in the byte to send
 
 serial_tx_loop:
-	ldi	r24, 16				; set a wait loop for 16
+	ldi	r24, 17				; set a wait loop for 16
 
 serial_tx_wait:
 	dec	r24					; minus 1
@@ -140,7 +130,7 @@ send_x:
 	dec	r25					; minus 1 for the outer tx loop that runs through the 8 bits
 	brne	serial_tx_loop			; loop if not finished
 
-	ldi	r24, 18				; set up another loop
+	ldi	r24, 19				; set up another loop
 
 serial_tx_wait2:
 	dec	r24					; minus 1
