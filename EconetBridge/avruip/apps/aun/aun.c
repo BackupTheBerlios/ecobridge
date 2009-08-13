@@ -37,6 +37,7 @@
 
 static struct aun_state s;
 
+#define BUF ((struct uip_tcpip_hdr *)&uip_buf[UIP_LLH_LEN])
 
 #define STATE_INITIAL         0
 #define STATE_SENDING         1
@@ -325,6 +326,11 @@ void do_immediate(void)
 		rTableEco[DNet] = ROUTABLE;
 	}
 
+	static uip_ipaddr_t tmpip;
+	uip_ipaddr_copy(tmpip, BUF->srcipaddr);
+	uip_ipaddr_copy(BUF->srcipaddr, BUF->destipaddr);
+	uip_ipaddr_copy(BUF->destipaddr, tmpip);
+
 	m->mns_opcode = IMMEDIATE_OP_REPLY;
 	// all the codes inbetween are set from the incoming packet
 	m->mns_machine = machine_type;
@@ -436,9 +442,6 @@ void aun_send_immediate (uint8_t cb, uint32_t dest_ip, uint16_t data_length)
 
 void aun_send_packet (uint8_t cb, uint8_t port, uint16_t src_stn_net, uint32_t dest_ip, uint16_t data_length)
 {
-
-#define BUF ((struct uip_tcpip_hdr *)&uip_buf[UIP_LLH_LEN])
-
   struct aunhdr *ah;
   ah = (struct aunhdr *)(uip_appdata);
 
@@ -447,9 +450,14 @@ void aun_send_packet (uint8_t cb, uint8_t port, uint16_t src_stn_net, uint32_t d
   ah->cb = cb;
   ah->status = 0;
   ah->handle = ++s.handle;
+
+  uint8_t src_stn = src_stn_net & 0xff;
+  uint8_t src_net = src_stn_net >> 8;
+  if (src_net == 0)
+    src_net = ECONET_INTERFACE_NET;
   
   uip_ipaddr_copy(BUF->srcipaddr, uip_hostaddr);
-  BUF->srcipaddr[1] = src_stn_net;
+  BUF->srcipaddr[1] = (src_stn << 8) | src_net;
   uip_ipaddr_copy(BUF->destipaddr, &dest_ip);
   BUF->destport = BUF->srcport = HTONS(MNSDATAPORT);
 
