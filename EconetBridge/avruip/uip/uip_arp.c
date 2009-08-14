@@ -54,7 +54,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uip_arp.c,v 1.7 2009/08/13 21:22:23 philb Exp $
+ * $Id: uip_arp.c,v 1.8 2009/08/14 22:08:47 philb Exp $
  *
  */
 
@@ -356,6 +356,23 @@ push_arp_lookaside(struct mbuf *mb, uint16_t *ipaddr)
   uip_ipaddr_copy(&arp_lookaside.ip[0], ipaddr);
 }
 
+void uip_arp_build_request(struct arp_hdr *buf, uint16_t *ipaddr)
+{
+  memset(buf->ethhdr.dest.addr, 0xff, 6);
+  memset(buf->dhwaddr.addr, 0x00, 6);
+  memcpy(buf->ethhdr.src.addr, uip_ethaddr.addr, 6);
+  memcpy(buf->shwaddr.addr, uip_ethaddr.addr, 6);
+  
+  uip_ipaddr_copy(buf->dipaddr, ipaddr);
+  uip_ipaddr_copy(buf->sipaddr, uip_hostaddr);
+  buf->opcode = HTONS(ARP_REQUEST); /* ARP request. */
+  buf->hwtype = HTONS(ARP_HWTYPE_ETH);
+  buf->protocol = HTONS(UIP_ETHTYPE_IP);
+  buf->hwlen = 6;
+  buf->protolen = 4;
+  buf->ethhdr.type = HTONS(UIP_ETHTYPE_ARP);
+}
+
 /*-----------------------------------------------------------------------------------*/
 /**
  * Prepend Ethernet header to an outbound IP packet and see if we need
@@ -427,19 +444,7 @@ uip_arp_out(void)
       struct mbuf *mb = uip_to_mbufs();
       push_arp_lookaside (mb, ipaddr);
 
-      memset(BUF->ethhdr.dest.addr, 0xff, 6);
-      memset(BUF->dhwaddr.addr, 0x00, 6);
-      memcpy(BUF->ethhdr.src.addr, uip_ethaddr.addr, 6);
-      memcpy(BUF->shwaddr.addr, uip_ethaddr.addr, 6);
-    
-      uip_ipaddr_copy(BUF->dipaddr, ipaddr);
-      uip_ipaddr_copy(BUF->sipaddr, uip_hostaddr);
-      BUF->opcode = HTONS(ARP_REQUEST); /* ARP request. */
-      BUF->hwtype = HTONS(ARP_HWTYPE_ETH);
-      BUF->protocol = HTONS(UIP_ETHTYPE_IP);
-      BUF->hwlen = 6;
-      BUF->protolen = 4;
-      BUF->ethhdr.type = HTONS(UIP_ETHTYPE_ARP);
+      uip_arp_build_request (BUF, ipaddr);
 
       uip_appdata = &uip_buf[UIP_TCPIP_HLEN + UIP_LLH_LEN];
     
