@@ -1,5 +1,5 @@
 
-#include <avr\eeprom.h>
+#include <avr/eeprom.h>
 #include "globals.h"
 #include "eeprom.h"
 
@@ -11,13 +11,13 @@ sDefaults_t INIT =
 		1, 2, 128, 10,					/* IP Address */\
 		255,255, 0, 0,					/* Subnet Mask */\
 		1,2, 128, 9,					/* Default Router */ \
-		0x00,0x00, 0xA4,				/* MAC Address 1-3 OUI Acorn */	\
-		0x33, 0x44, 0x55};				/* MAC Address 4-6 NUI */
+		 { 0x00,0x00, 0xA4,				/* MAC Address 1-3 OUI Acorn */	\
+		   0x33, 0x44, 0x55 }};				/* MAC Address 4-6 NUI */
 
 
 
 
-void EEPROM_InitCheck(void)
+static inline void EEPROM_InitCheck(void)
 {
 
     eeGlobals.Initialised = eeprom_read_byte(EEPROM_INITTED);

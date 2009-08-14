@@ -39,7 +39,6 @@ enum {  EEPROM_SAFETY,			// A power-failure *CAN* corrupt this byte
 
 //  PUBLIC FUNCTION PROTOTYPES
 
-void    EEPROM_InitCheck(void);
 extern  void    EEPROM_ReadAll(void);
 extern  void    EEPROM_WriteAll(void);
 extern  void    EEPROM_main(void);

@@ -31,7 +31,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: main.c,v 1.22 2009/08/11 21:19:23 philb Exp $
+ * $Id: main.c,v 1.23 2009/08/14 21:56:22 philb Exp $
  *
  */
 
@@ -68,8 +68,7 @@ extern void adlc_init(void);
 #define NULL (void *)0
 #endif /* NULL */
 
-
-void AVR_init(void)
+static inline void AVR_init(void)
 {
 	// select 8MHz clock
 	CLKPR = 0x80;
