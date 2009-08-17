@@ -87,8 +87,7 @@ extern void adlc_immediate_complete(uint8_t result, uint8_t *buffer, uint16_t le
 #define	ADLC_nCE		0			// PE0						Econet Pin3
 #define	ADLC_D0		2			// PE2						Econet Pin7
 
-#define	EGPIO_ADLC_RESET		0x3			// ADLC Reset
-#define	EGPIO_SET			0x80			// flag to set
+#define ECONET_RX_BUF_SIZE	(2048+4)
 
 #endif /* __ADLC_H__ */
 /** @} */

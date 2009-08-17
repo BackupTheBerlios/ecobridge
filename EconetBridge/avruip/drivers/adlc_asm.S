@@ -256,7 +256,7 @@ __vector_2:
 adlc_await_idle:
 	; switch to 1-byte mode, no PSE
 	ldi	tmp1, ADLC_CR2			; set to write to Control Register 2
-	clr	tmp2					; clear all bits
+	ldi	tmp2, CR2_CLRRX
 	rcall	adlc_write				; write to Control Register
 
 idle_wait_loop:	
@@ -304,9 +304,18 @@ tx_one_mbuf:
 await_tdra:	
 	ldi	tmp1, ADLC_SR1
 	rcall	adlc_read
-	;;  XXX check for lost CTS or DCD here
 	bst	tmp2, 6				; TDRA?
-	brbc	6, await_tdra
+	brbs	6, skip
+	cpi	tmp2, 0
+	breq	await_tdra
+
+	mov	r22, tmp2
+	ldi	serial_tx_arg, 0x45
+	rcall	serial_tx
+	mov	serial_tx_arg, r22
+	rcall	serial_tx_hex
+	ldi	r22, 1
+	rjmp	abandon_tx
 
 skip:	
 	ld	tmp2, Y+
@@ -344,10 +353,13 @@ await_end:
 	bst	tmp2, 6				; FC?
 	brbc	6, await_end
 
+abandon_tx:	
 	ldi	tmp1, (RX_SCOUT_ACK | RX_IDLE)
 	sbrs	r22, 0
 	ldi	tmp1, (RX_DATA_ACK | RX_IDLE)	
 	mov	adlc_state, tmp1
+
+	rcall	init_rx_buf
 
 	; reset tx
 	ldi	tmp2, CR1_RIE | CR1_TXRESET	; Enable Receive interrupts | Reset the TX status
@@ -536,6 +548,14 @@ process_ap:
 ; ADLC process_rda Receive Data Available
 ; -----------------------------------------------------------------------------------------
 ;
+is_full:
+	ldi	serial_tx_arg, 0x4f
+	rcall	serial_tx
+	mov	serial_tx_arg, XH
+	rcall	serial_tx_hex
+	mov	serial_tx_arg, XL
+	rcall	serial_tx_hex
+	rjmp	discontinue
 
 process_rda:
 	lds	XL, adlc_rx_ptr			; put the Rx buffer pointer address in X
@@ -556,14 +576,11 @@ process_rda:
 	sts	adlc_rx_ptr, XL			; store the incremented Rx buffer pointer
 	sts	adlc_rx_ptr + 1, XH		;
 
-	ldi	tmp1, hi8(ECONET_RX_BUF + 1024)
-	cp	XH, tmp1
-	brcs	not_full
-	breq	is_full
-	ldi	tmp1, lo8(ECONET_RX_BUF + 1024)
-	cp	XH, tmp1
+	ldi	tmp1, lo8(ECONET_RX_BUF + ECONET_RX_BUF_SIZE)
+	ldi	tmp2, hi8(ECONET_RX_BUF + ECONET_RX_BUF_SIZE)
+	cp	XL, tmp1
+	cpc	XH, tmp2
 	brcc	is_full
-not_full:	
 
 	;;  if we're receiving payload, we already decided this packet was good.  Nothing more to do.
         mov     tmp1, adlc_state
@@ -582,11 +599,6 @@ not_full:
 	breq	check_dst_net
 
 	;; if we get here, something is wrong.  Reset and start over.
-	rjmp	discontinue
-
-is_full:
-	ldi	serial_tx_arg, 0x4f
-	rcall	serial_tx
 	rjmp	discontinue
 
 check_dst_net:	
@@ -690,6 +702,16 @@ adlc_irq_ret:
 	pop	r24
 	reti						; return from interrupt
 
+init_rx_buf:	
+	; initialise the Rx Buffer pointer
+	ldi	XL, lo8(ECONET_RX_BUF)		; set XL with the lowbyte of the Econet receive buffer
+	ldi	XH, hi8(ECONET_RX_BUF)		; set XH with the highbyte of the Econet receive buffer
+	
+	sts	adlc_rx_ptr, XL			; set ALDC receive ptr to the start of the Rx buffer
+	sts	adlc_rx_ptr + 1, XH
+
+	ret
+	
 ; -----------------------------------------------------------------------------------------
 ; ADLC init
 ; -----------------------------------------------------------------------------------------
@@ -750,12 +772,7 @@ adlc_ready_to_receive:
 	;initialise the adlc_state
 	mov	adlc_state, r24
 
-	; initialise the Rx Buffer pointer
-	ldi	XL, lo8(ECONET_RX_BUF)		; set XL with the lowbyte of the Econet receive buffer
-	ldi	XH, hi8(ECONET_RX_BUF)		; set XH with the highbyte of the Econet receive buffer
-	
-	sts	adlc_rx_ptr, XL			; set ALDC receive ptr to the start of the Rx buffer
-	sts	adlc_rx_ptr + 1, XH
+	rcall	init_rx_buf
 
 	ldi	tmp2, CR1_TXRESET			; reset tx, unreset rx
 	ldi	tmp1, ADLC_CR1			; set to write to Control Register 1

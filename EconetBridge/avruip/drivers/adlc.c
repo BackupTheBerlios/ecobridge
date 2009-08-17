@@ -15,7 +15,7 @@
 #define ADLC_TX_RETRY_COUNT	16
 #define ADLC_TX_RETRY_DELAY	128
 
-unsigned char ECONET_RX_BUF[2000];
+unsigned char ECONET_RX_BUF[ECONET_RX_BUF_SIZE];
 volatile register unsigned char adlc_state	asm("r15");
 
 #define MACHINE_VENDOR          0x50
@@ -158,7 +158,7 @@ struct scout_mbuf
 
 static struct scout_mbuf scout_mbuf;
 
-static int8_t do_tx_packet(struct tx_record *tx)
+static uint8_t do_tx_packet(struct tx_record *tx)
 {
   unsigned char *buf = tx->mb->data;
   unsigned char type = NORMAL_PACKET;
@@ -198,6 +198,7 @@ static int8_t do_tx_packet(struct tx_record *tx)
 
   if (state == RX_IDLE) {
     serial_tx('N');
+    adlc_ready_to_receive (RX_SCOUT);
     return NOT_LISTENING;
   }
 
@@ -212,6 +213,9 @@ static int8_t do_tx_packet(struct tx_record *tx)
   }
 
   adlc_ready_to_receive (RX_SCOUT);
+
+  serial_tx_hex (state);
+  serial_crlf();
 
   return ((state & 0xf) == FRAME_COMPLETE) ? TX_OK : NET_ERROR;
 }
@@ -253,6 +257,7 @@ uint8_t enqueue_aun_tx(struct mbuf *mb, uint32_t ip, uint32_t handle)
     tx->is_aun = 1;
     tx->requestor_handle = handle;
     tx->requestor_ip = ip;
+    tx->retry_count = 0;
   }
   return i;
 }
@@ -311,10 +316,12 @@ void adlc_poller(void)
       {
 	if (tx->retry_timer == 0)
 	{
-	  int8_t state;
-	  switch (state = do_tx_packet (tx)) {
+	  uint8_t state = do_tx_packet (tx);
+	  switch (state) {
 	  default:
 	    if (tx->retry_count--) {
+	      serial_tx_str ("retry ");
+	      serial_tx_hex (tx->retry_count);
 	      tx->retry_timer = ADLC_TX_RETRY_DELAY;
 	      break;
 	    }
@@ -437,7 +444,7 @@ void adlc_forwarding_complete(uint8_t result)
   if (result == TX_OK)
   {
     make_scout_acknowledge ();
-    scout_mbuf.length = 8;
+    scout_mbuf.length = 4;
     adlc_tx_frame ((struct mbuf *)&scout_mbuf, 1);
   }
 

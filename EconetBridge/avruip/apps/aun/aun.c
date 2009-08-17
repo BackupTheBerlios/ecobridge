@@ -499,7 +499,7 @@ void aun_tx_complete (int8_t status, uint32_t requestor_ip, uint32_t handle)
   *((uint32_t *)(&BUF->destipaddr[0])) = requestor_ip;
 
   memset (ah, 0, sizeof (*ah));
-  ah->code = DATA_FRAME_ACK;
+  ah->code = (status == TX_OK) ? DATA_FRAME_ACK : DATA_FRAME_REJ;
   ah->handle = handle;
 
   uip_udp_send((int)uip_appdata + 8 - (int)uip_buf);
