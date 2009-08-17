@@ -53,7 +53,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uipopt.h,v 1.4 2009/08/04 14:32:09 markusher Exp $
+ * $Id: uipopt.h,v 1.5 2009/08/17 21:56:53 philb Exp $
  *
  */
 
@@ -154,7 +154,7 @@
  *
  * \hideinitializer
  */
-#define UIP_REASSEMBLY 0
+#define UIP_REASSEMBLY 1
 
 /**
  * The maximum time an IP fragment should wait in the reassembly
@@ -377,7 +377,7 @@
  * \hideinitializer
  */
 #ifndef UIP_CONF_BUFFER_SIZE
-#define UIP_BUFSIZE     1500
+#define UIP_BUFSIZE     2088
 #else /* UIP_CONF_BUFFER_SIZE */
 #define UIP_BUFSIZE UIP_CONF_BUFFER_SIZE
 #endif /* UIP_CONF_BUFFER_SIZE */

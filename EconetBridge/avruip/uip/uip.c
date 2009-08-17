@@ -49,7 +49,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uip.c,v 1.6 2009/08/13 20:14:49 philb Exp $
+ * $Id: uip.c,v 1.7 2009/08/17 21:56:53 philb Exp $
  *
  */
 
@@ -380,6 +380,7 @@ uip_udpchksum(void)
 #endif /* UIP_UDP_CHECKSUMS */
 #endif /* UIP_ARCH_CHKSUM */
 /*---------------------------------------------------------------------------*/
+#if 0
 void
 uip_init(void)
 {
@@ -406,6 +407,7 @@ uip_init(void)
 #endif /* UIP_FIXEDADDR */
 
 }
+#endif
 /*---------------------------------------------------------------------------*/
 #if UIP_ACTIVE_OPEN
 struct uip_conn *
@@ -555,6 +557,9 @@ static u8_t uip_reassflags;
 static u8_t uip_reasstmr;
 
 #define IP_MF   0x20
+
+static u8_t
+uip_reass(void) __attribute__ ((noinline));
 
 static u8_t
 uip_reass(void)

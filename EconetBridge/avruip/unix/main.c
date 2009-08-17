@@ -31,7 +31,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: main.c,v 1.24 2009/08/17 19:35:41 philb Exp $
+ * $Id: main.c,v 1.25 2009/08/17 21:56:53 philb Exp $
  *
  */
 
@@ -98,6 +98,18 @@ void AVR_init(void)
 
 }
 
+static void maybe_send(void) __attribute__((noinline));
+static void maybe_send(void)
+{
+  /* If the above function invocation resulted in data that
+     should be sent out on the network, the global variable
+     uip_len is set to a value > 0. */
+  if(uip_len > 0) {
+    uip_arp_out();
+    nic_send(NULL);
+  }
+}
+
 int main(void) __attribute__ ((noreturn));
 
 /*---------------------------------------------------------------------------*/
@@ -124,7 +136,6 @@ main(void)
   timer_set(&arp_timer, CLOCK_SECOND * 10);
 
   nic_init();
-  uip_init();
 
   uip_ipaddr(ipaddr, eeGlobals.IPAddr_1,eeGlobals.IPAddr_2,eeGlobals.IPAddr_3,eeGlobals.IPAddr_4);
   uip_sethostaddr(ipaddr);
@@ -159,10 +170,7 @@ main(void)
 	/* If the above function invocation resulted in data that
 	   should be sent out on the network, the global variable
 	   uip_len is set to a value > 0. */
-	if(uip_len > 0) {
-	  uip_arp_out();
-	  nic_send(NULL);
-	}
+	maybe_send();
       } else if(BUF->type == htons(UIP_ETHTYPE_ARP)) {
 	uip_arp_arpin();
 	/* If the above function invocation resulted in data that
@@ -177,25 +185,13 @@ main(void)
       timer_reset(&periodic_timer);
       for(i = 0; i < UIP_CONNS; i++) {
 	uip_periodic(i);
-	/* If the above function invocation resulted in data that
-	   should be sent out on the network, the global variable
-	   uip_len is set to a value > 0. */
-	if(uip_len > 0) {
-	  uip_arp_out();
-	  nic_send(NULL);
-	}
+	maybe_send();
       }
 
 #if UIP_UDP
       for(i = 0; i < UIP_UDP_CONNS; i++) {
 	uip_udp_periodic(i);
-	/* If the above function invocation resulted in data that
-	   should be sent out on the network, the global variable
-	   uip_len is set to a value > 0. */
-	if(uip_len > 0) {
-	  uip_arp_out();
-	  nic_send(NULL);
-	}
+	maybe_send();
       }
 #endif /* UIP_UDP */
 
