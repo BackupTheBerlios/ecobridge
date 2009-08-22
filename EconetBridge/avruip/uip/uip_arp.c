@@ -54,7 +54,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uip_arp.c,v 1.8 2009/08/14 22:08:47 philb Exp $
+ * $Id: uip_arp.c,v 1.9 2009/08/22 16:29:02 philb Exp $
  *
  */
 
@@ -233,7 +233,6 @@ uip_arp_update(u16_t *ipaddr, struct uip_eth_addr *ethaddr)
     IPBUF2->ethhdr.type = HTONS(UIP_ETHTYPE_IP);
 
     nic_send(arp_lookaside.mbuf);
-    mbuf_free_chain(arp_lookaside.mbuf);
     memset (&arp_lookaside, 0, sizeof (arp_lookaside));
   }
 }

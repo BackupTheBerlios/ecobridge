@@ -16,6 +16,7 @@
 
 #include "nic.h"
 #include "mbuf.h"
+#include <string.h>
 
 #define IP_TCP_HEADER_LENGTH 40
 #define TOTAL_HEADER_LENGTH (IP_TCP_HEADER_LENGTH + ETHERNET_HEADER_LENGTH)
@@ -44,33 +45,70 @@ struct mbuf *uip_to_mbufs(void)
   return mb;
 }
 
+static void send_frag(struct mbuf *mb, uint16_t length)
+{
+	NICBeginPacketSend(length);
+        while (length) {
+		uint16_t this_length = mb->length;
+		if (this_length > length)
+			this_length = length;
+                NICSendPacketData(mb->data, this_length);
+		length -= this_length;
+                mb = mb->next;
+        }
+	NICEndPacketSend();
+}
+
+static int mtu = 1518;
+
+struct frag_mbuf
+{
+  struct mbuf *next, *prev;
+  uint8_t length;
+  uint8_t pad;
+  uint8_t data[UIP_IPH_LEN + UIP_LLH_LEN + 8];
+};
+
+static struct frag_mbuf frag_mbuf;
+
+#define IP_MF   0x20
+
 void nic_send(struct mbuf *mb)
 {
-        uint8_t do_free = 0;
-
         if (mb == NULL) {
 		mb = uip_to_mbufs();
-                do_free = 1;
         }
 
-        uint16_t length = 0;
-        struct mbuf *mbp = mb;
+	memcpy (&frag_mbuf.data[0], mb->data, UIP_IPH_LEN + UIP_LLH_LEN);
+
+        uint16_t length = 0, offset = 0;
+        struct mbuf *mbp = mb, *this_mb = mb;
         while (mbp) {
+		if ((length + mbp->length) >= mtu) {
+			/* packet needs fragmenting */
+			struct uip_tcpip_hdr *BUF = &this_mb->data[UIP_LLH_LEN];
+			uint16_t payload_length = length - (UIP_IPH_LEN + UIP_LLH_LEN);
+			uint8_t overdone = payload_length & 7;
+			length -= overdone;
+			send_frag (this_mb, length);
+			memcpy (&frag_mbuf.data[UIP_IPH_LEN + UIP_LLH_LEN], mb->prev->data + mb->prev->length - overdone, overdone);
+			length = UIP_IPH_LEN + UIP_LLH_LEN + overdone;
+			frag_mbuf.length = length;
+			frag_mbuf.next = mbp;
+			this_mb = (struct mbuf *)&frag_mbuf;
+			offset += (payload_length - overdone);
+			BUF->ipoffset[0] = ((offset / 8) >> 8) | IP_MF;
+			BUF->ipoffset[1] = (offset / 8);
+		}
                 length += mbp->length;
                 mbp = mbp->next;
         }
 
-	NICBeginPacketSend(length);
-        mbp = mb;
-        while (mbp) {
-                NICSendPacketData(mbp->data, mbp->length);
-                mbp = mbp->next;
-        }
+	struct uip_tcpip_hdr *BUF = &this_mb->data[UIP_LLH_LEN];
+	BUF->ipoffset[0] &= ~IP_MF;
+	send_frag (this_mb, length);
 
-	NICEndPacketSend();
-
-        if (do_free)
-                mbuf_free_chain (mb);
+	mbuf_free_chain (mb);
 }
 
 

@@ -54,10 +54,10 @@
 
 .section .text             ; Start program section
 
-.global EEWrite
-EEWrite:
+.global eeprom_write_byte
+eeprom_write_byte:
 	sbic	EECR,EEWE	;if EEWE not clear
-	rjmp	EEWrite		;    wait more
+	rjmp	eeprom_write_byte
 
 	out 	EEARH,EEah	;output address high byte, remove if no high byte exists
 	out	EEARL,EEal	;output address low byte
@@ -87,10 +87,10 @@ EEWrite:
 ;***************************************************************************
 
 ;***** Code
-.global EERead
-EERead:
+.global eeprom_read_byte
+eeprom_read_byte:	
 	sbic	EECR,EEWE	;if EEWE not clear
-	rjmp	EERead		;    wait more
+	rjmp	eeprom_read_byte
 
 	out 	EEARH,EEah	;output address high byte, remove if no high byte exists
 	out	EEARL,EEal	;output address low byte

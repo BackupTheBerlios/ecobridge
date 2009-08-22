@@ -1,4 +1,3 @@
-
 #include <avr/eeprom.h>
 #include "globals.h"
 #include "eeprom.h"
@@ -17,26 +16,35 @@ sDefaults_t INIT =
 
 
 
-static inline void EEPROM_InitCheck(void)
-{
-
-    eeGlobals.Initialised = eeprom_read_byte(EEPROM_INITTED);
-
-    if (eeGlobals.Initialised != EEPROM_VALID) {
-	    eeprom_write_block(&INIT, EEPROM_SAFETY, sizeof(INIT));
-    }
-
-}
-
 void EEPROM_ReadAll(void)
 {
-    eeprom_read_block(&eeGlobals, EEPROM_SAFETY,sizeof(eeGlobals));
+  int i;
+  uint8_t *p = (uint8_t *)&eeGlobals;
+  for (i = 0; i < sizeof (eeGlobals); i++) {
+    *(p++) = eeprom_read_byte ((uint8_t *)EEPROM_SAFETY + i);
+  }
 }
 
+void EEPROM_WriteAll(void) __attribute__ ((noinline));
 
 void EEPROM_WriteAll(void)
 {
-    eeprom_write_block(&eeGlobals, EEPROM_SAFETY, sizeof(eeGlobals));
+  int i;
+  uint8_t *p = (uint8_t *)&eeGlobals;
+  for (i = 0; i < sizeof (eeGlobals); i++) {
+    eeprom_write_byte((uint8_t *)EEPROM_SAFETY + i, *(p++));
+  }
+}
+
+static void EEPROM_InitCheck(void)
+{
+    eeGlobals.Initialised = eeprom_read_byte((uint8_t *)EEPROM_INITTED);
+
+    if (eeGlobals.Initialised != EEPROM_VALID) {
+      memcpy (&eeGlobals, &INIT, sizeof (INIT));
+      EEPROM_WriteAll();
+    }
+
 }
 
 void EEPROM_main (void)
