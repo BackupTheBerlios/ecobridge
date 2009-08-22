@@ -25,6 +25,8 @@
 #include <stdint.h>
 #include "globals.h"
 
+struct tx_record;
+
 /* Since this file will be included by uip.h, we cannot include uip.h
    here. But we might need to include uipopt.h if we need the u8_t and
    u16_t datatypes. */
@@ -441,7 +443,7 @@ extern void aun_send_packet (uint8_t cb, uint8_t port, uint16_t src_stn_net, uin
 extern void aun_send_immediate (uint8_t cb, uint32_t dest_ip, uint16_t data_length);
 extern void aun_send_broadcast (uint8_t cb, uint8_t port, uint16_t data_length);
 extern uint8_t aun_want_proxy_arp(uint16_t *ipaddr);
-extern void aun_tx_complete (int8_t status, uint32_t requestor_ip, uint32_t handle);
+extern void aun_tx_complete (int8_t status, struct tx_record *tx);
 
 #endif /* __AUN_H__ */
 /** @} */

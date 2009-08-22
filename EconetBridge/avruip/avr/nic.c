@@ -47,6 +47,13 @@ struct mbuf *uip_to_mbufs(void)
 
 static void send_frag(struct mbuf *mb, uint16_t length)
 {
+#ifdef DEBUG
+  serial_tx_str ("xmit ");
+  serial_tx_hex (length >> 8);
+  serial_tx_hex (length);
+  serial_crlf ();
+  memset (&mb->data[0], 0xff, 6);
+#endif
 	NICBeginPacketSend(length);
         while (length) {
 		uint16_t this_length = mb->length;

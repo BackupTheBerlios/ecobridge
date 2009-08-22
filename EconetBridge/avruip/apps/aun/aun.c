@@ -409,7 +409,6 @@ void foward_packet(void)
 
 	unsigned char DNet, DStn;
 	unsigned char SNet, SStn;
-	unsigned char Port;
 	unsigned short buf_len;
 
 	buf_len = uip_len;
@@ -421,10 +420,6 @@ void foward_packet(void)
 	SStn = (unsigned char) *(uip_buf+29);	// octet 4 of source IP
 	DNet = (unsigned char) *(uip_buf+32);	// octet 3 of destin IP
 	DStn = (unsigned char) *(uip_buf+33);	// octet 4 of destin IP
-
-	uint32_t sender_ip;
-	uint16_t *p = (uint16_t *)(uip_buf + 26);
-	sender_ip = p[0] | ((uint32_t)p[1] << 16);
 
 	/* if the destination econet network is the same as the network
 	   definition on this network interface, change it to 0, the
@@ -455,7 +450,7 @@ void foward_packet(void)
 
 	int x;
 	struct mbuf *mb = copy_to_mbufs (eh, buf_len - 2);
-	x = enqueue_aun_tx(mb, sender_ip, handle);
+	x = enqueue_aun_tx(mb, BUF, handle);
 
 	return;
 }
@@ -487,8 +482,8 @@ void aun_send_packet (uint8_t cb, uint8_t port, uint16_t src_stn_net, uint32_t d
   uint8_t src_net = src_stn_net >> 8;
   if (src_net == 0)
     src_net = ECONET_INTERFACE_NET;
-  
-  uip_ipaddr_copy(BUF->srcipaddr, uip_hostaddr);
+
+  BUF->srcipaddr[0] = uip_hostaddr[0];
   BUF->srcipaddr[1] = (src_stn << 8) | src_net;
   uip_ipaddr_copy(BUF->destipaddr, &dest_ip);
   BUF->destport = BUF->srcport = HTONS(MNSDATAPORT);
@@ -511,25 +506,22 @@ void aun_send_broadcast (uint8_t cb, uint8_t port, uint16_t data_length)
 }
 
 
-void aun_tx_complete (int8_t status, uint32_t requestor_ip, uint32_t handle)
+void aun_tx_complete (int8_t status, struct tx_record *tx)
 {
 
   struct aunhdr *ah;
   uip_appdata = &uip_buf[UIP_IPUDPH_LEN + UIP_LLH_LEN];
   ah = (struct aunhdr *)(uip_appdata);
 
-#define BUF ((struct uip_tcpip_hdr *)&uip_buf[UIP_LLH_LEN])
-  uip_ipaddr_t temp;
-
-  *((uint32_t *)(&BUF->destipaddr[0])) = requestor_ip;
+  uip_ipaddr_copy (BUF->destipaddr, tx->requestor_ip);
+  uip_ipaddr_copy (BUF->srcipaddr, tx->target_ip);
 
   memset (ah, 0, sizeof (*ah));
   ah->code = (status == TX_OK) ? DATA_FRAME_ACK : DATA_FRAME_REJ;
-  ah->handle = handle;
+  ah->handle = tx->requestor_handle;
 
   uip_udp_send((int)uip_appdata + 8 - (int)uip_buf);
   do_uip_send();
-
 }
 
 uint8_t aun_want_proxy_arp(uint16_t *ipaddr)

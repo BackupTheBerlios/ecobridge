@@ -37,16 +37,6 @@ struct stats
 
 static struct stats stats;
 
-struct tx_record
-{
-  struct mbuf *mb;
-  unsigned char retry_count;
-  unsigned char retry_timer;
-  unsigned char is_aun;
-  uint32_t requestor_ip;
-  uint32_t requestor_handle;
-};
-
 struct rx_record
 {
   uint8_t state, port, cb, stn, net, rx_port;
@@ -249,14 +239,15 @@ uint8_t enqueue_tx(struct mbuf *mb)
   return 0;
 }
 
-uint8_t enqueue_aun_tx(struct mbuf *mb, uint32_t ip, uint32_t handle)
+uint8_t enqueue_aun_tx(struct mbuf *mb, struct uip_tcpip_hdr *hdr, uint32_t handle)
 {
   uint8_t i = enqueue_tx(mb);
   if (i) {
     struct tx_record *tx = &tx_buf[i-1];
     tx->is_aun = 1;
     tx->requestor_handle = handle;
-    tx->requestor_ip = ip;
+    uip_ipaddr_copy (tx->requestor_ip, hdr->srcipaddr);
+    uip_ipaddr_copy (tx->target_ip, hdr->destipaddr);
     tx->retry_count = 0;
   }
   return i;
@@ -329,7 +320,8 @@ void adlc_poller(void)
 	  case LINE_JAMMED:
 	    if (tx->is_aun)
 	    {
-	      aun_tx_complete (state, tx->requestor_ip, tx->requestor_handle);
+	      if (tx->mb->data[0] != 0xff)
+		aun_tx_complete (state, tx);
 	    }
 	    mbuf_free_chain(tx->mb);
 	    tx->mb = NULL;
@@ -426,9 +418,17 @@ void adlc_poller(void)
     }
     else if (adlc_state == (RX_DATA | FRAME_COMPLETE))
     {
-      memcpy (uip_appdata + 8, ECONET_RX_BUF + 4, frame_length - 4);
-      aun_send_packet (aun_cb, aun_port, *((uint16_t *)(ECONET_RX_BUF + 2)), ip_target, frame_length - 4);
-      return;
+      if ((frame_length - 4) > (UIP_BUFSIZE - ((char *)uip_appdata - (char *)uip_buf)))
+      {
+	serial_tx_str ("too big!");
+	serial_crlf();
+      }
+      else
+      {
+	memcpy (uip_appdata + 8, ECONET_RX_BUF + 4, frame_length - 4);
+	aun_send_packet (aun_cb, aun_port, *((uint16_t *)(ECONET_RX_BUF + 2)), ip_target, frame_length - 4);
+	return;
+      }
     }
     else
     {

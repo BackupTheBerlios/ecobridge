@@ -25,6 +25,7 @@
 #include <stdint.h>
 #include "globals.h"
 #include "mbuf.h"
+#include "uip.h"
 
 struct scout_packet
 {
@@ -41,6 +42,17 @@ struct rx_control
   uint8_t stn, net, cb, port;
 };
 
+struct tx_record
+{
+  struct mbuf *mb;
+  unsigned char retry_count;
+  unsigned char retry_timer;
+  unsigned char is_aun;
+  uip_ipaddr_t requestor_ip;
+  uip_ipaddr_t target_ip;
+  uint32_t requestor_handle;
+};
+
 extern void adlc_poller(void);
 extern void adlc_ready_to_receive(uint8_t what);
 extern uint8_t setup_rx(uint8_t port, uint8_t stn, uint8_t net, unsigned char *ptr, unsigned int length);
@@ -48,7 +60,7 @@ extern uint8_t setup_sync_rx(uint8_t port, uint8_t stn, uint8_t net, void (*call
 extern uint8_t poll_rx(uint8_t i, struct rx_control *rxc);
 extern void close_rx(uint8_t i);
 extern uint8_t enqueue_tx(struct mbuf *mb);
-extern uint8_t enqueue_aun_tx(struct mbuf *mb, uint32_t ip, uint32_t handle);
+extern uint8_t enqueue_aun_tx(struct mbuf *mb, struct uip_tcpip_hdr *hdr, uint32_t handle);
 extern volatile short adlc_rx_ptr;
 extern void adlc_forwarding_complete(uint8_t result);
 extern void adlc_immediate_complete(uint8_t result, uint8_t *buffer, uint16_t length);

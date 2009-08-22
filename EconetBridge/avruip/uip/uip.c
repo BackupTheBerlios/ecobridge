@@ -49,7 +49,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uip.c,v 1.7 2009/08/17 21:56:53 philb Exp $
+ * $Id: uip.c,v 1.8 2009/08/22 19:56:34 philb Exp $
  *
  */
 
@@ -1159,6 +1159,8 @@ uip_process(u8_t flag)
   uip_sappdata = uip_appdata = &uip_buf[UIP_LLH_LEN + UIP_IPUDPH_LEN];
   uip_slen = 0;
   UIP_UDP_APPCALL();
+  goto drop;
+
  udp_send:
   if(uip_slen == 0) {
     goto drop;
