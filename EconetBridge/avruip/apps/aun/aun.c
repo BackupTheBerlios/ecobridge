@@ -99,6 +99,8 @@ uint8_t econet_net_nr = ECONET_INTERFACE_NET;
 
 static void newdata(void);
 
+static char forwarding;
+static uint16_t fwd_timeout;
 
 static void do_uip_send(void)
 {
@@ -152,6 +154,18 @@ aun_init(void)
 
 
 }
+
+void aun_poller(void)
+{
+  if (forwarding) {
+    if (--fwd_timeout == 0) {
+      serial_tx('T');
+      adlc_forwarding_complete (NOT_LISTENING);
+      forwarding = 0;
+    }
+  }
+}
+
 /*---------------------------------------------------------------------------*/
 /*
  * In AUN.h we have defined the UIP_APPCALL macro to
@@ -255,9 +269,19 @@ newdata(void)
 		//
 		break;
 	case DATA_FRAME_ACK:		//3
+	  serial_tx('A');
+	  if (forwarding) {
+		adlc_forwarding_complete (TX_OK);
+		forwarding = 0;
+	  }
 		//
 		break;
 	case DATA_FRAME_REJ:		//4
+	  serial_tx('N');
+	  if (forwarding) {
+		adlc_forwarding_complete (NOT_LISTENING);
+		forwarding = 0;
+	  }
 		//
 		break;
 	case IMMEDIATE_OP:		//5
@@ -472,7 +496,8 @@ void aun_send_packet (uint8_t cb, uint8_t port, uint16_t src_stn_net, uint32_t d
   uip_udp_send((int)uip_appdata + 8 + data_length - (int)uip_buf);
   do_uip_send();
 
-  adlc_forwarding_complete (TX_OK);
+  forwarding = 1;
+  fwd_timeout = 20000;
 }
 
 

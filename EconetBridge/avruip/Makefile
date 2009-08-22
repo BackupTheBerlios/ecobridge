@@ -111,7 +111,7 @@ CFLAGS = -g -O$(OPT) \
 -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums \
 -Wall -Wstrict-prototypes \
 -Wa,-adhlns=$(<:.c=.lst) \
-$(patsubst %,-I%,$(EXTRAINCDIRS)) -ffixed-r15 -ffunction-sections -fno-inline-functions
+$(patsubst %,-I%,$(EXTRAINCDIRS)) -ffixed-r15 -ffunction-sections -fno-inline-small-functions
 
 
 # Set a "language standard" compiler flag.

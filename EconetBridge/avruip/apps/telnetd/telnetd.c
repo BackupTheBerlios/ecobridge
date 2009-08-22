@@ -28,7 +28,7 @@
  *
  * This file is part of the uIP TCP/IP stack
  *
- * $Id: telnetd.c,v 1.2 2009/08/11 18:43:39 philb Exp $
+ * $Id: telnetd.c,v 1.3 2009/08/22 17:20:24 philb Exp $
  *
  */
 
@@ -137,8 +137,8 @@ void
 telnetd_init(void)
 {
   uip_listen(HTONS(23));
-  memb_init(&linemem);
-  shell_init();
+  //  memb_init(&linemem);
+  //  shell_init();
 }
 /*---------------------------------------------------------------------------*/
 static void

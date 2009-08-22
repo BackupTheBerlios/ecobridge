@@ -56,10 +56,6 @@ void bridge_poller(void)
 
   if (poll_rx (bridge_rxcb, &rxc) == RXCB_RECEIVED)
   {
-    serial_tx_str ("BRIDGE");
-    serial_tx_hex (rxc.cb);
-    serial_crlf();
-
     switch (rxc.cb) {
     case 0x80: /* reset */
     case 0x81: /* advertise */
