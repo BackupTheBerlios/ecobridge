@@ -501,7 +501,6 @@ process_fv:
 	rcall	adlc_rx_flush			; clear remaining bytes in the input buffer
 
         mov     tmp1, adlc_state
-        andi    tmp1, 0xf0
         ori     tmp1, FRAME_COMPLETE
 	mov	adlc_state, tmp1			; set ADLC state to FRAME COMPLETE
 
@@ -603,9 +602,7 @@ check_dst_net:
 	lds	tmp2, my_station
 	lds	tmp1, ECONET_RX_BUF
 	cp	tmp2, tmp1
-	brne	discontinue
-
-	rjmp	adlc_irq_ret			; return from interrupt
+	breq	adlc_irq_ret
 
 discontinue:
 	ldi	tmp2, CR1_TXRESET | CR1_RIE | CR1_DISCONTINUE

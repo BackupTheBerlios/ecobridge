@@ -32,9 +32,6 @@ struct scout_packet;
 #include "aun_uip.h"
 #include "uipopt.h"
 
-void aun_init(void);
-void foward_packet(void);
-
 extern uint32_t rTableEthIP[256];
 extern uint8_t rTableEthType[256];
 
@@ -250,7 +247,6 @@ struct mns_msg
    u_char	mns_status;
 #define MSG_IS_RETRY    01
 #define MSG_IS_DATAGRAM 02
-// u_int	mns_handle;
    u_long	mns_handle;
    u_char	mns_machine;
    u_char	mns_pad;
@@ -259,6 +255,14 @@ struct mns_msg
    u_short	mns_padend;
 };
 
+struct wan_packet {
+	uint8_t opcode;
+	uint8_t reason;
+	uint8_t dstn;
+	uint8_t dnet;
+	uint8_t sstn;
+	uint8_t snet;
+};
 
 #define UNHDRSIZE  8
 
@@ -321,6 +325,7 @@ struct address_q
 #define MNSDATAPORT    0x8000
 #define MNSATPPORT     0x8001
 #define ROUTEDPORT     520
+#define WANDATAPORT    0x4155
 
 #define BROADCAST_DATA_FRAME       1
 #define DATA_FRAME                 2
@@ -420,6 +425,8 @@ extern void aun_send_immediate (struct scout_packet *s, uint32_t dest_ip, uint16
 extern void aun_send_broadcast (struct scout_packet *s, uint16_t data_length);
 extern uint8_t aun_want_proxy_arp(uint16_t *ipaddr);
 extern void aun_tx_complete (int8_t status, struct tx_record *tx);
+extern void aun_init(void);
+extern void foward_packet(struct wan_packet *w, unsigned short pkt_len);
 
 #endif /* __AUN_H__ */
 /** @} */

@@ -86,6 +86,7 @@ extern void adlc_immediate_complete(uint8_t result, uint8_t *buffer, uint16_t le
 #define RX_DATA_ACK     (3 << 4)
 
 #define DISCONTINUED    64
+#define BUSY_FORWARDING	65
 
 #define RXCB_INVALID	0
 #define RXCB_READY	1

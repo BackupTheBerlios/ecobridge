@@ -206,7 +206,6 @@ static uint8_t do_tx_packet(struct tx_record *tx)
 
   adlc_ready_to_receive (RX_SCOUT);
 
-  serial_tx_hex (state);
   serial_crlf();
 
   return ((state & 0xf) == FRAME_COMPLETE) ? TX_OK : NET_ERROR;
@@ -419,6 +418,7 @@ void adlc_poller(void)
       {
 	memcpy (uip_appdata + 8, ECONET_RX_BUF + 4, frame_length - 4);
 	aun_send_packet (aun_cb, aun_port, *((uint16_t *)(ECONET_RX_BUF + 2)), ip_target, frame_length - 4);
+	adlc_state = BUSY_FORWARDING;
 	return;
       }
     }

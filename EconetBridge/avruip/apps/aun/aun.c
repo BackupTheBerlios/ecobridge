@@ -80,15 +80,6 @@ struct Econet_Header {
 };
 
 
-struct aunhdr
-{
-	unsigned char code;		/* AUN magic protocol byte */
-	unsigned char port;
-	unsigned char cb;
-	unsigned char status;
-	unsigned long handle;
-};
-
 uint8_t rTableEco[256];
 uint32_t rTableEthIP[256];
 uint8_t rTableEthType[256];
@@ -97,6 +88,7 @@ unsigned char machine_type =  MACHINE_TYPE_ARC;
 uint8_t econet_net_nr = ECONET_INTERFACE_NET;
 
 static void newdata(void);
+static void newwandata(void);
 
 static char forwarding;
 static uint16_t fwd_timeout;
@@ -118,8 +110,6 @@ static void do_uip_send(void)
 void
 aun_init(void)
 {
-	unsigned char i;
-
 	rTableEco[LOCAL_NETWORK] = ROUTABLE;
 	rTableEco[ANY_NETWORK] = ROUTABLE;
 	rTableEco[ECONET_INTERFACE_NET] = ROUTABLE;
@@ -136,14 +126,9 @@ aun_init(void)
 	// listen on the AUN port from all IP addresses
 
 	s.conn = uip_udp_new(NULL, HTONS(MNSDATAPORT));
-
-
-	if (s.conn != NULL) {
-		s.conn->lport = HTONS(MNSDATAPORT);
-	}
-
-
-
+	s.conn->lport = HTONS(MNSDATAPORT);
+	s.wanconn = uip_udp_new(NULL, HTONS(WANDATAPORT));
+	s.wanconn->lport = HTONS(WANDATAPORT);
 }
 
 void aun_poller(void)
@@ -179,59 +164,28 @@ aun_appcall(void)
 // Handle AUN Packets
 
   if(uip_udp_conn->rport == HTONS(MNSDATAPORT)) {
-
-   if(uip_aborted())
-   {}
-   if(uip_timedout())
-   {}
-   if(uip_closed())
-   {}
-   if(uip_connected())
-   {}
-   if(uip_acked())
-   {}
-   if(uip_poll())
-   {}
    if(uip_newdata())
    {
-      newdata();
-    }
-   if (uip_rexmit() ||
-            uip_acked() ||
-            uip_connected() ||
-            uip_poll())
-    {}
-
+     newdata();
+   }
+  }
+  else if (uip_udp_conn->rport == HTONS(WANDATAPORT)) {
+   if(uip_newdata())
+   {
+     newwandata();
+   }
   }
 
+#if 0
 // Handle AUN ATP requests
 
   if(uip_udp_conn->rport == HTONS(MNSATPPORT)) {
-
-   if(uip_aborted())
-   {}
-   if(uip_timedout())
-   {}
-   if(uip_closed())
-   {}
-   if(uip_connected())
-   {}
-   if(uip_acked())
-   {}
-   if(uip_poll())
-   {}
    if(uip_newdata())
    {
       newdata();
     }
-   if (uip_rexmit() ||
-            uip_acked() ||
-            uip_connected() ||
-            uip_poll())
-    {}
-
   }
-	return;
+#endif
 }
 /*---------------------------------------------------------------------------*/
 
@@ -243,12 +197,13 @@ aun_appcall(void)
  */
 /*---------------------------------------------------------------------------*/
 static void
-newdata(void)
+process_msg(struct wan_packet *w, uint16_t pktlen)
 {
+	if (w->dnet == ECONET_INTERFACE_NET) {
+		w->dnet = LOCAL_NETWORK;
+	}
 
-	struct mns_msg *m;
-
-	m = (struct mns_msg *)uip_appdata;
+	struct mns_msg *m = (struct mns_msg *)(w + 1);
 
 	switch (m->mns_opcode)
 	{
@@ -256,7 +211,7 @@ newdata(void)
 		//
 		break;
 	case DATA_FRAME:		//2
-		foward_packet();
+		foward_packet(w, pktlen);
 		//
 		break;
 	case DATA_FRAME_ACK:		//3
@@ -290,6 +245,37 @@ newdata(void)
 
 }
 
+static void newdata(void)
+{
+	struct wan_packet *w = (struct wan_packet *)uip_appdata;
+	w--;
+
+	unsigned char DNet, DStn;
+	unsigned char SNet, SStn;
+
+	SNet = (unsigned char) *(uip_buf+28);	// octet 3 of source IP
+	SStn = (unsigned char) *(uip_buf+29);	// octet 4 of source IP
+	DNet = (unsigned char) *(uip_buf+32);	// octet 3 of destin IP
+	DStn = (unsigned char) *(uip_buf+33);	// octet 4 of destin IP
+
+	w->dstn = DStn;
+	w->dnet = DNet;
+	w->sstn = SStn;
+	w->snet = SNet;
+	
+	process_msg (w, uip_len - 8);
+}
+
+static void newwandata(void)
+{
+	struct wan_packet *w = (struct wan_packet *)uip_appdata;
+
+	switch (w->opcode) {
+	case 0x00:
+		process_msg (w, uip_len - 8 - sizeof (struct wan_packet));
+		break;
+	}
+}
 
 /******************************************************************************/
 
@@ -358,10 +344,6 @@ void do_immediate(void)
 	m->mns_version	= (char) VERSION_NBR;
 
 	uip_send(uip_appdata,12);
-
-
-   return;
-
 } /* do_immediate() */
 
 
@@ -389,54 +371,32 @@ void do_atp(unsigned char *Net, unsigned char *Stn)
 
 /******************************************************************************/
 
-void foward_packet(void)
-
+void foward_packet(struct wan_packet *w, unsigned short pkt_len)
 {
-	// Get net and station
-
-	unsigned char DNet, DStn;
-	unsigned char SNet, SStn;
-	unsigned short buf_len;
-
-	buf_len = uip_len;
-
-	struct aunhdr *ah;
+	struct mns_msg *ah;
 	struct Econet_Header *eh;
-
-	SNet = (unsigned char) *(uip_buf+28);	// octet 3 of source IP
-	SStn = (unsigned char) *(uip_buf+29);	// octet 4 of source IP
-	DNet = (unsigned char) *(uip_buf+32);	// octet 3 of destin IP
-	DStn = (unsigned char) *(uip_buf+33);	// octet 4 of destin IP
 
 	/* if the destination econet network is the same as the network
 	   definition on this network interface, change it to 0, the
 	   local network */
 
-	if (DNet == ECONET_INTERFACE_NET) {
-		DNet = LOCAL_NETWORK;
-	}
-
-//	DStn = 254;			// and fix the destination as Station 0x4
-	SNet = ETHNET_INTERFACE_NET;
-
-
 	// use Econet header structure instead of scout packet structure
 	// so the Port byte can easily be duplicated.
-	ah = (struct aunhdr *)(uip_appdata);
+	ah = (struct mns_msg *)(uip_appdata);
 	eh = (struct Econet_Header *)(uip_appdata+2);
 
-	uint32_t handle = ah->handle;
-	uint8_t port = ah->port;
+	uint32_t handle = ah->mns_handle;
+	uint8_t port = ah->mns_port;
 
-	eh->DSTN = DStn;
-	eh->DNET = DNet;
-	eh->SSTN = SStn;
-	eh->SNET = SNet;
+	eh->DSTN = w->dstn;
+	eh->DNET = w->dnet;
+	eh->SSTN = w->sstn;
+	eh->SNET = w->snet;
 	eh->CB = 0x80;
 	eh->PORT = port;
 
 	int x;
-	struct mbuf *mb = copy_to_mbufs (eh, buf_len - 2);
+	struct mbuf *mb = copy_to_mbufs (eh, pkt_len + 6);
 	x = enqueue_aun_tx(mb, BUF, handle);
 
 	return;
@@ -456,14 +416,14 @@ void aun_send_immediate (struct scout_packet *s, uint32_t dest_ip, uint16_t data
 
 void aun_send_packet (uint8_t cb, uint8_t port, uint16_t src_stn_net, uip_ipaddr_t dest_ip, uint16_t data_length)
 {
-  struct aunhdr *ah;
-  ah = (struct aunhdr *)(uip_appdata);
+  struct mns_msg *ah;
+  ah = (struct mns_msg *)(uip_appdata);
 
-  ah->code = DATA_FRAME;
-  ah->port = port;
-  ah->cb = cb;
-  ah->status = 0;
-  ah->handle = ++s.handle;
+  ah->mns_opcode = DATA_FRAME;
+  ah->mns_port = port;
+  ah->mns_control = cb;
+  ah->mns_status = 0;
+  ah->mns_handle = ++s.handle;
 
   uint8_t src_stn = src_stn_net & 0xff;
   uint8_t src_net = src_stn_net >> 8;
@@ -475,7 +435,7 @@ void aun_send_packet (uint8_t cb, uint8_t port, uint16_t src_stn_net, uip_ipaddr
   uip_ipaddr_copy(BUF->destipaddr, dest_ip);
   BUF->destport = BUF->srcport = HTONS(MNSDATAPORT);
 
-  uip_udp_send((int)uip_appdata + 8 + data_length - (int)uip_buf);
+  uip_udp_send(8 + data_length);
   do_uip_send();
 
   forwarding = 1;
@@ -495,19 +455,18 @@ void aun_send_broadcast (struct scout_packet *s, uint16_t data_length)
 
 void aun_tx_complete (int8_t status, struct tx_record *tx)
 {
-
-  struct aunhdr *ah;
+  struct mns_msg *ah;
   uip_appdata = &uip_buf[UIP_IPUDPH_LEN + UIP_LLH_LEN];
-  ah = (struct aunhdr *)(uip_appdata);
+  ah = (struct mns_msg *)(uip_appdata);
 
   uip_ipaddr_copy (BUF->destipaddr, tx->requestor_ip);
   uip_ipaddr_copy (BUF->srcipaddr, tx->target_ip);
 
   memset (ah, 0, sizeof (*ah));
-  ah->code = (status == TX_OK) ? DATA_FRAME_ACK : DATA_FRAME_REJ;
-  ah->handle = tx->requestor_handle;
+  ah->mns_opcode = (status == TX_OK) ? DATA_FRAME_ACK : DATA_FRAME_REJ;
+  ah->mns_handle = tx->requestor_handle;
 
-  uip_udp_send((int)uip_appdata + 8 - (int)uip_buf);
+  uip_udp_send(8);
   do_uip_send();
 }
 

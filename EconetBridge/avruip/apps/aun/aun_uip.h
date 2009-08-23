@@ -7,6 +7,7 @@
 
 struct aun_state {
   struct uip_udp_conn *conn;
+  struct uip_udp_conn *wanconn; 
   uint16_t handle;
 };
 
