@@ -95,7 +95,7 @@ void handle_ip_packet(uint8_t cb, uint16_t length)
 uint8_t forward_to_econet (void)
 {
   /* Check if the destination address is on the local network. */
-  if (uip_ipaddr_maskcmp(IPBUF->destipaddr, econet_subnet, econet_netmask)) {
+  if (eeGlobals.EconetMask[0] && uip_ipaddr_maskcmp(IPBUF->destipaddr, econet_subnet, econet_netmask)) {
     return 1;
   }
 
