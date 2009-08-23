@@ -72,6 +72,17 @@ void handle_ip_packet(uint8_t cb, uint16_t length)
   case EcCb_ARP:
     if (uip_ipaddr_cmp(econet_subnet, arpbuf->dstipaddr)) {
       serial_tx_str ("arp me\r\n");
+      struct mbuf *mb = mbuf_alloc ();
+      struct ec_arp *arpbuf2 = &mb->data[6];
+      uip_ipaddr_copy (arpbuf2->dstipaddr, arpbuf->srcipaddr);
+      uip_ipaddr_copy (arpbuf2->srcipaddr, arpbuf->dstipaddr);
+      mb->data[0] = ECONET_RX_BUF[2];
+      mb->data[1] = ECONET_RX_BUF[3];
+      mb->data[2] = my_station & 0xff;
+      mb->data[3] = 0;
+      mb->data[4] = EcCb_ARPreply;
+      mb->data[5] = 0xd2;
+      enqueue_tx (mb);
     }
     break;
   case EcCb_ARPreply:

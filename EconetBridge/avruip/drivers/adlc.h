@@ -64,6 +64,7 @@ extern uint8_t enqueue_aun_tx(struct mbuf *mb, struct uip_tcpip_hdr *hdr, uint32
 extern volatile short adlc_rx_ptr;
 extern void adlc_forwarding_complete(uint8_t result);
 extern void adlc_immediate_complete(uint8_t result, uint8_t *buffer, uint16_t length);
+extern uint16_t my_station;
 
 #endif
 
