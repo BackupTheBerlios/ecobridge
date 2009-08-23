@@ -37,6 +37,11 @@ struct ethip_hdr {
     destipaddr[2];
 };
 
+struct ec_arp {
+  u16_t dstipaddr[2],
+    srcipaddr[2];
+};
+
 static void setup_find_server_rxcb(void)
 {
   find_server_rxcb = setup_rx(FIND_SERVER_PORT, 0, 0, bcast_buf, 8);
@@ -52,6 +57,7 @@ void internet_init(void)
 
 void handle_ip_packet(uint8_t cb, uint16_t length)
 {
+  struct ec_arp *arpbuf = ECONET_RX_BUF + 4;
   switch (cb) {
   case EcCb_Frame:
     length -= 4;
@@ -64,6 +70,9 @@ void handle_ip_packet(uint8_t cb, uint16_t length)
     }
     break;
   case EcCb_ARP:
+    if (uip_ipaddr_cmp(econet_subnet, arpbuf->dstipaddr)) {
+      serial_tx_str ("arp me\r\n");
+    }
     break;
   case EcCb_ARPreply:
     break;
@@ -75,7 +84,7 @@ void handle_ip_packet(uint8_t cb, uint16_t length)
 uint8_t forward_to_econet (void)
 {
   /* Check if the destination address is on the local network. */
-  if (!uip_ipaddr_maskcmp(IPBUF->destipaddr, econet_subnet, econet_netmask)) {
+  if (uip_ipaddr_maskcmp(IPBUF->destipaddr, econet_subnet, econet_netmask)) {
     return 1;
   }
 
@@ -104,6 +113,7 @@ void internet_poller(void)
       strcpy ((char *)response_buffer + 9, MY_SERVER_TYPE);
       response_buffer[17] = strlen(MY_SERVER_NAME);
       strcpy ((char *)response_buffer + 18, MY_SERVER_NAME);
+
       mb->length = 18 + strlen(MY_SERVER_NAME);
       enqueue_tx (mb);
     }
