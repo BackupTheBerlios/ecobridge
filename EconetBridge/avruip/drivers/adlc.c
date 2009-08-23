@@ -7,6 +7,7 @@
 #include "serial.h"
 #include "uip.h"
 #include "mbuf.h"
+#include "internet.h"
 
 #define BUF ((struct uip_tcpip_hdr *)&uip_buf[UIP_LLH_LEN])
 
@@ -373,7 +374,7 @@ void adlc_poller(void)
 	  aun_send_broadcast (s, frame_length - 6);
 	}
       }
-      else if (should_bridge (s, &ip_target[0]))
+      else if (s->Port == 0xd2 || should_bridge (s, &ip_target[0]))
       {
 	if (s->Port == 0)
 	{
@@ -409,6 +410,12 @@ void adlc_poller(void)
     }
     else if (adlc_state == (RX_DATA | FRAME_COMPLETE))
     {
+      if (aun_port == 0xd2)
+      {
+	handle_ip_packet (aun_cb, frame_length);
+	adlc_forwarding_complete (TX_OK);
+	return;
+      }
       if ((frame_length - 4) > (UIP_BUFSIZE - ((char *)uip_appdata - (char *)uip_buf)))
       {
 	serial_tx_str ("too big!");

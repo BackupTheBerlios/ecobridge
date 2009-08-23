@@ -49,7 +49,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uip.c,v 1.9 2009/08/23 11:56:52 philb Exp $
+ * $Id: uip.c,v 1.10 2009/08/23 19:53:37 philb Exp $
  *
  */
 
@@ -880,6 +880,11 @@ uip_process(u8_t flag)
     UIP_LOG("ip: packet shorter than reported in IP header.");
     goto drop;
   }
+
+  extern uint8_t forward_to_econet (void);
+
+  if (forward_to_econet ())
+    goto drop;
 
 #if !UIP_CONF_IPV6
   /* Check the fragment flag. */

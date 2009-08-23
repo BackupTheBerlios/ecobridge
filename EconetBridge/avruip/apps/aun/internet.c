@@ -1,6 +1,7 @@
 #include "internet.h"
 #include "adlc.h"
 #include "globals.h"
+#include "uip_arp.h"
 #include <string.h>
 
 static uint8_t find_server_rxcb;
@@ -19,6 +20,23 @@ static unsigned char bcast_buf[8];
 #define MY_SERVER_NAME "TCP/IP Gateway"
 #define WILDCARD_SERVER_TYPE "        "
 
+static uip_ipaddr_t econet_subnet, econet_netmask;
+
+struct ethip_hdr {
+  struct uip_eth_hdr ethhdr;
+  /* IP header. */
+  u8_t vhl,
+    tos,
+    len[2],
+    ipid[2],
+    ipoffset[2],
+    ttl,
+    proto;
+  u16_t ipchksum;
+  u16_t srcipaddr[2],
+    destipaddr[2];
+};
+
 static void setup_find_server_rxcb(void)
 {
   find_server_rxcb = setup_rx(FIND_SERVER_PORT, 0, 0, bcast_buf, 8);
@@ -26,7 +44,42 @@ static void setup_find_server_rxcb(void)
 
 void internet_init(void)
 {
+  uip_ipaddr(econet_subnet, eeGlobals.EconetIP[0], eeGlobals.EconetIP[1], eeGlobals.EconetIP[2], eeGlobals.EconetIP[3]);
+  uip_ipaddr(econet_netmask, eeGlobals.EconetMask[0], eeGlobals.EconetMask[1], eeGlobals.EconetMask[2], eeGlobals.EconetMask[3]);
+
   setup_find_server_rxcb();
+}
+
+void handle_ip_packet(uint8_t cb, uint16_t length)
+{
+  switch (cb) {
+  case EcCb_Frame:
+    length -= 4;
+    if (length <= (UIP_BUFSIZE - UIP_LLH_LEN))
+    {
+      memcpy (uip_buf + UIP_LLH_LEN, ECONET_RX_BUF + 4, length);
+      uip_len = length;
+      uip_arp_out ();
+      nic_send (NULL);
+    }
+    break;
+  case EcCb_ARP:
+    break;
+  case EcCb_ARPreply:
+    break;
+  }
+}
+
+#define IPBUF ((struct ethip_hdr *)&uip_buf[0])
+
+uint8_t forward_to_econet (void)
+{
+  /* Check if the destination address is on the local network. */
+  if (!uip_ipaddr_maskcmp(IPBUF->destipaddr, econet_subnet, econet_netmask)) {
+    return 1;
+  }
+
+  return 0;
 }
 
 void internet_poller(void)

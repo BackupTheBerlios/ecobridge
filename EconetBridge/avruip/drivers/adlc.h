@@ -102,6 +102,10 @@ extern void adlc_immediate_complete(uint8_t result, uint8_t *buffer, uint16_t le
 
 #define ECONET_RX_BUF_SIZE	(4096+4)
 
+#ifndef __ASSEMBLER__
+extern unsigned char ECONET_RX_BUF[ECONET_RX_BUF_SIZE];
+#endif
+
 #endif /* __ADLC_H__ */
 /** @} */
 /** @} */
