@@ -42,7 +42,7 @@
  *
  * This file is part of the uIP TCP/IP stack
  *
- * $Id: uip-conf.h,v 1.3 2009/08/04 14:32:09 markusher Exp $
+ * $Id: uip-conf.h,v 1.4 2009/08/23 11:57:04 philb Exp $
  */
 
 /**
@@ -144,7 +144,7 @@ typedef unsigned short uip_stats_t;
 /* Here we include the header file for the application(s) we use in
    our project. */
 //#include "smtp.h"
-#include "aun.h"
+#include "aun_uip.h"
 //#include "hello-world.h"
 //#include "simples.h"
 #include "telnetd.h"

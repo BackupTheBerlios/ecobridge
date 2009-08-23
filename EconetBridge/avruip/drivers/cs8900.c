@@ -17,6 +17,7 @@ History:
 #include "uip.h"
 #include "serial.h"
 #include "eeprom.h"
+#include "globals.h"
 
 /* register asm routines */
 

@@ -111,6 +111,9 @@
 // =======================================================================
 
 
+#define adlc_rx_ptr_lo		r12
+#define adlc_rx_ptr_hi		r13
+
 #define adlc_state		r15
 #define tmp1			r18
 #define tmp2			r19
@@ -139,6 +142,8 @@ addr_setup:
 ; tmp1=address
 ; tmp2=data
 
+adlc_read_rx:
+	ldi	tmp1, ADLC_RX
 adlc_read:
         rcall   addr_setup
 	sbi	PORTD, ADLC_RnW			; Read from ADLC
@@ -167,6 +172,11 @@ adlc_read:
 ; tmp1=address
 ; tmp2=data
 
+adlc_write_cr1:
+	ldi	tmp1, ADLC_CR1
+	rjmp	adlc_write
+adlc_write_cr2:	
+	ldi	tmp1, ADLC_CR2
 adlc_write:
         rcall   addr_setup
 
@@ -255,9 +265,8 @@ __vector_2:
 	.globl	adlc_await_idle
 adlc_await_idle:
 	; switch to 1-byte mode, no PSE
-	ldi	tmp1, ADLC_CR2			; set to write to Control Register 2
 	ldi	tmp2, CR2_CLRRX
-	rcall	adlc_write				; write to Control Register
+	rcall	adlc_write_cr2				; write to Control Register
 
 idle_wait_loop:	
 	ldi	tmp1, ADLC_SR2
@@ -287,13 +296,11 @@ adlc_tx_frame:
 
 	ldi	r23, 0
 	; go on the wire and start transmitting
-	ldi	tmp1, ADLC_CR1
 	ldi	tmp2, CR1_RXRESET
-	rcall	adlc_write
+	rcall	adlc_write_cr1
 	
-	ldi	tmp1, ADLC_CR2
 	ldi	tmp2, CR2_RTS | CR2_FLAGIDLE
-	rcall	adlc_write
+	rcall	adlc_write_cr2
 
 tx_one_mbuf:
 	ld	XL, Y
@@ -338,14 +345,12 @@ tx_end:
 	ldi	tmp1, ADLC_TXTERMINATE
 	rcall	adlc_write
 
-	ldi	tmp1, ADLC_CR2
 	ldi	tmp2, CR2_FC | CR2val
-	rcall	adlc_write
+	rcall	adlc_write_cr2
 
 	; enable receiver
-	ldi	tmp1, ADLC_CR1
 	ldi	tmp2, 0
-	rcall	adlc_write
+	rcall	adlc_write_cr1
 
 await_end:	
 	ldi	tmp1, ADLC_SR1
@@ -363,8 +368,7 @@ abandon_tx:
 
 	; reset tx
 	ldi	tmp2, CR1_RIE | CR1_TXRESET	; Enable Receive interrupts | Reset the TX status
-	ldi	tmp1, ADLC_CR1			; set to write to Control Register 1
-	rcall	adlc_write				; write to the ADLC
+	rcall	adlc_write_cr1				; write to the ADLC
 
 	ldi	r24, EGPIO_ECONET_GREEN | EGPIO_SET
 	rcall	egpio_write
@@ -421,7 +425,6 @@ rx_error:
 ; 
 abandon_rx:
 	; abandon in-progress reception
-	clr	adlc_state		
 	rcall	adlc_clear_rx			; clear rx status
 	rjmp	process_s2rq			; might be AP as well
 
@@ -432,13 +435,11 @@ abandon_rx:
 ; exit: adlc_state = 0
 ; 
 process_idle:
-	clr	adlc_state
 	rcall	adlc_clear_rx			; clear Rx Status Register
 	lds	XH, current_rx + 1
 	lds	XL, current_rx
-        cp      XL, zero_reg
-	cpc	XH, zero_reg
-	brcc	no_current_rx
+	sbiw	XL, 0
+	breq	no_current_rx
 yes_current_rx:	
 	ldi	tmp1, RXCB_READY
 	st	X, tmp1
@@ -515,9 +516,8 @@ process_fv:
 ; first byte of the packet. This byte being present causes the Rx Interrupt if enabled.
 
 discontinue_again:
-	ldi	tmp1, ADLC_CR1
 	ldi	tmp2, CR1_TXRESET | CR1_RIE | CR1_DISCONTINUE
-	rcall	adlc_write
+	rcall	adlc_write_cr1
 	rjmp	adlc_irq_ret	
 	
 process_ap:
@@ -528,17 +528,14 @@ process_ap:
 	ldi	r24, EGPIO_ECONET_GREEN
 	rcall	egpio_write
 
-	lds	XL, adlc_rx_ptr			; put the Rx buffer pointer address in X
-	lds	XH, adlc_rx_ptr + 1
+	movw	XL, adlc_rx_ptr_lo
 
 	; Read 1 byte to the buffer
-	ldi	tmp1, ADLC_RX			; set read address to ADLC_RX (2) 
-	rcall	adlc_read				; read ADLC, tmp2 = data read
+	rcall	adlc_read_rx				; read ADLC, tmp2 = data read
 
 	st	X+, tmp2				; store the data read in the Rx buffer
 
-	sts	adlc_rx_ptr, XL			; store the incremented Rx buffer pointer
-	sts	adlc_rx_ptr + 1, XH		; 
+	movw	adlc_rx_ptr_lo, XL
 
 	inc	adlc_state
 
@@ -558,23 +555,19 @@ is_full:
 	rjmp	discontinue
 
 process_rda:
-	lds	XL, adlc_rx_ptr			; put the Rx buffer pointer address in X
-	lds	XH, adlc_rx_ptr + 1
+	movw	XL, adlc_rx_ptr_lo
 
 	; read 2 bytes to the buffer
 
 	; 1st byte
-	ldi	tmp1, ADLC_RX			; set read address to ADLC_RX (2) 
-	rcall	adlc_read				; read ADLC, tmp2 = data read
+	rcall	adlc_read_rx				; read ADLC, tmp2 = data read
 	st	X+, tmp2				; store the data read in the Rx buffer
 
 	; 2nd byte
-	ldi	tmp1, ADLC_RX			; set read address to ADLC_RX (2) 
-	rcall	adlc_read				; read ADLC, tmp2 = data read
+	rcall	adlc_read_rx				; read ADLC, tmp2 = data read
 	st	X+, tmp2				; store the data read in the Rx buffer
 
-	sts	adlc_rx_ptr, XL			; store the incremented Rx buffer pointer
-	sts	adlc_rx_ptr + 1, XH		;
+	movw	adlc_rx_ptr_lo, XL
 
 	ldi	tmp1, lo8(ECONET_RX_BUF + ECONET_RX_BUF_SIZE)
 	ldi	tmp2, hi8(ECONET_RX_BUF + ECONET_RX_BUF_SIZE)
@@ -615,9 +608,8 @@ check_dst_net:
 	rjmp	adlc_irq_ret			; return from interrupt
 
 discontinue:
-	ldi	tmp1, ADLC_CR1
 	ldi	tmp2, CR1_TXRESET | CR1_RIE | CR1_DISCONTINUE
-	rcall	adlc_write
+	rcall	adlc_write_cr1
 
 	ldi	tmp1, DISCONTINUED
 	mov	adlc_state, tmp1
@@ -625,9 +617,8 @@ discontinue:
 	; reset rx buffer pointer
 	ldi	XL, lo8(ECONET_RX_BUF)		; set XL with the lowbyte of the Econet receive buffer
 	ldi	XH, hi8(ECONET_RX_BUF)		; set XH with the highbyte of the Econet receive buffer
-	
-	sts	adlc_rx_ptr, XL			; set ALDC receive ptr to the start of the Rx buffer
-	sts	adlc_rx_ptr + 1, XH
+
+	movw	adlc_rx_ptr_lo, XL
 
 	rjmp	adlc_irq_ret
 
@@ -638,13 +629,11 @@ discontinue:
 	
 adlc_rx_flush:
 	; switch to 1-byte mode, no PSE
-	ldi	tmp1, ADLC_CR2			; set to write to Control Register 2
 	ldi	tmp2, CR2_FLAGIDLE | CR2_RTS
-	rcall	adlc_write				; write to Control Register
+	rcall	adlc_write_cr2				; write to Control Register
 
-	ldi	tmp1, ADLC_CR1
 	ldi	tmp2, 0
-	rcall	adlc_write
+	rcall	adlc_write_cr1
 
 	; read SR2
 	ldi	tmp1, ADLC_SR2			; read Status Register 2
@@ -655,22 +644,18 @@ adlc_rx_flush:
 	bst	tmp2, 7				; RDA? is receive data available
 	brbc	6, no_rda				; no
 
-	lds	XL, adlc_rx_ptr			; put the Rx buffer pointer address in X
-	lds	XH, adlc_rx_ptr + 1
+	movw	XL, adlc_rx_ptr_lo
 
 	; Read 1 byte to the buffer
-	ldi	tmp1, ADLC_RX			; set read address to ADLC_RX (2) 
-	rcall	adlc_read				; read ADLC, tmp2 = data read
+	rcall	adlc_read_rx				; read ADLC, tmp2 = data read
 
 	st	X+, tmp2				; store the data read in the Rx buffer
 
-	sts	adlc_rx_ptr, XL			; store the incremented Rx buffer pointer
-	sts	adlc_rx_ptr + 1, XH		; 
+	movw	adlc_rx_ptr_lo, XL
 
 no_rda:
-	ldi	tmp1, ADLC_CR2			; set to write to Control Register 2
 	ldi	tmp2, CR2_FLAGIDLE | CR2_RTS | CR2_CLRRX | CR2_PSE | CR2_TWOBYTE
-	rjmp	adlc_write				; write to Control Register
+	rjmp	adlc_write_cr2				; write to Control Register
 
 
 ; -----------------------------------------------------------------------------------------
@@ -681,9 +666,9 @@ no_rda:
 ;
 
 adlc_clear_rx:
-	ldi	tmp1, ADLC_CR2			; set to write to Control Register 2
+	clr	adlc_state
 	ldi	tmp2, CR2val				; reset Receieve status bits
-	rjmp	adlc_write				; write to ADLC
+	rjmp	adlc_write_cr2				; write to ADLC
 
 ; -----------------------------------------------------------------------------------------
 ; ADLC IRQ ret
@@ -706,9 +691,8 @@ init_rx_buf:
 	; initialise the Rx Buffer pointer
 	ldi	XL, lo8(ECONET_RX_BUF)		; set XL with the lowbyte of the Econet receive buffer
 	ldi	XH, hi8(ECONET_RX_BUF)		; set XH with the highbyte of the Econet receive buffer
-	
-	sts	adlc_rx_ptr, XL			; set ALDC receive ptr to the start of the Rx buffer
-	sts	adlc_rx_ptr + 1, XH
+
+	movw	adlc_rx_ptr_lo, XL
 
 	ret
 	
@@ -735,8 +719,7 @@ adlc_init:
 	ldi	tmp2, CR1_AC | CR1_TXRESET | CR1_RXRESET	; Switch controlling access to CR3
 							; Resets all Tx, Rx status and FIFO registers
 							; these will automatically go back to 0
-	ldi	tmp1, ADLC_CR1			; set to ADLC Control Register 1
-	rcall	adlc_write				; write to ADLC
+	rcall	adlc_write_cr1				; write to ADLC
 
 	; weird voodoo write copied from acorn code
 	ldi	tmp2, 0x1E								
@@ -754,8 +737,7 @@ adlc_init:
 	rcall	adlc_write				; write to ADLC
 
 	ldi	tmp2, CR1_TXRESET | CR1_RXRESET ;  keep transmitter and receiver reset, irqs off, back to CR2
-	ldi	tmp1, ADLC_CR1			; set to write to Control Register 1
-	rcall	adlc_write				; write to the ADLC
+	rcall	adlc_write_cr1				; write to the ADLC
 
 	;;  fall through
 	
@@ -775,16 +757,13 @@ adlc_ready_to_receive:
 	rcall	init_rx_buf
 
 	ldi	tmp2, CR1_TXRESET			; reset tx, unreset rx
-	ldi	tmp1, ADLC_CR1			; set to write to Control Register 1
-	rcall	adlc_write				; write to the ADLC
+	rcall	adlc_write_cr1				; write to the ADLC
 
 	ldi	tmp2, CR2val				; Status bit prioritised
-	ldi	tmp1, ADLC_CR2			; set to write to Control Register 2
-	rcall	adlc_write				; write to the ADLC
+	rcall	adlc_write_cr2				; write to the ADLC
 
 	ldi	tmp2, CR1_RIE | CR1_TXRESET	; Enable Receive interrupts | Reset the TX status
-	ldi	tmp1, ADLC_CR1			; set to write to Control Register 1
-	rcall	adlc_write				; write to the ADLC
+	rcall	adlc_write_cr1				; write to the ADLC
 
 	ldi	r24, EGPIO_ECONET_GREEN | EGPIO_SET
 	rjmp	egpio_write
@@ -803,24 +782,14 @@ interesting_network:
 	breq	yes_network
 	cpi	tmp1, 0x0
 	breq	maybe_network
-	ldi	tmp2, 0
-	lsl	tmp1
-	rol	tmp2
-	lsl	tmp1
-	rol	tmp2
 	push	YL
 	push	YH
-	ldi	YL, lo8(rTableEth)
-	ldi	YH, hi8(rTableEth)
+	ldi	YL, lo8(rTableEthType)
+	ldi	YH, hi8(rTableEthType)
 	add	YL, tmp1
-	adc	YH, tmp2
+	adc	YH, zero_reg
 	ld	tmp1, Y
-	ldd	tmp2, Y+1
-	or	tmp1, tmp2
-	ldd	tmp2, Y+2
-	or	tmp1, tmp2
-	ldd	tmp2, Y+3
-	or	tmp1, tmp2
+	cpi	tmp1, 0
 	pop	YH
 	pop	YL
 	brne	yes_network
@@ -842,7 +811,8 @@ get_adlc_state:
 	mov	r24, adlc_state
 	ret
 
-        .section        .data
-        .globl  adlc_rx_ptr
-adlc_rx_ptr:
-        .word   0
+	.globl	get_adlc_rx_ptr
+get_adlc_rx_ptr:
+	movw	r24, adlc_rx_ptr_lo
+	ret
+	

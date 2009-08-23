@@ -53,7 +53,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uipopt.h,v 1.5 2009/08/17 21:56:53 philb Exp $
+ * $Id: uipopt.h,v 1.6 2009/08/23 11:57:04 philb Exp $
  *
  */
 
@@ -377,7 +377,7 @@
  * \hideinitializer
  */
 #ifndef UIP_CONF_BUFFER_SIZE
-#define UIP_BUFSIZE     2088
+#define UIP_BUFSIZE     (4096 + UIP_LLH_LEN - UIP_TCPIP_HLEN)
 #else /* UIP_CONF_BUFFER_SIZE */
 #define UIP_BUFSIZE UIP_CONF_BUFFER_SIZE
 #endif /* UIP_CONF_BUFFER_SIZE */

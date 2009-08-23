@@ -67,7 +67,7 @@ void bridge_poller(void)
 	break;
       }
       uint8_t reply_port = bcast_buf[6];
-      if (rxc.cb == 0x83 && !rTableEth[bcast_buf[7]])
+      if (rxc.cb == 0x83 && !rTableEthType[bcast_buf[7]])
 	break;
       do_bridge_reply (rxc.stn, reply_port);
       break;

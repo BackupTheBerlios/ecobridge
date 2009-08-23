@@ -99,7 +99,7 @@ extern void adlc_immediate_complete(uint8_t result, uint8_t *buffer, uint16_t le
 #define	ADLC_nCE		0			// PE0						Econet Pin3
 #define	ADLC_D0		2			// PE2						Econet Pin7
 
-#define ECONET_RX_BUF_SIZE	(2048+4)
+#define ECONET_RX_BUF_SIZE	(4096+4)
 
 #endif /* __ADLC_H__ */
 /** @} */

@@ -24,46 +24,22 @@
 
 #include <stdint.h>
 #include "globals.h"
+#include "uip.h"
 
 struct tx_record;
+struct scout_packet;
 
-/* Since this file will be included by uip.h, we cannot include uip.h
-   here. But we might need to include uipopt.h if we need the u8_t and
-   u16_t datatypes. */
-
-struct aun_state {
-  struct uip_udp_conn *conn;
-  char state;
-  uint16_t handle;
-};
-
-#define AUN_NOT_LISTENING	0
-#define AUN_LISTENING		1
-
-
-//dummy as not using tcp at the moment
-//typedef int uip_tcp_appstate_t;
-
-typedef struct aun_state uip_udp_appstate_t;
-
-/* Finally we define the application function to be called by uIP. */
-void aun_appcall(void);
-
-#ifndef UIP_UDP_APPCALL
-#define UIP_UDP_APPCALL aun_appcall
-#endif /* UIP_APPCALL */
-
-//dummy for tcp
-#ifndef UIP_APPCALL
-#define UIP_APPCALL aun_appcall
-#endif /* UIP_APPCALL */
-
+#include "aun_uip.h"
 #include "uipopt.h"
 
 void aun_init(void);
 void foward_packet(void);
 
-extern uint32_t rTableEth[256];
+extern uint32_t rTableEthIP[256];
+extern uint8_t rTableEthType[256];
+
+#define ETH_TYPE_LOCAL	1
+#define ETH_TYPE_WAN	2
 
 
 /* module.h
@@ -439,9 +415,9 @@ struct txcb
 
 void do_immediate(void) ;
 
-extern void aun_send_packet (uint8_t cb, uint8_t port, uint16_t src_stn_net, uint32_t dest_ip, uint16_t data_length);
-extern void aun_send_immediate (uint8_t cb, uint32_t dest_ip, uint16_t data_length);
-extern void aun_send_broadcast (uint8_t cb, uint8_t port, uint16_t data_length);
+extern void aun_send_packet (uint8_t cb, uint8_t port, uint16_t src_stn_net, uip_ipaddr_t dest_ip, uint16_t data_length);
+extern void aun_send_immediate (struct scout_packet *s, uint32_t dest_ip, uint16_t data_length);
+extern void aun_send_broadcast (struct scout_packet *s, uint16_t data_length);
 extern uint8_t aun_want_proxy_arp(uint16_t *ipaddr);
 extern void aun_tx_complete (int8_t status, struct tx_record *tx);
 

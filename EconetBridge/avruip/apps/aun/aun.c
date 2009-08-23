@@ -89,10 +89,9 @@ struct aunhdr
 	unsigned long handle;
 };
 
-volatile static unsigned char rTableEco[256];
-
-uint32_t rTableEth[256]; 	// index = Econet NET-127. Only need 127-254
-
+uint8_t rTableEco[256];
+uint32_t rTableEthIP[256];
+uint8_t rTableEthType[256];
 
 unsigned char machine_type =  MACHINE_TYPE_ARC;
 uint8_t econet_net_nr = ECONET_INTERFACE_NET;
@@ -119,23 +118,15 @@ static void do_uip_send(void)
 void
 aun_init(void)
 {
-
 	unsigned char i;
-
-	// initialise econet routing table
-	for (i=1; i<255; i++) {
-		rTableEco[i] = NOT_ROUTABLE;		// clear the table
-		rTableEth[i] = NOT_ROUTABLE;	// clear the table
-	}
 
 	rTableEco[LOCAL_NETWORK] = ROUTABLE;
 	rTableEco[ANY_NETWORK] = ROUTABLE;
 	rTableEco[ECONET_INTERFACE_NET] = ROUTABLE;
 
 	// set the ethernet routing table
-	rTableEth[ETHNET_INTERFACE_NET] = (uint32_t)(0x0201 | (uint32_t)((uint32_t)ETHNET_INTERFACE_NET << 16));
-
-	s.state = AUN_LISTENING;
+	rTableEthIP[ETHNET_INTERFACE_NET] = (uint32_t)(0x0201 | (uint32_t)((uint32_t)ETHNET_INTERFACE_NET << 16));
+	rTableEthType[ETHNET_INTERFACE_NET] = ETH_TYPE_LOCAL;
 
 	// remove any open connections
 	if (s.conn != NULL) {
@@ -336,10 +327,6 @@ void do_immediate(void)
 
 	DNet = ECONET_INTERFACE_NET; // for testing
 
-
-	/* update the routing table with the ethernet map */
-	rTableEth[SNet] = *((uint32_t *)(uip_buf+26));
-
 	/* if the destination econet network is the same as the network
 	   definition on this network interface, change it to 0, the
 	   local network */
@@ -461,13 +448,13 @@ for immediate ops. You need to call back to adlc_immediate_complete(), again
 with either TX_OK or NOT_LISTENING.  If the result was TX_OK, and there was data 
 returned (i.e. from machine peek) then you need to supply a buffer and length as well. 
 */
-void aun_send_immediate (uint8_t cb, uint32_t dest_ip, uint16_t data_length)
+void aun_send_immediate (struct scout_packet *s, uint32_t dest_ip, uint16_t data_length)
 {
   adlc_immediate_complete (NOT_LISTENING, NULL, 0);
 }
 
 
-void aun_send_packet (uint8_t cb, uint8_t port, uint16_t src_stn_net, uint32_t dest_ip, uint16_t data_length)
+void aun_send_packet (uint8_t cb, uint8_t port, uint16_t src_stn_net, uip_ipaddr_t dest_ip, uint16_t data_length)
 {
   struct aunhdr *ah;
   ah = (struct aunhdr *)(uip_appdata);
@@ -485,7 +472,7 @@ void aun_send_packet (uint8_t cb, uint8_t port, uint16_t src_stn_net, uint32_t d
 
   BUF->srcipaddr[0] = uip_hostaddr[0];
   BUF->srcipaddr[1] = (src_stn << 8) | src_net;
-  uip_ipaddr_copy(BUF->destipaddr, &dest_ip);
+  uip_ipaddr_copy(BUF->destipaddr, dest_ip);
   BUF->destport = BUF->srcport = HTONS(MNSDATAPORT);
 
   uip_udp_send((int)uip_appdata + 8 + data_length - (int)uip_buf);
@@ -501,7 +488,7 @@ void aun_send_packet (uint8_t cb, uint8_t port, uint16_t src_stn_net, uint32_t d
    There's no acknowledgement for these, you just need to send them off.
 */
 
-void aun_send_broadcast (uint8_t cb, uint8_t port, uint16_t data_length)
+void aun_send_broadcast (struct scout_packet *s, uint16_t data_length)
 {
 }
 
