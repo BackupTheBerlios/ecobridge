@@ -54,7 +54,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uip_arp.c,v 1.9 2009/08/22 16:29:02 philb Exp $
+ * $Id: uip_arp.c,v 1.10 2009/08/24 18:20:16 philb Exp $
  *
  */
 
@@ -62,6 +62,7 @@
 #include "uip_arp.h"
 #include "mbuf.h"
 #include "nic.h"
+#include "aun.h"
 
 #include <string.h>
 
@@ -98,22 +99,11 @@ struct ethip_hdr {
 
 #define ARP_HWTYPE_ETH 1
 
-struct arp_entry {
-  u16_t ipaddr[2];
-  struct uip_eth_addr ethaddr;
-  u8_t time;
-};
-
-static struct {
-  struct mbuf *mbuf;
-  uint16_t ip[2];
-} arp_lookaside;
-
 static const u16_t broadcast_ipaddr[2] = {0xffff,0xffff};
+static uip_ipaddr_t blank_ipaddr;
 
 static struct arp_entry arp_table[UIP_ARPTAB_SIZE];
 static u16_t ipaddr[2];
-static u8_t i, c;
 
 static u8_t arptime;
 static u8_t tmpage;
@@ -137,6 +127,19 @@ uip_arp_init(void)
 }
 #endif
 
+struct arp_entry *find_arp_entry(uip_ipaddr_t ipaddr)
+{
+  struct arp_entry *tabptr;
+  uint8_t i;
+  for(i = 0; i < UIP_ARPTAB_SIZE; ++i) {
+    tabptr = &arp_table[i];
+    if(uip_ipaddr_cmp(ipaddr, tabptr->ipaddr)) {
+      return tabptr;
+    }
+  }
+  return NULL;
+}
+
 /*-----------------------------------------------------------------------------------*/
 /**
  * Periodic ARP processing function.
@@ -151,6 +154,7 @@ void
 uip_arp_timer(void)
 {
   struct arp_entry *tabptr;
+  u8_t i;
   
   ++arptime;
   for(i = 0; i < UIP_ARPTAB_SIZE; ++i) {
@@ -166,48 +170,30 @@ uip_arp_timer(void)
 static void
 uip_arp_update(u16_t *ipaddr, struct uip_eth_addr *ethaddr)
 {
+  u8_t i;
   register struct arp_entry *tabptr;
   /* Walk through the ARP mapping table and try to find an entry to
      update. If none is found, the IP -> MAC address mapping is
      inserted in the ARP table. */
-  for(i = 0; i < UIP_ARPTAB_SIZE; ++i) {
 
-    tabptr = &arp_table[i];
-    /* Only check those entries that are actually in use. */
-    if(tabptr->ipaddr[0] != 0 &&
-       tabptr->ipaddr[1] != 0) {
-
-      /* Check if the source IP address of the incoming packet matches
-         the IP address in this ARP table entry. */
-      if(ipaddr[0] == tabptr->ipaddr[0] &&
-	 ipaddr[1] == tabptr->ipaddr[1]) {
-	 
-	/* An old entry found, update this and return. */
-	memcpy(tabptr->ethaddr.addr, ethaddr->addr, 6);
-	tabptr->time = arptime;
-
-	return;
-      }
-    }
+  tabptr = find_arp_entry (ipaddr);
+  if (tabptr) {
+    /* An old entry found, update this and return. */
+    memcpy(tabptr->ethaddr.addr, ethaddr->addr, 6);
+    tabptr->time = arptime;
+    return;
   }
 
   /* If we get here, no existing ARP table entry was found, so we
      create one. */
-
   /* First, we try to find an unused entry in the ARP table. */
-  for(i = 0; i < UIP_ARPTAB_SIZE; ++i) {
-    tabptr = &arp_table[i];
-    if(tabptr->ipaddr[0] == 0 &&
-       tabptr->ipaddr[1] == 0) {
-      break;
-    }
-  }
+  tabptr = find_arp_entry (blank_ipaddr);
 
   /* If no unused entry is found, we try to find the oldest entry and
      throw it away. */
-  if(i == UIP_ARPTAB_SIZE) {
+  if (tabptr == NULL) {
     tmpage = 0;
-    c = 0;
+    u8_t c = 0;
     for(i = 0; i < UIP_ARPTAB_SIZE; ++i) {
       tabptr = &arp_table[i];
       if(arptime - tabptr->time > tmpage) {
@@ -227,7 +213,7 @@ uip_arp_update(u16_t *ipaddr, struct uip_eth_addr *ethaddr)
 
   if (uip_ipaddr_cmp(ipaddr, arp_lookaside.ip)) {
     // This host has a queued packet.  Send it now.
-    struct ethip_hdr *IPBUF2 = arp_lookaside.mbuf->data;
+    struct ethip_hdr *IPBUF2 = (struct ethip_hdr *)arp_lookaside.mbuf->data;
     memcpy(IPBUF2->ethhdr.dest.addr, tabptr->ethaddr.addr, 6);
     memcpy(IPBUF2->ethhdr.src.addr, uip_ethaddr.addr, 6);
     IPBUF2->ethhdr.type = HTONS(UIP_ETHTYPE_IP);
@@ -428,15 +414,10 @@ uip_arp_out(void)
       /* Else, we use the destination IP address. */
       uip_ipaddr_copy(ipaddr, IPBUF->destipaddr);
     }
-      
-    for(i = 0; i < UIP_ARPTAB_SIZE; ++i) {
-      tabptr = &arp_table[i];
-      if(uip_ipaddr_cmp(ipaddr, tabptr->ipaddr)) {
-	break;
-      }
-    }
 
-    if(i == UIP_ARPTAB_SIZE) {
+    tabptr = find_arp_entry (ipaddr);
+
+    if (tabptr == NULL) {
       /* The destination address was not in our ARP table, so we
 	 overwrite the IP packet with an ARP request. */
       
@@ -459,18 +440,6 @@ uip_arp_out(void)
   IPBUF->ethhdr.type = HTONS(UIP_ETHTYPE_IP);
 }
 /*-----------------------------------------------------------------------------------*/
-
-uint8_t uip_arp_entry_exists(uint16_t *ipaddr)
-{
-  struct arp_entry *tabptr;
-  for(i = 0; i < UIP_ARPTAB_SIZE; ++i) {
-    tabptr = &arp_table[i];
-    if(uip_ipaddr_cmp(ipaddr, tabptr->ipaddr)) {
-      return 1;
-    }
-  }
-  return 0;
-}
 
 /** @} */
 /** @} */

@@ -1,2 +1,2 @@
-extern void bridge_init(void);
-extern void bridge_poller(void);
+extern void handle_port_9c(void);
+

@@ -31,7 +31,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: main.c,v 1.26 2009/08/22 17:20:24 philb Exp $
+ * $Id: main.c,v 1.27 2009/08/24 18:20:16 philb Exp $
  *
  */
 
@@ -144,21 +144,16 @@ main(void)
   uip_ipaddr(ipaddr, eeGlobals.Subnet_1,eeGlobals.Subnet_2,eeGlobals.Subnet_3,eeGlobals.Subnet_4);
   uip_setnetmask(ipaddr);
 
-  extern uint16_t my_station;
-  my_station = eeGlobals.Station;
-
   telnetd_init();
   aun_init();
   internet_init();
-  bridge_init();
+
+  egpio_write (EGPIO_STATUS_GREEN);
 
   while(1) {
 
 // check the econet for complete packets
     adlc_poller();
-
-    internet_poller();
-    bridge_poller ();
     aun_poller ();
 
     uip_len = nic_poll();

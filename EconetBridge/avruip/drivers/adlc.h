@@ -55,6 +55,7 @@ struct tx_record
 
 extern void adlc_poller(void);
 extern void adlc_ready_to_receive(uint8_t what);
+extern void adlc_ready_to_receive_scout(void);
 extern uint8_t setup_rx(uint8_t port, uint8_t stn, uint8_t net, unsigned char *ptr, unsigned int length);
 extern uint8_t setup_sync_rx(uint8_t port, uint8_t stn, uint8_t net, void (*callback)(int));
 extern uint8_t poll_rx(uint8_t i, struct rx_control *rxc);
@@ -62,8 +63,7 @@ extern void close_rx(uint8_t i);
 extern uint8_t enqueue_tx(struct mbuf *mb);
 extern uint8_t enqueue_aun_tx(struct mbuf *mb, struct uip_tcpip_hdr *hdr, uint32_t handle);
 extern volatile short adlc_rx_ptr;
-extern void adlc_forwarding_complete(uint8_t result);
-extern void adlc_immediate_complete(uint8_t result, uint8_t *buffer, uint16_t length);
+extern void adlc_forwarding_complete(uint8_t result, uint8_t *buffer, uint8_t length);
 extern uint16_t my_station;
 
 #endif

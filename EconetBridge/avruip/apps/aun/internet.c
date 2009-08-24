@@ -6,15 +6,13 @@
 
 static uint8_t find_server_rxcb;
 
-static unsigned char bcast_buf[8];
-
 #define FIND_SERVER_PORT	0xb0
 #define FIND_SERVER_REPLY_PORT	0xb1
 #define IP_PORT			0xd2
 
-#define EcCb_ARP		0x21
-#define EcCb_ARPreply		0x22
-#define EcCb_Frame		0x01
+#define EcCb_ARP		0xa1
+#define EcCb_ARPreply		0xa2
+#define EcCb_Frame		0x81
 
 #define MY_SERVER_TYPE "INTERNET"
 #define MY_SERVER_NAME "TCP/IP Gateway"
@@ -42,22 +40,23 @@ struct ec_arp {
     srcipaddr[2];
 };
 
-static void setup_find_server_rxcb(void)
-{
-  find_server_rxcb = setup_rx(FIND_SERVER_PORT, 0, 0, bcast_buf, 8);
-}
-
 void internet_init(void)
 {
   uip_ipaddr(econet_subnet, eeGlobals.EconetIP[0], eeGlobals.EconetIP[1], eeGlobals.EconetIP[2], eeGlobals.EconetIP[3]);
   uip_ipaddr(econet_netmask, eeGlobals.EconetMask[0], eeGlobals.EconetMask[1], eeGlobals.EconetMask[2], eeGlobals.EconetMask[3]);
+}
 
-  setup_find_server_rxcb();
+void do_send_mbuf(struct mbuf *mb)
+{
+  mb->data[2] = eeGlobals.Station;
+  mb->data[3] = 0;
+  mb->data[5] = 0xd2;
+  enqueue_tx (mb);
 }
 
 void handle_ip_packet(uint8_t cb, uint16_t length)
 {
-  struct ec_arp *arpbuf = ECONET_RX_BUF + 4;
+  struct ec_arp *arpbuf = (struct ec_arp *)ECONET_RX_BUF + 4;
   switch (cb) {
   case EcCb_Frame:
     length -= 4;
@@ -78,11 +77,8 @@ void handle_ip_packet(uint8_t cb, uint16_t length)
       uip_ipaddr_copy (arpbuf2->srcipaddr, arpbuf->dstipaddr);
       mb->data[0] = ECONET_RX_BUF[2];
       mb->data[1] = ECONET_RX_BUF[3];
-      mb->data[2] = my_station & 0xff;
-      mb->data[3] = 0;
       mb->data[4] = EcCb_ARPreply;
-      mb->data[5] = 0xd2;
-      enqueue_tx (mb);
+      do_send_mbuf (mb);
     }
     break;
   case EcCb_ARPreply:
@@ -96,24 +92,39 @@ uint8_t forward_to_econet (void)
 {
   /* Check if the destination address is on the local network. */
   if (eeGlobals.EconetMask[0] && uip_ipaddr_maskcmp(IPBUF->destipaddr, econet_subnet, econet_netmask)) {
+    struct arp_entry *arp = find_arp_entry (IPBUF->destipaddr);
+    if (arp) {
+      struct mbuf *mb = copy_to_mbufs (uip_buf + UIP_LLH_LEN - 6, uip_len - UIP_LLH_LEN + 6);
+      mb->data[0] = arp->ethaddr.addr[0];
+      mb->data[1] = arp->ethaddr.addr[1];
+      mb->data[4] = EcCb_ARP;
+      do_send_mbuf (mb);
+    } else {
+      struct mbuf *mb = mbuf_alloc();
+      uint16_t *p = (uint16_t *)(mb->data + 6);
+      uip_ipaddr_copy (p, IPBUF->destipaddr);
+      uip_ipaddr_copy (p + 2, econet_subnet);
+      mb->data[0] = mb->data[1] = 0xff;
+      mb->data[4] = EcCb_ARP;
+      do_send_mbuf (mb);
+    }
     return 1;
   }
 
   return 0;
 }
 
-void internet_poller(void)
+void handle_port_b0(void)
 {
-  static struct rx_control rxc;
-  if (poll_rx (find_server_rxcb, &rxc) == RXCB_RECEIVED)
-  {
-    if (memcmp (bcast_buf, MY_SERVER_TYPE, 8) == 0
-	|| memcmp (bcast_buf, WILDCARD_SERVER_TYPE, 8) == 0)
+  unsigned char *bcast_buf = ECONET_RX_BUF + 6;
+
+  if (memcmp (bcast_buf, MY_SERVER_TYPE, 8) == 0
+      || memcmp (bcast_buf, WILDCARD_SERVER_TYPE, 8) == 0)
     {
       struct mbuf *mb = mbuf_alloc();
       unsigned char *response_buffer = &mb->data[0];
-      response_buffer[0] = rxc.stn;
-      response_buffer[1] = rxc.net;
+      response_buffer[0] = ECONET_RX_BUF[2];
+      response_buffer[1] = ECONET_RX_BUF[3];
       response_buffer[2] = eeGlobals.Station;
       response_buffer[3] = 0;
       response_buffer[4] = 0x80;
@@ -128,7 +139,4 @@ void internet_poller(void)
       mb->length = 18 + strlen(MY_SERVER_NAME);
       enqueue_tx (mb);
     }
-
-    setup_find_server_rxcb ();
-  }
 }

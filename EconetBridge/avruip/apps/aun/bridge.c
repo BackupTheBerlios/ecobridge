@@ -10,18 +10,6 @@ static uint8_t bridge_rxcb;
 
 static unsigned char bcast_buf[8];
 
-#define BRIDGE_PORT	0x9c
-
-static void setup_bridge_rxcb(void)
-{
-  bridge_rxcb = setup_rx(BRIDGE_PORT, 0, 0, bcast_buf, 8);
-}
-
-void bridge_init(void)
-{
-  setup_bridge_rxcb();
-}
-
 static void do_bridge_reply(uint8_t stn, uint8_t reply_port)
 {
   struct mbuf *mb = mbuf_alloc();
@@ -29,7 +17,7 @@ static void do_bridge_reply(uint8_t stn, uint8_t reply_port)
   response_buf[0] = stn;
   response_buf[1] = 0;
   response_buf[2] = 0;
-  response_buf[3] = 0;
+  response_buf[3] = eeGlobals.Econet_Network;
   response_buf[4] = 0x80;
   response_buf[5] = reply_port;
   response_buf[6] = econet_net_nr;
@@ -38,8 +26,9 @@ static void do_bridge_reply(uint8_t stn, uint8_t reply_port)
   enqueue_tx (mb);
 }
 
-static uint8_t is_bridge(void)
+static inline uint8_t is_bridge(void)
 {
+  uint8_t *bcast_buf = (ECONET_RX_BUF + 6);
   static const char *bridge = "BRIDGE";
   uint8_t i;
   for (i = 0; i < 6; i++)
@@ -50,13 +39,11 @@ static uint8_t is_bridge(void)
   return 1;
 }
 
-void bridge_poller(void)
+void handle_port_9c(void)
 {
-  static struct rx_control rxc;
+  uint8_t *bcast_buf = (ECONET_RX_BUF + 6);
 
-  if (poll_rx (bridge_rxcb, &rxc) == RXCB_RECEIVED)
-  {
-    switch (rxc.cb) {
+  switch (ECONET_RX_BUF[4]) {
     case 0x80: /* reset */
     case 0x81: /* advertise */
       break;
@@ -67,12 +54,9 @@ void bridge_poller(void)
 	break;
       }
       uint8_t reply_port = bcast_buf[6];
-      if (rxc.cb == 0x83 && !rTableEthType[bcast_buf[7]])
+      if (ECONET_RX_BUF[4] == 0x83 && !rTableEthType[bcast_buf[7]])
 	break;
-      do_bridge_reply (rxc.stn, reply_port);
+      do_bridge_reply (ECONET_RX_BUF[2], reply_port);
       break;
-    }
-    
-    setup_bridge_rxcb ();
   }
 }

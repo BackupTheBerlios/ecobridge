@@ -45,7 +45,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uip_arp.h,v 1.2 2009/07/26 08:50:31 philb Exp $
+ * $Id: uip_arp.h,v 1.3 2009/08/24 18:20:16 philb Exp $
  *
  */
 
@@ -66,10 +66,22 @@ struct uip_eth_hdr {
   u16_t type;
 };
 
+struct arp_entry {
+  u16_t ipaddr[2];
+  struct uip_eth_addr ethaddr;
+  u8_t time;
+};
+
+static struct {
+  struct mbuf *mbuf;
+  uint16_t ip[2];
+} arp_lookaside;
+
 #define UIP_ETHTYPE_ARP 0x0806
 #define UIP_ETHTYPE_IP  0x0800
 #define UIP_ETHTYPE_IP6 0x86dd
 
+struct arp_entry *find_arp_entry(uip_ipaddr_t ipaddr);
 
 /* The uip_arp_init() function must be called before any of the other
    ARP functions. */

@@ -101,6 +101,12 @@ static void do_uip_send(void)
   uip_len = 0;
 }
 
+static void not_listening(void)
+{
+  adlc_forwarding_complete (NOT_LISTENING, NULL, 0);
+  forwarding = 0;
+}
+
 /*---------------------------------------------------------------------------*/
 /*
  * The initialization function. We must explicitly call this function
@@ -136,8 +142,7 @@ void aun_poller(void)
   if (forwarding) {
     if (--fwd_timeout == 0) {
       serial_tx('T');
-      adlc_forwarding_complete (NOT_LISTENING);
-      forwarding = 0;
+      not_listening();
     }
   }
 }
@@ -189,8 +194,6 @@ aun_appcall(void)
 }
 /*---------------------------------------------------------------------------*/
 
-
-
 /*---------------------------------------------------------------------------*/
 /** \internal
  * Called when new UDP data arrives.
@@ -211,29 +214,24 @@ process_msg(struct wan_packet *w, uint16_t pktlen)
 		//
 		break;
 	case DATA_FRAME:		//2
+	case IMMEDIATE_OP:		//5
 		foward_packet(w, pktlen);
 		//
 		break;
 	case DATA_FRAME_ACK:		//3
 	  serial_tx('A');
 	  if (forwarding) {
-		adlc_forwarding_complete (TX_OK);
-		forwarding = 0;
+	    adlc_forwarding_complete (TX_OK, NULL, 0);
+	    forwarding = 0;
 	  }
 		//
 		break;
 	case DATA_FRAME_REJ:		//4
 	  serial_tx('N');
 	  if (forwarding) {
-		adlc_forwarding_complete (NOT_LISTENING);
-		forwarding = 0;
+	    not_listening();
 	  }
 		//
-		break;
-	case IMMEDIATE_OP:		//5
-         if (m->mns_control == Econet_MachinePeek){
-            do_immediate();
-		}
 		break;
 	case IMMEDIATE_OP_REPLY:	//6
 		//
@@ -281,73 +279,6 @@ static void newwandata(void)
 
 /******************************************************************************/
 
-void do_immediate(void)
-/*
- * Deal with a machine type peek received
- *
- * Parameters:
- *    handle : Tx CB handle
- *    from   : sockaddr_in for machine from whence received
- *
- * Returns:
- *    None
- */
-{
-
-	struct mns_msg *m;
-	m = (struct mns_msg *)uip_appdata;
-
-	unsigned char SNet, SStn;
-	unsigned char DNet, DStn;
-
-	/* traditionally the network and station would be x.x.NET.STN of
-	   the IP address. This may not be correct, and the sender should
-	   be queried as to its AUN MAP and what exactly this IP address
-	   maps to.
-	*/
-
-	SNet = (unsigned char) *(uip_buf+28);	// octet 3 of source IP
-	SStn = (unsigned char) *(uip_buf+29);	// octet 4 of source IP
-	DNet = (unsigned char) *(uip_buf+32);	// octet 3 of destin IP
-	DStn = (unsigned char) *(uip_buf+33);	// octet 4 of destin IP
-
-	DNet = ECONET_INTERFACE_NET; // for testing
-
-	/* if the destination econet network is the same as the network
-	   definition on this network interface, change it to 0, the
-	   local network */
-
-	if (DNet == ECONET_INTERFACE_NET){
-		DNet = LOCAL_NETWORK;
-	}
-
-	// is the station available?
-	if (Econet_Peek(DNet,DStn)==0) {
-		return;
-	}
-
-	// if station found, send a reply back to the orginator
-	if ( DNet != LOCAL_NETWORK ) {
-		rTableEco[DNet] = ROUTABLE;
-	}
-
-	static uip_ipaddr_t tmpip;
-	uip_ipaddr_copy(tmpip, BUF->srcipaddr);
-	uip_ipaddr_copy(BUF->srcipaddr, BUF->destipaddr);
-	uip_ipaddr_copy(BUF->destipaddr, tmpip);
-
-	m->mns_opcode = IMMEDIATE_OP_REPLY;
-	// all the codes inbetween are set from the incoming packet
-	m->mns_machine = machine_type;
-	m->mns_pad = 0;
-	m->mns_release = ((RELEASE_NBR % 10) | ((RELEASE_NBR / 10) << 4));
-	m->mns_version	= (char) VERSION_NBR;
-
-	uip_send(uip_appdata,12);
-} /* do_immediate() */
-
-
-
 /******************************************************************************/
 
 /******************************************************************************/
@@ -387,12 +318,13 @@ void foward_packet(struct wan_packet *w, unsigned short pkt_len)
 
 	uint32_t handle = ah->mns_handle;
 	uint8_t port = ah->mns_port;
+	uint8_t cb = ah->mns_control | 0x80;
 
 	eh->DSTN = w->dstn;
 	eh->DNET = w->dnet;
 	eh->SSTN = w->sstn;
 	eh->SNET = w->snet;
-	eh->CB = 0x80;
+	eh->CB = cb;
 	eh->PORT = port;
 
 	int x;
@@ -410,7 +342,7 @@ returned (i.e. from machine peek) then you need to supply a buffer and length as
 */
 void aun_send_immediate (struct scout_packet *s, uint32_t dest_ip, uint16_t data_length)
 {
-  adlc_immediate_complete (NOT_LISTENING, NULL, 0);
+  not_listening();
 }
 
 
@@ -421,7 +353,7 @@ void aun_send_packet (uint8_t cb, uint8_t port, uint16_t src_stn_net, uip_ipaddr
 
   ah->mns_opcode = DATA_FRAME;
   ah->mns_port = port;
-  ah->mns_control = cb;
+  ah->mns_control = cb & 0x7f;
   ah->mns_status = 0;
   ah->mns_handle = ++s.handle;
 
@@ -455,6 +387,7 @@ void aun_send_broadcast (struct scout_packet *s, uint16_t data_length)
 
 void aun_tx_complete (int8_t status, struct tx_record *tx)
 {
+  uint8_t length = 8;
   struct mns_msg *ah;
   uip_appdata = &uip_buf[UIP_IPUDPH_LEN + UIP_LLH_LEN];
   ah = (struct mns_msg *)(uip_appdata);
@@ -466,13 +399,13 @@ void aun_tx_complete (int8_t status, struct tx_record *tx)
   ah->mns_opcode = (status == TX_OK) ? DATA_FRAME_ACK : DATA_FRAME_REJ;
   ah->mns_handle = tx->requestor_handle;
 
-  uip_udp_send(8);
+  uip_udp_send(length);
   do_uip_send();
 }
 
 uint8_t aun_want_proxy_arp(uint16_t *ipaddr)
 {
-  if (ipaddr[0] == 0x0201
+  if (ipaddr[0] == uip_hostaddr[0]
       && rTableEco[ipaddr[1] & 0xff])
     return 1;
   return 0;

@@ -393,8 +393,7 @@ not_end:
 rx_overrun:
 	ldi	serial_tx_arg, 0x6F				; "o" - overrun
 	rcall serial_tx
-	ldi	r24, RX_SCOUT				; 
-	rcall 	adlc_ready_to_receive  
+	rcall 	adlc_ready_to_receive_scout
 	rjmp	adlc_irq_ret
 	
 ; -----------------------------------------------------------------------------------------
@@ -436,16 +435,6 @@ abandon_rx:
 ; 
 process_idle:
 	rcall	adlc_clear_rx			; clear Rx Status Register
-	lds	XH, current_rx + 1
-	lds	XL, current_rx
-	sbiw	XL, 0
-	breq	no_current_rx
-yes_current_rx:	
-	ldi	tmp1, RXCB_READY
-	st	X, tmp1
-	sts	current_rx, zero_reg
-	sts	current_rx + 1, zero_reg
-no_current_rx:
 	ldi	r24, EGPIO_ECONET_GREEN | EGPIO_SET
 	rcall	egpio_write
 	rjmp	adlc_irq_ret			; clean up routine for interrupt handling
@@ -599,7 +588,7 @@ check_dst_net:
 	brcs	adlc_irq_ret
 	breq	discontinue
 
-	lds	tmp2, my_station
+	lds	tmp2, eeGlobals + 6
 	lds	tmp1, ECONET_RX_BUF
 	cp	tmp2, tmp1
 	breq	adlc_irq_ret
@@ -746,6 +735,10 @@ adlc_init:
 ; 		: adlc_rx_ptr    = ECONET RX Buffer LSB
 ; 		: adlc_rx_ptr + 1    = ECONET RX Buffer MSB
 
+.global	adlc_ready_to_receive_scout
+adlc_ready_to_receive_scout:
+	ldi	r24, RX_SCOUT
+	
 .global	adlc_ready_to_receive
 adlc_ready_to_receive:
 	;initialise the adlc_state

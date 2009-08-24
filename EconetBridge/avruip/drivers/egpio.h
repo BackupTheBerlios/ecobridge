@@ -15,4 +15,5 @@
 
 #ifndef __ASSEMBLER__
 extern void egpio_init(void);
+extern void egpio_write(u8_t);
 #endif
