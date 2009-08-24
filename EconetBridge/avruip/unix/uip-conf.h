@@ -42,7 +42,7 @@
  *
  * This file is part of the uIP TCP/IP stack
  *
- * $Id: uip-conf.h,v 1.4 2009/08/23 11:57:04 philb Exp $
+ * $Id: uip-conf.h,v 1.5 2009/08/24 21:23:54 philb Exp $
  */
 
 /**
@@ -140,6 +140,8 @@ typedef unsigned short uip_stats_t;
  * \hideinitializer
  */
 #define UIP_CONF_STATISTICS      0
+
+#define UIP_CONF_BROADCAST	1
 
 /* Here we include the header file for the application(s) we use in
    our project. */

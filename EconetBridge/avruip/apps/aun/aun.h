@@ -426,7 +426,7 @@ extern void aun_send_broadcast (struct scout_packet *s, uint16_t data_length);
 extern uint8_t aun_want_proxy_arp(uint16_t *ipaddr);
 extern void aun_tx_complete (int8_t status, struct tx_record *tx);
 extern void aun_init(void);
-extern void foward_packet(struct wan_packet *w, unsigned short pkt_len);
+extern void foward_packet(struct wan_packet *w, unsigned short pkt_len, uint8_t type);
 
 #endif /* __AUN_H__ */
 /** @} */

@@ -56,7 +56,7 @@ void do_send_mbuf(struct mbuf *mb)
 
 void handle_ip_packet(uint8_t cb, uint16_t length)
 {
-  struct ec_arp *arpbuf = (struct ec_arp *)ECONET_RX_BUF + 4;
+  struct ec_arp *arpbuf = (struct ec_arp *)ECONET_RX_BUF + 6;
   switch (cb) {
   case EcCb_Frame:
     length -= 4;
@@ -102,10 +102,11 @@ uint8_t forward_to_econet (void)
     } else {
       struct mbuf *mb = mbuf_alloc();
       uint16_t *p = (uint16_t *)(mb->data + 6);
-      uip_ipaddr_copy (p, IPBUF->destipaddr);
-      uip_ipaddr_copy (p + 2, econet_subnet);
+      uip_ipaddr_copy (p + 0, econet_subnet);
+      uip_ipaddr_copy (p + 2, IPBUF->destipaddr);
       mb->data[0] = mb->data[1] = 0xff;
       mb->data[4] = EcCb_ARP;
+      mb->length = 14;
       do_send_mbuf (mb);
     }
     return 1;

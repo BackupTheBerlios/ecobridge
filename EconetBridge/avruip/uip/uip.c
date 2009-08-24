@@ -49,7 +49,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uip.c,v 1.10 2009/08/23 19:53:37 philb Exp $
+ * $Id: uip.c,v 1.11 2009/08/24 21:23:54 philb Exp $
  *
  */
 
@@ -1145,14 +1145,8 @@ uip_process(u8_t flag)
 */
 
      if(uip_udp_conn->lport != 0 &&
-       UDPBUF->destport == uip_udp_conn->lport &&
-       (uip_udp_conn->rport == 0 ||
-        UDPBUF->srcport == uip_udp_conn->rport) &&
-       (uip_ipaddr_cmp(uip_udp_conn->ripaddr, all_zeroes_addr) ||
-	  uip_ipaddr_cmp(uip_udp_conn->ripaddr, all_ones_addr) ||
-	  uip_ipaddr_cmp(BUF->srcipaddr, uip_udp_conn->ripaddr) ||
-	  uip_macaddr_cmp(uip_buf, uip_ethaddr)	  )) {
-      goto udp_found;
+	UDPBUF->destport == uip_udp_conn->lport) {
+       goto udp_found;
     }
   }
   UIP_LOG("udp: no matching connection found");

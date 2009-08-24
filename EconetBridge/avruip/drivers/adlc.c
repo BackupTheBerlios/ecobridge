@@ -78,10 +78,12 @@ struct scout_mbuf
   struct mbuf *next, *prev;
   uint8_t length;
   uint8_t pad;
-  uint8_t data[16];
+  uint8_t data[120];
 };
 
 static struct scout_mbuf scout_mbuf;
+
+static uint8_t do_tx_packet(struct tx_record *tx) __attribute__ ((noinline));
 
 static uint8_t do_tx_packet(struct tx_record *tx)
 {
@@ -105,13 +107,17 @@ static uint8_t do_tx_packet(struct tx_record *tx)
     return TX_OK;
   }
 
-  if (type == IMMEDIATE)
-    adlc_tx_frame (tx->mb, 1);
-  else {
-    memcpy (scout_mbuf.data, tx->mb->data, 6);
-    scout_mbuf.length = 6;
-    adlc_tx_frame ((struct mbuf *)&scout_mbuf, 1);
+  uint8_t extra_len = 0, do_4way = 0;
+  if (type == IMMEDIATE && tx->mb->length >= 14) {
+    extra_len = 8;
+    uint8_t cb = buf[4] & 0x7f;
+    if (cb >= 0x02 && cb <= 0x05)
+      do_4way = 1;
   }
+
+  memcpy (scout_mbuf.data, tx->mb->data, 6 + extra_len);
+  scout_mbuf.length = 6 + extra_len;
+  adlc_tx_frame ((struct mbuf *)&scout_mbuf, 1);
 
   unsigned char state;
   do {
@@ -123,12 +129,30 @@ static uint8_t do_tx_packet(struct tx_record *tx)
     return NOT_LISTENING;
   }
 
-  if (type == NORMAL_PACKET) {
-    adlc_tx_frame (tx->mb, 0);
+  struct mbuf *mb = tx->mb;
+
+  if (do_4way) {
+    memcpy (scout_mbuf.data + 4, mb->data + 14, mb->length - 14);
+    scout_mbuf.length = mb->length - 10;
+    scout_mbuf.next = mb->next;
+    mb = &scout_mbuf;
+  }
+
+  if (type == NORMAL_PACKET || do_4way) {
+    adlc_tx_frame (mb, 0);
 
     do {
       state = get_adlc_state();
     } while (state != RX_IDLE && state != (RX_DATA_ACK | FRAME_COMPLETE));
+  }
+
+  scout_mbuf.next = NULL;
+
+  if (type == IMMEDIATE && state != RX_IDLE) {
+    uint16_t frame_length = get_adlc_rx_ptr() - (int)ECONET_RX_BUF;
+    if (frame_length > 4) {
+      tx->r_mb = copy_to_mbufs (ECONET_RX_BUF + 4, frame_length - 4);
+    }
   }
 
   adlc_ready_to_receive_scout();
@@ -238,11 +262,14 @@ void adlc_poller(void)
 	  case LINE_JAMMED:
 	    if (tx->is_aun)
 	    {
-	      if (tx->mb->data[0] != 0xff)
-		aun_tx_complete (state, tx);
+	      aun_tx_complete (state, tx);
 	    }
 	    mbuf_free_chain(tx->mb);
 	    tx->mb = NULL;
+	    if (tx->r_mb) {
+	      mbuf_free_chain(tx->r_mb);
+	      tx->r_mb = NULL;
+	    }
 	    break;
 	  }
 	}

@@ -51,6 +51,7 @@ struct tx_record
   uip_ipaddr_t requestor_ip;
   uip_ipaddr_t target_ip;
   uint32_t requestor_handle;
+  struct mbuf *r_mb;
 };
 
 extern void adlc_poller(void);

@@ -168,13 +168,13 @@ aun_appcall(void)
 
 // Handle AUN Packets
 
-  if(uip_udp_conn->rport == HTONS(MNSDATAPORT)) {
+  if(uip_udp_conn->lport == HTONS(MNSDATAPORT)) {
    if(uip_newdata())
    {
      newdata();
    }
   }
-  else if (uip_udp_conn->rport == HTONS(WANDATAPORT)) {
+  else if (uip_udp_conn->lport == HTONS(WANDATAPORT)) {
    if(uip_newdata())
    {
      newwandata();
@@ -211,11 +211,9 @@ process_msg(struct wan_packet *w, uint16_t pktlen)
 	switch (m->mns_opcode)
 	{
 	case BROADCAST_DATA_FRAME: 	//1
-		//
-		break;
 	case DATA_FRAME:		//2
 	case IMMEDIATE_OP:		//5
-		foward_packet(w, pktlen);
+		foward_packet(w, pktlen, m->mns_opcode);
 		//
 		break;
 	case DATA_FRAME_ACK:		//3
@@ -302,7 +300,7 @@ void do_atp(unsigned char *Net, unsigned char *Stn)
 
 /******************************************************************************/
 
-void foward_packet(struct wan_packet *w, unsigned short pkt_len)
+void foward_packet(struct wan_packet *w, unsigned short pkt_len, uint8_t type)
 {
 	struct mns_msg *ah;
 	struct Econet_Header *eh;
@@ -327,11 +325,11 @@ void foward_packet(struct wan_packet *w, unsigned short pkt_len)
 	eh->CB = cb;
 	eh->PORT = port;
 
-	int x;
 	struct mbuf *mb = copy_to_mbufs (eh, pkt_len + 6);
-	x = enqueue_aun_tx(mb, BUF, handle);
-
-	return;
+	if (type == BROADCAST_DATA_FRAME)
+	  enqueue_tx (mb);
+	else
+	  enqueue_aun_tx(mb, BUF, handle);
 }
 
 /*
