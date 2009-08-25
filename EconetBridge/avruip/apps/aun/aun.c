@@ -84,9 +84,6 @@ uint8_t rTableEco[256];
 uint32_t rTableEthIP[256];
 uint8_t rTableEthType[256];
 
-unsigned char machine_type =  MACHINE_TYPE_ARC;
-uint8_t econet_net_nr = ECONET_INTERFACE_NET;
-
 static void newdata(void);
 static void newwandata(void);
 
@@ -217,7 +214,6 @@ process_msg(struct wan_packet *w, uint16_t pktlen)
 		//
 		break;
 	case DATA_FRAME_ACK:		//3
-	  serial_tx('A');
 	  if (forwarding) {
 	    adlc_forwarding_complete (TX_OK, NULL, 0);
 	    forwarding = 0;
@@ -225,7 +221,6 @@ process_msg(struct wan_packet *w, uint16_t pktlen)
 		//
 		break;
 	case DATA_FRAME_REJ:		//4
-	  serial_tx('N');
 	  if (forwarding) {
 	    not_listening();
 	  }

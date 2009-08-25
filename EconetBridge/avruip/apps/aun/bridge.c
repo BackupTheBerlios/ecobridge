@@ -20,7 +20,7 @@ static void do_bridge_reply(uint8_t stn, uint8_t reply_port)
   response_buf[3] = eeGlobals.Econet_Network;
   response_buf[4] = 0x80;
   response_buf[5] = reply_port;
-  response_buf[6] = econet_net_nr;
+  response_buf[6] = eeGlobals.Econet_Network;
   response_buf[7] = 0x01;
   mb->length = 8;
   enqueue_tx (mb);
@@ -39,7 +39,7 @@ static inline uint8_t is_bridge(void)
   return 1;
 }
 
-void handle_port_9c(void)
+void handle_port_9c(uint16_t length)
 {
   uint8_t *bcast_buf = (ECONET_RX_BUF + 6);
 

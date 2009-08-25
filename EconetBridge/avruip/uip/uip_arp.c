@@ -54,7 +54,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uip_arp.c,v 1.10 2009/08/24 18:20:16 philb Exp $
+ * $Id: uip_arp.c,v 1.11 2009/08/25 12:24:00 philb Exp $
  *
  */
 
@@ -105,7 +105,7 @@ static uip_ipaddr_t blank_ipaddr;
 static struct arp_entry arp_table[UIP_ARPTAB_SIZE];
 static u16_t ipaddr[2];
 
-static u8_t arptime;
+u8_t arptime;
 static u8_t tmpage;
 
 #define BUF   ((struct arp_hdr *)&uip_buf[0])
@@ -138,6 +138,31 @@ struct arp_entry *find_arp_entry(uip_ipaddr_t ipaddr)
     }
   }
   return NULL;
+}
+
+struct arp_entry *find_arp_victim(void)
+{
+  struct arp_entry *tabptr;
+
+  /* First, we try to find an unused entry in the ARP table. */
+  tabptr = find_arp_entry (blank_ipaddr);
+
+  /* If no unused entry is found, we try to find the oldest entry and
+     throw it away. */
+  if (tabptr == NULL) {
+    tmpage = 0;
+    u8_t c = 0, i;
+    for(i = 0; i < UIP_ARPTAB_SIZE; ++i) {
+      tabptr = &arp_table[i];
+      if(arptime - tabptr->time > tmpage) {
+	tmpage = arptime - tabptr->time;
+	c = i;
+      }
+    }
+    i = c;
+    tabptr = &arp_table[i];
+  }
+  return tabptr;
 }
 
 /*-----------------------------------------------------------------------------------*/
@@ -186,24 +211,7 @@ uip_arp_update(u16_t *ipaddr, struct uip_eth_addr *ethaddr)
 
   /* If we get here, no existing ARP table entry was found, so we
      create one. */
-  /* First, we try to find an unused entry in the ARP table. */
-  tabptr = find_arp_entry (blank_ipaddr);
-
-  /* If no unused entry is found, we try to find the oldest entry and
-     throw it away. */
-  if (tabptr == NULL) {
-    tmpage = 0;
-    u8_t c = 0;
-    for(i = 0; i < UIP_ARPTAB_SIZE; ++i) {
-      tabptr = &arp_table[i];
-      if(arptime - tabptr->time > tmpage) {
-	tmpage = arptime - tabptr->time;
-	c = i;
-      }
-    }
-    i = c;
-    tabptr = &arp_table[i];
-  }
+  tabptr = find_arp_victim ();
 
   /* Now, i is the ARP table entry which we will fill with the new
      information. */

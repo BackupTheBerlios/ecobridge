@@ -4,8 +4,6 @@
 #include "uip_arp.h"
 #include <string.h>
 
-static uint8_t find_server_rxcb;
-
 #define FIND_SERVER_PORT	0xb0
 #define FIND_SERVER_REPLY_PORT	0xb1
 #define IP_PORT			0xd2
@@ -36,8 +34,8 @@ struct ethip_hdr {
 };
 
 struct ec_arp {
-  u16_t dstipaddr[2],
-    srcipaddr[2];
+  u16_t srcipaddr[2],
+    dstipaddr[2];
 };
 
 void internet_init(void)
@@ -54,15 +52,16 @@ void do_send_mbuf(struct mbuf *mb)
   enqueue_tx (mb);
 }
 
-void handle_ip_packet(uint8_t cb, uint16_t length)
+void handle_ip_packet(uint8_t cb, uint16_t length, uint8_t offset)
 {
-  struct ec_arp *arpbuf = (struct ec_arp *)ECONET_RX_BUF + 6;
+  struct arp_entry *tabptr;
+  struct ec_arp *arpbuf = (struct ec_arp *)ECONET_RX_BUF + offset;
   switch (cb) {
   case EcCb_Frame:
-    length -= 4;
+    length -= offset;
     if (length <= (UIP_BUFSIZE - UIP_LLH_LEN))
     {
-      memcpy (uip_buf + UIP_LLH_LEN, ECONET_RX_BUF + 4, length);
+      memcpy (uip_buf + UIP_LLH_LEN, ECONET_RX_BUF + offset, length);
       uip_len = length;
       uip_arp_out ();
       nic_send (NULL);
@@ -72,7 +71,7 @@ void handle_ip_packet(uint8_t cb, uint16_t length)
     if (uip_ipaddr_cmp(econet_subnet, arpbuf->dstipaddr)) {
       serial_tx_str ("arp me\r\n");
       struct mbuf *mb = mbuf_alloc ();
-      struct ec_arp *arpbuf2 = &mb->data[6];
+      struct ec_arp *arpbuf2 = (struct ec_arp *)&mb->data[6];
       uip_ipaddr_copy (arpbuf2->dstipaddr, arpbuf->srcipaddr);
       uip_ipaddr_copy (arpbuf2->srcipaddr, arpbuf->dstipaddr);
       mb->data[0] = ECONET_RX_BUF[2];
@@ -81,7 +80,15 @@ void handle_ip_packet(uint8_t cb, uint16_t length)
       do_send_mbuf (mb);
     }
     break;
-  case EcCb_ARPreply:
+  case EcCb_ARPreply: 
+    tabptr = find_arp_entry (arpbuf->srcipaddr);
+    if (tabptr == NULL) {
+      tabptr = find_arp_victim ();
+      memcpy(tabptr->ipaddr, arpbuf->srcipaddr, 4);
+    }
+    tabptr->ethaddr.addr[0] = ECONET_RX_BUF[2];
+    tabptr->ethaddr.addr[1] = ECONET_RX_BUF[3];
+    tabptr->time = arptime;
     break;
   }
 }

@@ -294,8 +294,10 @@ void adlc_poller(void)
         stats.rx_bcast++;
 	if (s->Port == 0xb0)
 	  handle_port_b0 ();
+	if (s->Port == 0xd2)
+	  handle_ip_packet (ECONET_RX_BUF[4], frame_length, 6);
 	if (s->Port == 0x9c)
-	  handle_port_9c ();
+	  handle_port_9c (frame_length);
 	else
 	{
 	  memcpy (uip_appdata + 8, ECONET_RX_BUF + 6, frame_length - 6);
@@ -332,7 +334,7 @@ void adlc_poller(void)
     {
       if (aun_port == 0xd2)
       {
-	handle_ip_packet (aun_cb, frame_length);
+	handle_ip_packet (aun_cb, frame_length, 4);
 	make_and_send_scout ();
 	goto out;
       }
