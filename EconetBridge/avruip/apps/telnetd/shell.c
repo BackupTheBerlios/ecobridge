@@ -28,7 +28,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: shell.c,v 1.5 2009/08/25 20:05:00 markusher Exp $
+ * $Id: shell.c,v 1.6 2009/08/25 20:57:25 philb Exp $
  *
  */
 
@@ -92,17 +92,17 @@ hextostr(char *str, uint8_t i)
 static void
 help(char *str)
 {
-//  shell_output("set clck [econet clock multiplier 1-4]", "");
-  shell_output("\nset sttn [Econet station 1-254]", "");
-  shell_output("\nset enet [Econet network 1-127]", "");
-  shell_output("\nset aunn [AUN network 128-251]", "");
-  shell_output("\nset ipad [Ethernet IP address  aaa.bbb.ccc.ddd]", "");
-  shell_output("\nset snet [Ethernet subnet mask aaa.bbb.ccc.ddd]", "");
-  shell_output("\nset gway [Ethernet gateway IP  aaa.bbb.ccc.ddd]", "");
-  shell_output("\nset maca [Ethernet MAC address 0a:0b:0c:0d:0e:0f]\n\n", "");
-  shell_output("\nset ecip [Econet IP address  aaa.bbb.ccc.ddd]", "");
-  shell_output("\nset ecsb [Econet subnet mask aaa.bbb.ccc.ddd]", "");
-  shell_output("\nset ewan [Econet WAN gateway IP  aaa.bbb.ccc.ddd]", "");
+//  shell_output("set clck [0-4]", "");
+  shell_output("\nset sttn [1-254]", "");
+  shell_output("\nset enet [1-127]", "");
+  shell_output("\nset aunn [1-251]", "");
+  shell_output("\nset ipad [a.b.c.d]", "");
+  shell_output("\nset snet [a.b.c.d]", "");
+  shell_output("\nset gway [a.b.c.d]", "");
+  shell_output("\nset maca [a:b:c:d:e:f]\n\n", "");
+  shell_output("\nset ecip [a.b.c.d]", "");
+  shell_output("\nset ecsb [a.b.c.d]", "");
+  shell_output("\nset wan [a.b.c.d]", "");
 
   shell_output("stats   - show network statistics", "");
   shell_output("config  - show configuration", "");
@@ -159,9 +159,9 @@ setvalue(char *str)
 	strlcpy(value, str+10, strlen(str));
 	eeGlobals.Subnet = cleanvalueip(value);
     break;
-    case 'ewan':
+    case 'wan':
 	strlcpy(value, str+10, strlen(str));
-	eeGlobals.Gateway = cleanvalueip(value);
+	eeGlobals.WANGateway = cleanvalueip(value);
     break;
     default:
       shell_output("Unknown command: ", cmd);
@@ -255,20 +255,8 @@ unknown(char *str)
 }
 /*---------------------------------------------------------------------------*/
 static struct ptentry parsetab[] =
-  {{"stats", stats},
-   {"config", config},
-   {"set", help},
-/*   {"set clck", setvalue}, */
-   {"set sttn", setvalue},
-   {"set enet", setvalue},
-   {"set ethn", setvalue},
-   {"set ipad", setvalue},
-   {"set snet", setvalue},
-   {"set gway", setvalue},
-   {"set maca", setvalue},
-   {"set ecip", setvalue},
-   {"set ecsb", setvalue},
-   {"set ewan", setvalue},
+  {{"config", config},
+   {"set", setvalue},
    {"exit", shell_quit},
    {"?", help},
 

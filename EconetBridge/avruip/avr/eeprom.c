@@ -13,7 +13,7 @@ sDefaults_t INIT =
 		1,2, 128, 9,					/* Default Router */
 		 { 0x00,0x00, 0xA4,				/* MAC Address 1-3 OUI Acorn */
 		   0x33, 0x44, 0x55 },				/* MAC Address 4-6 NUI */
-		 { 82, 71, 203, 197 },				/* WAN router */
+		 { 82, 71, 203, 201 },				/* WAN router */
 		 { 192, 168, 200, 1 },				/* Econet-side IP */
 		 { 255, 255, 255, 0 }};				/* Econet-side netmask */
 
