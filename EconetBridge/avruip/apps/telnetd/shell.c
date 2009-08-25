@@ -28,7 +28,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: shell.c,v 1.4 2009/08/25 19:07:40 markusher Exp $
+ * $Id: shell.c,v 1.5 2009/08/25 20:05:00 markusher Exp $
  *
  */
 
@@ -118,11 +118,11 @@ setvalue(char *str)
   char *value;
 
   strlcpy(cmd, str, 4);
-
+/*
   switch (*cmd) {
-/*    case 'clck':
-      break;
-*/
+//    case 'clck':
+//      break;
+
     case 'sttn':
 	strlcpy(value, str+10, strlen(str));
 	eeGlobals.Station = cleanvaluebyte(value);
@@ -166,7 +166,7 @@ setvalue(char *str)
     default:
       shell_output("Unknown command: ", cmd);
     }
-
+*/
 }
 /*---------------------------------------------------------------------------*/
 static uint8_t cleanvalue(char *value)
