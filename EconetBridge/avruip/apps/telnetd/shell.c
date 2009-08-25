@@ -28,7 +28,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: shell.c,v 1.3 2009/08/11 21:20:00 philb Exp $
+ * $Id: shell.c,v 1.4 2009/08/25 19:07:40 markusher Exp $
  *
  */
 
@@ -49,7 +49,9 @@ struct ptentry {
 static void
 parse(register char *str, struct ptentry *t)
 {
+
   struct ptentry *p;
+
   for(p = t; p->commandstr != NULL; ++p) {
     if(strncmp(p->commandstr, str, strlen(p->commandstr)) == 0) {
       break;
@@ -57,6 +59,8 @@ parse(register char *str, struct ptentry *t)
   }
 
   p->pfunc(str);
+
+
 }
 /*---------------------------------------------------------------------------*/
 static void
@@ -88,12 +92,100 @@ hextostr(char *str, uint8_t i)
 static void
 help(char *str)
 {
+//  shell_output("set clck [econet clock multiplier 1-4]", "");
+  shell_output("\nset sttn [Econet station 1-254]", "");
+  shell_output("\nset enet [Econet network 1-127]", "");
+  shell_output("\nset aunn [AUN network 128-251]", "");
+  shell_output("\nset ipad [Ethernet IP address  aaa.bbb.ccc.ddd]", "");
+  shell_output("\nset snet [Ethernet subnet mask aaa.bbb.ccc.ddd]", "");
+  shell_output("\nset gway [Ethernet gateway IP  aaa.bbb.ccc.ddd]", "");
+  shell_output("\nset maca [Ethernet MAC address 0a:0b:0c:0d:0e:0f]\n\n", "");
+  shell_output("\nset ecip [Econet IP address  aaa.bbb.ccc.ddd]", "");
+  shell_output("\nset ecsb [Econet subnet mask aaa.bbb.ccc.ddd]", "");
+  shell_output("\nset ewan [Econet WAN gateway IP  aaa.bbb.ccc.ddd]", "");
+
   shell_output("stats   - show network statistics", "");
-  shell_output("conn    - show TCP connections", "");
   shell_output("config  - show configuration", "");
   shell_output("help, ? - show help", "");
   shell_output("exit    - exit shell", "");
 }
+/*---------------------------------------------------------------------------*/
+static void
+setvalue(char *str)
+{
+
+  char *cmd;
+  char *value;
+
+  strlcpy(cmd, str, 4);
+
+  switch (*cmd) {
+/*    case 'clck':
+      break;
+*/
+    case 'sttn':
+	strlcpy(value, str+10, strlen(str));
+	eeGlobals.Station = cleanvaluebyte(value);
+    break;
+    case 'enet':
+	strlcpy(value, str+10, strlen(str));
+	eeGlobals.Econet_Network = cleanvaluebyte(value);
+    break;
+    case 'aunn':
+	strlcpy(value, str+10, strlen(str));
+	eeGlobals.Ethernet_Network = cleanvaluebyte(value);
+    break;
+    case 'ipad':
+	strlcpy(value, str+10, 2);
+	eeGlobals.IPAddr = cleanvalueip(value);
+    break;
+    case 'snet':
+	strlcpy(value, str+10, strlen(str));
+	eeGlobals.Subnet = cleanvalueip(value);
+    break;
+    case 'gway':
+	strlcpy(value, str+10, strlen(str));
+	eeGlobals.Gateway = cleanvalueip(value);
+    break;
+    case 'maca':
+	strlcpy(value, str+10, strlen(str));
+	eeGlobals.MAC = cleanvaluemac(value);
+    break;
+    case 'ecip':
+	strlcpy(value, str+10, 2);
+	eeGlobals.IPAddr = cleanvalueip(value);
+    break;
+    case 'ecsb':
+	strlcpy(value, str+10, strlen(str));
+	eeGlobals.Subnet = cleanvalueip(value);
+    break;
+    case 'ewan':
+	strlcpy(value, str+10, strlen(str));
+	eeGlobals.Gateway = cleanvalueip(value);
+    break;
+    default:
+      shell_output("Unknown command: ", cmd);
+    }
+
+}
+/*---------------------------------------------------------------------------*/
+static uint8_t cleanvalue(char *value)
+{
+  return 1;
+}
+
+/*---------------------------------------------------------------------------*/
+static uint32_t cleanvalueip(char *value)
+{
+  return 1;
+}
+
+/*---------------------------------------------------------------------------*/
+static uint8_t cleanvaluemac(char *value)
+{
+  return 1;
+}
+
 /*---------------------------------------------------------------------------*/
 static void
 stats(char *str)
@@ -129,17 +221,23 @@ config(char *str)
   }
   MAC_addr[12] = 0;
 
+
   inttostr(outstring,eeGlobals.Econet_Network);
-  shell_output("Econet\n======\n\nNetwork\t\t: ", outstring);
+  shell_output("\nEconet\n======\n\nNetwork\t\t: ", outstring);
 
   inttostr(outstring,eeGlobals.Station);
   shell_output("Station\t\t: ", outstring);
-
+/*
   inttostr(outstring,eeGlobals.ClockMultiplier);
   shell_output("Clock x\t\t: ", outstring);
-
+*/
   shell_output("\nEthernet\n========\n\n", "");
   shell_output("MAC Address\t: ", MAC_addr);
+  shell_output("IP Address\t: ", outstring);
+  shell_output("Subnet\t\t: ", outstring);
+  shell_output("Gateway\t\t: ", outstring);
+
+  shell_output("\nEconet WAN\n========\n\n", "");
   shell_output("IP Address\t: ", outstring);
   shell_output("Subnet\t\t: ", outstring);
   shell_output("Gateway\t\t: ", outstring);
@@ -158,8 +256,19 @@ unknown(char *str)
 /*---------------------------------------------------------------------------*/
 static struct ptentry parsetab[] =
   {{"stats", stats},
-   {"conn", help},
    {"config", config},
+   {"set", help},
+/*   {"set clck", setvalue}, */
+   {"set sttn", setvalue},
+   {"set enet", setvalue},
+   {"set ethn", setvalue},
+   {"set ipad", setvalue},
+   {"set snet", setvalue},
+   {"set gway", setvalue},
+   {"set maca", setvalue},
+   {"set ecip", setvalue},
+   {"set ecsb", setvalue},
+   {"set ewan", setvalue},
    {"exit", shell_quit},
    {"?", help},
 

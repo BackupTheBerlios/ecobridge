@@ -29,11 +29,24 @@ enum {  EEPROM_SAFETY,			// A power-failure *CAN* corrupt this byte
         EEPROM_MAC3,			//
         EEPROM_MAC4,			//
         EEPROM_MAC5,			//
-        EEPROM_MAC6			//
+        EEPROM_MAC6,			//
+	EEPROM_WAN_ROUTER1,		// WAN Router address
+	EEPROM_WAN_ROUTER2,		//
+	EEPROM_WAN_ROUTER3,		//
+	EEPROM_WAN_ROUTER4,		//
+	EEPROM_WAN_ECONET_IP1,		// Econet-side IP
+	EEPROM_WAN_ECONET_IP2,		// 
+	EEPROM_WAN_ECONET_IP3,		// 
+	EEPROM_WAN_ECONET_IP4,		// 
+	EEPROM_WAN_ECONET_SUBNET1,	// Econet-side Subnet mask
+	EEPROM_WAN_ECONET_SUBNET2,	// 
+	EEPROM_WAN_ECONET_SUBNET3,	// 
+	EEPROM_WAN_ECONET_SUBNET4	// 
      };
 
 
-#define EEPROM_VALID    (0x55)
+
+#define EEPROM_VALID    (0x56)
 
 
 

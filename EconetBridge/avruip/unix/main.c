@@ -31,7 +31,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: main.c,v 1.27 2009/08/24 18:20:16 philb Exp $
+ * $Id: main.c,v 1.28 2009/08/25 19:07:40 markusher Exp $
  *
  */
 
@@ -137,11 +137,12 @@ main(void)
 
   nic_init();
 
-  uip_ipaddr(ipaddr, eeGlobals.IPAddr_1,eeGlobals.IPAddr_2,eeGlobals.IPAddr_3,eeGlobals.IPAddr_4);
+
+  uip_ipaddr(ipaddr, eeGlobals.IPAddr[0],eeGlobals.IPAddr[1],eeGlobals.IPAddr[2],eeGlobals.IPAddr[3]);
   uip_sethostaddr(ipaddr);
-  uip_ipaddr(ipaddr, eeGlobals.Gateway_1,eeGlobals.Gateway_2,eeGlobals.Gateway_3,eeGlobals.Gateway_4);
+  uip_ipaddr(ipaddr, eeGlobals.Gateway[0],eeGlobals.Gateway[1],eeGlobals.Gateway[2],eeGlobals.Gateway[3]);
   uip_setdraddr(ipaddr);
-  uip_ipaddr(ipaddr, eeGlobals.Subnet_1,eeGlobals.Subnet_2,eeGlobals.Subnet_3,eeGlobals.Subnet_4);
+  uip_ipaddr(ipaddr, eeGlobals.Subnet[0],eeGlobals.Subnet[1],eeGlobals.Subnet[2],eeGlobals.Subnet[3]);
   uip_setnetmask(ipaddr);
 
   telnetd_init();

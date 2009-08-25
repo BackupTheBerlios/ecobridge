@@ -29,7 +29,7 @@
  *
  * This file is part of the uIP TCP/IP stack
  *
- * $Id: telnetd.h,v 1.2 2009/08/04 14:32:09 markusher Exp $
+ * $Id: telnetd.h,v 1.3 2009/08/25 19:07:40 markusher Exp $
  *
  */
 #ifndef __TELNETD_H__
@@ -40,7 +40,7 @@
 void telnetd_appcall(void);
 
 #ifndef TELNETD_CONF_LINELEN
-#define TELNETD_CONF_LINELEN 40
+#define TELNETD_CONF_LINELEN 80
 #endif
 #ifndef TELNETD_CONF_NUMLINES
 #define TELNETD_CONF_NUMLINES 16
