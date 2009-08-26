@@ -28,7 +28,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: shell.c,v 1.6 2009/08/25 20:57:25 philb Exp $
+ * $Id: shell.c,v 1.7 2009/08/26 22:20:57 markusher Exp $
  *
  */
 
@@ -36,6 +36,7 @@
 
 #include "adlc.h"
 
+#include <stdlib.h>
 #include <string.h>
 
 struct ptentry {
@@ -88,6 +89,26 @@ hextostr(char *str, uint8_t i)
   str[1] = hexdigit(i & 0xf);
 }
 
+static void
+iptostr(uint8_t *ipaddress, char *str)   
+{
+  char outstring[4];
+  char period[1];
+
+  period[0] = '.';
+
+  str[0] = 0;
+
+  itoa(ipaddress[0], outstring, 10);
+  strcat(str, outstring);
+  itoa(ipaddress[1], outstring, 10);
+  strcat(str, period);
+  itoa(ipaddress[2], outstring, 10);
+  strcat(str, period);
+  itoa(ipaddress[3], outstring, 10);
+  strcat(str, period);
+
+}
 /*---------------------------------------------------------------------------*/
 static void
 help(char *str)
@@ -118,6 +139,7 @@ setvalue(char *str)
   char *value;
 
   strlcpy(cmd, str, 4);
+
 /*
   switch (*cmd) {
 //    case 'clck':
@@ -213,17 +235,21 @@ static void
 config(char *str)
 {
   char outstring[5];
-  char MAC_addr[13];
+  char addr[18];
 
   uint8_t i;
   for (i = 0; i < 6; i++) {
-    hextostr(MAC_addr + (i * 2), eeGlobals.MAC[i]);
+    hextostr(addr + (i * 3), eeGlobals.MAC[i]);
+    addr[((i*3)+2)] = ':';
   }
-  MAC_addr[12] = 0;
+  addr[17] = 0;
 
 
   inttostr(outstring,eeGlobals.Econet_Network);
-  shell_output("\nEconet\n======\n\nNetwork\t\t: ", outstring);
+
+  shell_output("\nEconet", "");
+  shell_output("======", "");
+  shell_output("\nNetwork\t\t: ", outstring);
 
   inttostr(outstring,eeGlobals.Station);
   shell_output("Station\t\t: ", outstring);
@@ -231,19 +257,34 @@ config(char *str)
   inttostr(outstring,eeGlobals.ClockMultiplier);
   shell_output("Clock x\t\t: ", outstring);
 */
-  shell_output("\nEthernet\n========\n\n", "");
-  shell_output("MAC Address\t: ", MAC_addr);
-  shell_output("IP Address\t: ", outstring);
-  shell_output("Subnet\t\t: ", outstring);
-  shell_output("Gateway\t\t: ", outstring);
-
-  shell_output("\nEconet WAN\n========\n\n", "");
-  shell_output("IP Address\t: ", outstring);
-  shell_output("Subnet\t\t: ", outstring);
-  shell_output("Gateway\t\t: ", outstring);
 
   inttostr(outstring,eeGlobals.Ethernet_Network);
   shell_output("AUN Network\t: ", outstring);
+
+  shell_output("\nEthernet", "");
+  shell_output("========", "");
+  shell_output("\nMAC Address\t: ", addr);
+
+  iptostr(eeGlobals.IPAddr, addr);
+  shell_output("IP Address\t: ", addr);
+
+  iptostr(eeGlobals.Subnet, addr);
+  shell_output("Subnet\t\t: ", addr);
+  iptostr(eeGlobals.Gateway, addr);
+  shell_output("Gateway\t\t: ", addr);
+
+  shell_output("\nEconet WAN", "");
+  shell_output("==========", "");
+
+  iptostr(eeGlobals.EconetIP, addr);
+  shell_output("\nIP Address\t: ", addr);
+
+  iptostr(eeGlobals.EconetMask, addr);
+  shell_output("Subnet\t\t: ", addr);
+
+  iptostr(eeGlobals.WANRouter, addr);
+  shell_output("Gateway\t\t: ", addr);
+
 
 }/*---------------------------------------------------------------------------*/
 static void
