@@ -46,7 +46,7 @@ enum {  EEPROM_SAFETY,			// A power-failure *CAN* corrupt this byte
 
 
 
-#define EEPROM_VALID    (0x56)
+#define EEPROM_VALID    (0x55)
 
 
 

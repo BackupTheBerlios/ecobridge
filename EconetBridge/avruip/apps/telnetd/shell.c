@@ -28,13 +28,14 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: shell.c,v 1.7 2009/08/26 22:20:57 markusher Exp $
+ * $Id: shell.c,v 1.8 2009/08/27 21:00:07 markusher Exp $
  *
  */
 
 #include "shell.h"
 
 #include "adlc.h"
+#include "eeprom.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -45,6 +46,11 @@ struct ptentry {
 };
 
 #define SHELL_PROMPT "> "
+
+
+#define xtod(c) ((c>='0' && c<='9') ? c-'0' : ((c>='A' && c<='F') ? \ 
+                c-'A'+10 : ((c>='a' && c<='f') ? c-'a'+10 : 0))) 
+  
 
 /*---------------------------------------------------------------------------*/
 static void
@@ -61,6 +67,71 @@ parse(register char *str, struct ptentry *t)
 
   p->pfunc(str);
 
+}
+/*---------------------------------------------------------------------------*/
+static void
+copy_param(uint8_t *location, char *strvalue, uint8_t MIN, uint8_t MAX)
+{
+
+	int value;
+
+	value = atoi(strvalue);
+	if ((value <=MAX) && (value >= MIN )) {
+	  *location = value;
+	  EEPROM_WriteAll();
+        }
+	else
+	{
+          shell_output("Invalid value ", "");
+        }
+
+
+}
+/*---------------------------------------------------------------------------*/
+static void
+copy_param_ip(uint8_t *location, char *strvalue)
+{
+  *(location) = atoi(strtok(strvalue, "."));
+  *(location+1) = atoi(strtok(NULL, "."));
+  *(location+2) = atoi(strtok(NULL, "."));
+  *(location+3) = atoi(strtok(NULL, " "));
+  EEPROM_WriteAll();
+}
+
+
+char xtode(char c) 
+{ 
+  if (c>='0' && c<='9') return c-'0'; 
+  if (c>='A' && c<='F') return c-'A'+10; 
+  if (c>='a' && c<='f') return c-'a'+10; 
+  return c=0;        // not Hex digit 
+} 
+  
+int HextoDec(char *hex, int l) 
+{ 
+  if (*hex==0) return(l); 
+  return HextoDec(hex+1, l*16+xtode(*hex)); // hex+1? 
+} 
+  
+int xstrtoi(char *hex)      // hex string to integer 
+{ 
+  return HextoDec(hex, 0); 
+} 
+
+/*---------------------------------------------------------------------------*/
+static void
+copy_param_mac(uint8_t *location, char *strvalue)
+{
+
+  *(location) = xstrtoi(strtok(strvalue, ":"));
+
+  uint8_t i;
+  for (i=1; i<5; i++) {
+  *(location+i) = xstrtoi(strtok(NULL, ":"));
+  }
+
+  *(location+5) = xstrtoi(strtok(NULL, " "));
+  EEPROM_WriteAll();
 
 }
 /*---------------------------------------------------------------------------*/
@@ -114,105 +185,50 @@ static void
 help(char *str)
 {
 //  shell_output("set clck [0-4]", "");
-  shell_output("\nset sttn [1-254]", "");
-  shell_output("\nset enet [1-127]", "");
-  shell_output("\nset aunn [1-251]", "");
-  shell_output("\nset ipad [a.b.c.d]", "");
-  shell_output("\nset snet [a.b.c.d]", "");
-  shell_output("\nset gway [a.b.c.d]", "");
-  shell_output("\nset maca [a:b:c:d:e:f]\n\n", "");
-  shell_output("\nset ecip [a.b.c.d]", "");
-  shell_output("\nset ecsb [a.b.c.d]", "");
-  shell_output("\nset wan [a.b.c.d]", "");
+  shell_output("\nset sttn [1-254]\r\nset enet [1-127]\r\nset aunn [1-251]\r\nset ipad [a.b.c.d]", "");
+  shell_output("\r\nset snet [a.b.c.d]\r\nset gway [a.b.c.d]\r\nset maca [a:b:c:d:e:f]\r\nset ecip [a.b.c.d]\r\nset ecsb [a.b.c.d]\r\nset ewan [a.b.c.d]\n", "");
 
-  shell_output("stats   - show network statistics", "");
-  shell_output("config  - show configuration", "");
-  shell_output("help, ? - show help", "");
-  shell_output("exit    - exit shell", "");
+//  shell_output("stats   - show network statistics", "");
+  shell_output("config  - show configuration\r\nhelp, ? - show help\r\nexit    - exit shell", "");
 }
 /*---------------------------------------------------------------------------*/
 static void
 setvalue(char *str)
 {
 
-  char *cmd;
-  char *value;
-
-  strlcpy(cmd, str, 4);
-
-/*
-  switch (*cmd) {
-//    case 'clck':
-//      break;
-
-    case 'sttn':
-	strlcpy(value, str+10, strlen(str));
-	eeGlobals.Station = cleanvaluebyte(value);
-    break;
-    case 'enet':
-	strlcpy(value, str+10, strlen(str));
-	eeGlobals.Econet_Network = cleanvaluebyte(value);
-    break;
-    case 'aunn':
-	strlcpy(value, str+10, strlen(str));
-	eeGlobals.Ethernet_Network = cleanvaluebyte(value);
-    break;
-    case 'ipad':
-	strlcpy(value, str+10, 2);
-	eeGlobals.IPAddr = cleanvalueip(value);
-    break;
-    case 'snet':
-	strlcpy(value, str+10, strlen(str));
-	eeGlobals.Subnet = cleanvalueip(value);
-    break;
-    case 'gway':
-	strlcpy(value, str+10, strlen(str));
-	eeGlobals.Gateway = cleanvalueip(value);
-    break;
-    case 'maca':
-	strlcpy(value, str+10, strlen(str));
-	eeGlobals.MAC = cleanvaluemac(value);
-    break;
-    case 'ecip':
-	strlcpy(value, str+10, 2);
-	eeGlobals.IPAddr = cleanvalueip(value);
-    break;
-    case 'ecsb':
-	strlcpy(value, str+10, strlen(str));
-	eeGlobals.Subnet = cleanvalueip(value);
-    break;
-    case 'wan':
-	strlcpy(value, str+10, strlen(str));
-	eeGlobals.WANGateway = cleanvalueip(value);
-    break;
-    default:
-      shell_output("Unknown command: ", cmd);
+   if(strncmp(str+4, "sttn", 4)==0){
+//	strlcpy(strvalue, str+10, strlen(str));
+        copy_param(&eeGlobals.Station, str+9, 1, 254);
+/*  }else if(strncmp(str+4, "clck", 4)==0){
+        copy_param(&eeGlobals.ClockMultiplier, str+9, 0, 4); */
+    }else if(strncmp(str+4, "enet", 4)==0){
+        copy_param(&eeGlobals.Econet_Network, str+9, 1, 127);
+    }else if(strncmp(str+4, "aunn", 4)==0){
+        copy_param(&eeGlobals.Ethernet_Network, str+9, 1, 251);
+    }else if(strncmp(str+4, "ipad", 4)==0){
+        copy_param_ip(&eeGlobals.IPAddr, str+9);
+    }else if(strncmp(str+4, "snet", 4)==0){
+        copy_param_ip(&eeGlobals.Subnet, str+9);
+    }else if(strncmp(str+4, "gway", 4)==0){
+        copy_param_ip(&eeGlobals.Gateway, str+9);
+    }else if(strncmp(str+4, "maca", 4)==0){
+        copy_param_mac(&eeGlobals.MAC, str+9);
+    }else if(strncmp(str+4, "ecip", 4)==0){
+        copy_param_ip(&eeGlobals.EconetIP, str+9);
+    }else if(strncmp(str+4, "ecsb", 4)==0){
+        copy_param_ip(&eeGlobals.EconetMask, str+9);
+    }else if(strncmp(str+4, "ewan", 4)==0){
+        copy_param_ip(&eeGlobals.WANRouter, str+9);
+    }else{
+      shell_output("Unknown command: ", str+4);
     }
-*/
-}
-/*---------------------------------------------------------------------------*/
-static uint8_t cleanvalue(char *value)
-{
-  return 1;
-}
 
-/*---------------------------------------------------------------------------*/
-static uint32_t cleanvalueip(char *value)
-{
-  return 1;
 }
-
 /*---------------------------------------------------------------------------*/
-static uint8_t cleanvaluemac(char *value)
-{
-  return 1;
-}
-
-/*---------------------------------------------------------------------------*/
+/*
 static void
 stats(char *str)
 {
-/*
   char outstring[4];
   inttostr(&outstring,0);
 
@@ -229,8 +245,7 @@ stats(char *str)
   shell_output("Tx Line Jammed   : " , outstring);
   shell_output("\n\nhelp, ? - show help", "");
   shell_output("exit    - exit shell", "");
-*/
-}/*---------------------------------------------------------------------------*/
+}*//*---------------------------------------------------------------------------*/
 static void
 config(char *str)
 {
@@ -247,9 +262,7 @@ config(char *str)
 
   inttostr(outstring,eeGlobals.Econet_Network);
 
-  shell_output("\nEconet", "");
-  shell_output("======", "");
-  shell_output("\nNetwork\t\t: ", outstring);
+  shell_output("\nEconet\r\n======\r\n\nNetwork\t\t: ", outstring);
 
   inttostr(outstring,eeGlobals.Station);
   shell_output("Station\t\t: ", outstring);
@@ -261,23 +274,19 @@ config(char *str)
   inttostr(outstring,eeGlobals.Ethernet_Network);
   shell_output("AUN Network\t: ", outstring);
 
-  shell_output("\nEthernet", "");
-  shell_output("========", "");
-  shell_output("\nMAC Address\t: ", addr);
+  shell_output("\nEthernet\r\n========\r\n\nMAC Address\t: ", addr);
 
   iptostr(eeGlobals.IPAddr, addr);
   shell_output("IP Address\t: ", addr);
 
   iptostr(eeGlobals.Subnet, addr);
   shell_output("Subnet\t\t: ", addr);
+
   iptostr(eeGlobals.Gateway, addr);
   shell_output("Gateway\t\t: ", addr);
 
-  shell_output("\nEconet WAN", "");
-  shell_output("==========", "");
-
   iptostr(eeGlobals.EconetIP, addr);
-  shell_output("\nIP Address\t: ", addr);
+  shell_output("\nEconet WAN\r\n==========\r\n\nIP Address\t: ", addr);
 
   iptostr(eeGlobals.EconetMask, addr);
   shell_output("Subnet\t\t: ", addr);
@@ -297,8 +306,10 @@ unknown(char *str)
 /*---------------------------------------------------------------------------*/
 static struct ptentry parsetab[] =
   {{"config", config},
+/*   {"stats", stats}, */
    {"set", setvalue},
    {"exit", shell_quit},
+   {"help", help},
    {"?", help},
 
    /* Default action */
@@ -312,8 +323,7 @@ shell_init(void)
 void
 shell_start(void)
 {
-  shell_output("BEE Gateway", "");
-  shell_output("'?' for help", "");
+  shell_output("BEE Gateway\r\n'?' for help", "");
   shell_prompt(SHELL_PROMPT);
 }
 /*---------------------------------------------------------------------------*/
