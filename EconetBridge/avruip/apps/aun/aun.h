@@ -38,6 +38,10 @@ extern uint8_t rTableEthType[256];
 #define ETH_TYPE_LOCAL	1
 #define ETH_TYPE_WAN	2
 
+// boolean flags for the routing table
+#define NOT_ROUTABLE	0x0
+#define ROUTABLE 	0xFF
+#define LOCAL_NETWORK 	0
 
 /* module.h
  *
@@ -75,7 +79,6 @@ extern unsigned char machine_type;
 
 #define RESERVED_NET    128
 #define ITEM_NAMELEN     16
-#define BRIDGE_PORT    0x9c
 
 #define MAX_ALLOCATE   0x90
 
@@ -264,7 +267,7 @@ struct wan_packet {
 	uint8_t snet;
 };
 
-#define UNHDRSIZE  8
+#define AUNHDRSIZE  8
 
 /*
  * Data Transform Protocol format

@@ -44,15 +44,7 @@ static struct aun_state s;
 #define STATE_OFFER_RECEIVED  2
 #define STATE_CONFIG_RECEIVED 3
 
-#define ECONET_INTERFACE_NET  1
-#define ETHNET_INTERFACE_NET  130
 
-
-// boolean flags for the routing table
-#define NOT_ROUTABLE	0x0
-#define ROUTABLE 	0xFF
-
-#define LOCAL_NETWORK 	0
 
 struct EconetRouting
 {
@@ -115,11 +107,11 @@ aun_init(void)
 {
 	rTableEco[LOCAL_NETWORK] = ROUTABLE;
 	rTableEco[ANY_NETWORK] = ROUTABLE;
-	rTableEco[ECONET_INTERFACE_NET] = ROUTABLE;
+	rTableEco[eeprom.Econet_Network] = ROUTABLE;
 
 	// set the ethernet routing table
-	rTableEthIP[ETHNET_INTERFACE_NET] = (uint32_t)(0x0201 | (uint32_t)((uint32_t)ETHNET_INTERFACE_NET << 16));
-	rTableEthType[ETHNET_INTERFACE_NET] = ETH_TYPE_LOCAL;
+	rTableEthIP[eeprom.Ethernet_Network] = (uint32_t)(0x0201 | (uint32_t)((uint32_t)eeprom.Ethernet_Network << 16));
+	rTableEthType[eeprom.Ethernet_Network] = ETH_TYPE_LOCAL;
 
 	// remove any open connections
 	if (s.conn != NULL) {
@@ -199,7 +191,7 @@ aun_appcall(void)
 static void
 process_msg(struct wan_packet *w, uint16_t pktlen)
 {
-	if (w->dnet == ECONET_INTERFACE_NET) {
+	if (w->dnet == eeprom.Econet_Network) {
 		w->dnet = LOCAL_NETWORK;
 	}
 
@@ -253,8 +245,8 @@ static void newdata(void)
 	w->dnet = DNet;
 	w->sstn = SStn;
 	w->snet = SNet;
-	
-	process_msg (w, uip_len - 8);
+
+	process_msg (w, uip_len - AUNHDRSIZE);
 }
 
 static void newwandata(void)
@@ -263,7 +255,7 @@ static void newwandata(void)
 
 	switch (w->opcode) {
 	case 0x00:
-		process_msg (w, uip_len - 8 - sizeof (struct wan_packet));
+		process_msg (w, uip_len - AUNHDRSIZE - sizeof (struct wan_packet));
 		break;
 	}
 }
@@ -353,14 +345,14 @@ void aun_send_packet (uint8_t cb, uint8_t port, uint16_t src_stn_net, uip_ipaddr
   uint8_t src_stn = src_stn_net & 0xff;
   uint8_t src_net = src_stn_net >> 8;
   if (src_net == 0)
-    src_net = ECONET_INTERFACE_NET;
+    src_net = eeprom.Econet_Network;
 
   BUF->srcipaddr[0] = uip_hostaddr[0];
   BUF->srcipaddr[1] = (src_stn << 8) | src_net;
   uip_ipaddr_copy(BUF->destipaddr, dest_ip);
   BUF->destport = BUF->srcport = HTONS(MNSDATAPORT);
 
-  uip_udp_send(8 + data_length);
+  uip_udp_send(AUNHDRSIZE + data_length);
   do_uip_send();
 
   forwarding = 1;
@@ -403,13 +395,3 @@ uint8_t aun_want_proxy_arp(uint16_t *ipaddr)
     return 1;
   return 0;
 }
-
-/*
-static void
-check_entries(void)
-{
-	char i;
-	i=1;
-}
-
-*/

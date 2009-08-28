@@ -17,12 +17,12 @@ static void do_bridge_reply(uint8_t stn, uint8_t reply_port)
   response_buf[0] = stn;
   response_buf[1] = 0;
   response_buf[2] = 0;
-  response_buf[3] = eeGlobals.Econet_Network;
+  response_buf[3] = eeprom.Econet_Network;
   response_buf[4] = 0x80;
   response_buf[5] = reply_port;
-  response_buf[6] = eeGlobals.Econet_Network;
+  response_buf[6] = eeprom.Econet_Network;
   response_buf[7] = 0x01;
-  mb->length = 8;
+  mb->length = AUNHDRSIZE;
   enqueue_tx (mb);
 }
 

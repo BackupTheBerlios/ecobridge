@@ -4,10 +4,6 @@
 #include "uip_arp.h"
 #include <string.h>
 
-#define FIND_SERVER_PORT	0xb0
-#define FIND_SERVER_REPLY_PORT	0xb1
-#define IP_PORT			0xd2
-
 #define EcCb_ARP		0xa1
 #define EcCb_ARPreply		0xa2
 #define EcCb_Frame		0x81
@@ -40,15 +36,15 @@ struct ec_arp {
 
 void internet_init(void)
 {
-  uip_ipaddr(econet_subnet, eeGlobals.EconetIP[0], eeGlobals.EconetIP[1], eeGlobals.EconetIP[2], eeGlobals.EconetIP[3]);
-  uip_ipaddr(econet_netmask, eeGlobals.EconetMask[0], eeGlobals.EconetMask[1], eeGlobals.EconetMask[2], eeGlobals.EconetMask[3]);
+  uip_ipaddr(econet_subnet, eeprom.EconetIP[0], eeprom.EconetIP[1], eeprom.EconetIP[2], eeprom.EconetIP[3]);
+  uip_ipaddr(econet_netmask, eeprom.EconetMask[0], eeprom.EconetMask[1], eeprom.EconetMask[2], eeprom.EconetMask[3]);
 }
 
 void do_send_mbuf(struct mbuf *mb)
 {
-  mb->data[2] = eeGlobals.Station;
+  mb->data[2] = eeprom.Station;
   mb->data[3] = 0;
-  mb->data[5] = 0xd2;
+  mb->data[5] = IP_PORT;
   enqueue_tx (mb);
 }
 
@@ -98,7 +94,7 @@ void handle_ip_packet(uint8_t cb, uint16_t length, uint8_t offset)
 uint8_t forward_to_econet (void)
 {
   /* Check if the destination address is on the local network. */
-  if (eeGlobals.EconetMask[0] && uip_ipaddr_maskcmp(IPBUF->destipaddr, econet_subnet, econet_netmask)) {
+  if (eeprom.EconetMask[0] && uip_ipaddr_maskcmp(IPBUF->destipaddr, econet_subnet, econet_netmask)) {
     struct arp_entry *arp = find_arp_entry (IPBUF->destipaddr);
     if (arp) {
       struct mbuf *mb = copy_to_mbufs (uip_buf + UIP_LLH_LEN - 6, uip_len - UIP_LLH_LEN + 6);
@@ -133,7 +129,7 @@ void handle_port_b0(void)
       unsigned char *response_buffer = &mb->data[0];
       response_buffer[0] = ECONET_RX_BUF[2];
       response_buffer[1] = ECONET_RX_BUF[3];
-      response_buffer[2] = eeGlobals.Station;
+      response_buffer[2] = eeprom.Station;
       response_buffer[3] = 0;
       response_buffer[4] = 0x80;
       response_buffer[5] = FIND_SERVER_REPLY_PORT;
