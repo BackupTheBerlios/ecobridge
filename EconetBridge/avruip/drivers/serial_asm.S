@@ -8,21 +8,18 @@
 //  Make these functions visible to other source files.
 .global serial_tx	
 .global serial_tx_hex
-.global crlf
-
 
 .global egpio_init
 .global egpio_write
+
+#define	EGPIO_BASE			0xC000
 
 
 ; =======================================================================
 ; == Serial =============================================================
 ; =======================================================================
 
-	; 115200bps bit time = 8.68us =~ 70 cycles @ 8MHz
-
-#define	EGPIO_BASE			0xC000
-
+; 115200bps bit time = 8.68us =~ 70 cycles @ 8MHz
 
 
 .section .text             ; Start program section
@@ -36,12 +33,12 @@ egpio_init:
 	rcall	egpio_write
 
 	; wait
-	rcall delay_65536
+	rcall	delay_65536
 
 	ldi	r24, EGPIO_ETHER_RESET		; unreset chip
 	rcall	egpio_write
 
-	rcall delay_65536
+	rcall	delay_65536
 
 	ldi	r24, EGPIO_ECONET_RED | EGPIO_SET
 	rcall	egpio_write
@@ -153,21 +150,6 @@ serial_tx_wait3:
 	pop	XL
 	pop	r18					; restore r18 from the stack
 	ret
-
-
-
-; -----------------------------------------------------------------------------------------
-; CRLF
-; -----------------------------------------------------------------------------------------
-;
-; output <cr><lf> to the serial debugger
-
-crlf:
-	ldi	r24, 13				; <CR> to r16
-	rcall	serial_tx				; ouput to serial
-	ldi	r24, 10				; <LF> to r16
-	rjmp	serial_tx				; output to serial
-
 
 
 ; -----------------------------------------------------------------------------------------
