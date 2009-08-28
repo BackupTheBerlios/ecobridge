@@ -588,7 +588,7 @@ check_dst_net:
 	brcs	adlc_irq_ret
 	breq	discontinue
 
-	lds	tmp2, eeGlobals + 6
+	lds	tmp2, eeprom + 6
 	lds	tmp1, ECONET_RX_BUF
 	cp	tmp2, tmp1
 	breq	adlc_irq_ret

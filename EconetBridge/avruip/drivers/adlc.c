@@ -53,6 +53,8 @@ struct tx_record tx_buf[MAX_TX];
 #define BROADCAST	1
 #define IMMEDIATE	2
 
+#define NO_BUFFER	0xFF
+
 extern uint16_t get_adlc_rx_ptr(void);
 
 static uint8_t get_tx_buf(void)
@@ -63,7 +65,7 @@ static uint8_t get_tx_buf(void)
     if (tx_buf[i].mb == NULL)
       return i;
   }
-  return 0xff;
+  return NO_BUFFER;
 }
 
 extern uint8_t get_adlc_state(void);
@@ -110,7 +112,7 @@ static uint8_t do_tx_packet(struct tx_record *tx)
   uint8_t extra_len = 0, do_4way = 0;
   if (type == IMMEDIATE && tx->mb->length >= 14) {
     extra_len = 8;
-    uint8_t cb = buf[4] & 0x7f;
+    uint8_t cb = buf[4] & RXCB;
     if (cb >= 0x02 && cb <= 0x05)
       do_4way = 1;
   }
@@ -163,7 +165,7 @@ static uint8_t do_tx_packet(struct tx_record *tx)
 uint8_t enqueue_tx(struct mbuf *mb)
 {
   uint8_t i = get_tx_buf();
-  if (i != 0xff)
+  if (i != NO_BUFFER)
   {
     struct tx_record *tx = &tx_buf[i];
     tx->retry_count = ADLC_TX_RETRY_COUNT;
@@ -172,7 +174,9 @@ uint8_t enqueue_tx(struct mbuf *mb)
     tx->is_aun = 0;
     return i + 1;
   }
+#ifdef DEBUG
   serial_tx_str ("no bufs!\n");
+#endif
   return 0;
 }
 
@@ -195,7 +199,7 @@ static uint8_t should_bridge(struct scout_packet *s, uint32_t *ip_targetp)
 
   /* if destination is reachable fill ip_target address */
 
-  if (rTableEthType[s->DNet] != 0)
+  if (rTableEthType[s->DNet] != NOT_ROUTABLE)
   {
     *ip_targetp = rTableEthIP[s->DNet] | ((unsigned long)(s->DStn) << 24);
     return 1;
@@ -225,7 +229,7 @@ static void make_and_send_scout(void)
 
 static void do_local_immediate (uint8_t cb)
 {
-  switch (cb & 0x7f)
+  switch (cb & RXCB)
   {
   case Econet_MachinePeek:
     make_scout_acknowledge ();
@@ -233,7 +237,7 @@ static void do_local_immediate (uint8_t cb)
     scout_mbuf.data[5] = MACHINE_VENDOR;
     scout_mbuf.data[6] = MACHINE_VER_LOW;
     scout_mbuf.data[7] = MACHINE_VER_HIGH;
-    scout_mbuf.length = 8;
+    scout_mbuf.length = AUNHDRSIZE;
     adlc_tx_frame ((struct mbuf *)&scout_mbuf, 1);
     break;
   }
@@ -292,21 +296,22 @@ void adlc_poller(void)
       if (s->DStn == 0xff)
       {
         stats.rx_bcast++;
-	if (s->Port == 0xb0)
+	if (s->Port == FIND_SERVER_PORT)
 	  handle_port_b0 ();
-	if (s->Port == 0xd2)
+	if (s->Port == IP_PORT)
 	  handle_ip_packet (ECONET_RX_BUF[4], frame_length, 6);
-	if (s->Port == 0x9c)
+	if (s->Port == BRIDGE_PORT)
 	  handle_port_9c (frame_length);
 	else
 	{
-	  memcpy (uip_appdata + 8, ECONET_RX_BUF + 6, frame_length - 6);
-	  aun_send_broadcast (s, frame_length - 6);
+	  memcpy (uip_appdata + AUNHDRSIZE, ECONET_RX_BUF + 6, frame_length - 6);
+// to do - the called procedure below in aun.c is empty
+//	  aun_send_broadcast (s, frame_length - 6);
 	}
       }
       else if (should_bridge (s, &ip_target[0]))
       {
-	if (s->Port == 0)
+	if (s->Port == IMMEDIATE_PORT)
 	{
 	  aun_send_immediate (s, ECONET_RX_BUF + 6, frame_length - 6);
 	  return;
@@ -318,13 +323,13 @@ void adlc_poller(void)
 	adlc_ready_to_receive (RX_DATA);
 	return;
       }
-      else if (s->DStn == eeGlobals.Station && s->DNet == 0)
+      else if (s->DStn == eeprom.Station && s->DNet == LOCAL_NETWORK)
       {
-	if (s->Port == 0)
+	if (s->Port == IMMEDIATE_PORT)
 	{
 	  do_local_immediate (s->ControlByte);
 	}
-	else if (s->Port == 0xd2)
+	else if (s->Port == IP_PORT)
 	{
 	  goto do_rx_data;
 	}
@@ -332,7 +337,7 @@ void adlc_poller(void)
     }
     else if (adlc_state == (RX_DATA | FRAME_COMPLETE))
     {
-      if (aun_port == 0xd2)
+      if (aun_port == IP_PORT)
       {
 	handle_ip_packet (aun_cb, frame_length, 4);
 	make_and_send_scout ();
@@ -345,7 +350,7 @@ void adlc_poller(void)
       }
       else
       {
-	memcpy (uip_appdata + 8, ECONET_RX_BUF + 4, frame_length - 4);
+	memcpy (uip_appdata + AUNHDRSIZE, ECONET_RX_BUF + 4, frame_length - 4);
 	aun_send_packet (aun_cb, aun_port, *((uint16_t *)(ECONET_RX_BUF + 2)), ip_target, frame_length - 4);
 	adlc_state = BUSY_FORWARDING;
 	return;

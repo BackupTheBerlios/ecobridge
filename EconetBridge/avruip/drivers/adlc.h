@@ -94,6 +94,16 @@ extern uint16_t my_station;
 #define RXCB_READY	1
 #define RXCB_RECEIVING	2
 #define RXCB_RECEIVED	3
+#define RXCB		0x7F
+#define TXCB		0x80
+
+#define IMMEDIATE_PORT		0x00
+#define BRIDGE_PORT    		0x9C
+#define FIND_SERVER_PORT	0xB0
+#define FIND_SERVER_REPLY_PORT	0xB1
+#define IP_PORT			0xD2
+
+
 
 // pin definitions
 #define	ADLC_RS1		0			// PD0 Register Select 1			Econet Pin6
