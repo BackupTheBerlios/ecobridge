@@ -42,7 +42,7 @@
  *
  * This file is part of the uIP TCP/IP stack
  *
- * $Id: uip-conf.h,v 1.5 2009/08/24 21:23:54 philb Exp $
+ * $Id: uip-conf.h,v 1.6 2009/08/28 18:03:33 markusher Exp $
  */
 
 /**
@@ -104,7 +104,7 @@ typedef unsigned short uip_stats_t;
  *
  * \hideinitializer
  */
-#define UIP_CONF_BUFFER_SIZE     1500
+#define UIP_CONF_BUFFER_SIZE     1518
 
 /**
  * CPU byte order.
