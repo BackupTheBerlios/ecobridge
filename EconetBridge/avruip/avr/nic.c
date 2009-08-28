@@ -66,8 +66,6 @@ static void send_frag(struct mbuf *mb, uint16_t length)
 	NICEndPacketSend();
 }
 
-static int mtu = 1518;
-
 struct frag_mbuf
 {
   struct mbuf *next, *prev;
@@ -91,7 +89,7 @@ void nic_send(struct mbuf *mb)
         uint16_t length = 0, offset = 0;
         struct mbuf *mbp = mb, *this_mb = mb;
         while (mbp) {
-		if ((length + mbp->length) >= mtu) {
+		if ((length + mbp->length) >= UIP_BUFSIZE) {
 			/* packet needs fragmenting */
 			struct uip_tcpip_hdr *BUF = &this_mb->data[UIP_LLH_LEN];
 			uint16_t payload_length = length - (UIP_IPH_LEN + UIP_LLH_LEN);
@@ -144,11 +142,12 @@ unsigned char nic_poll(void)
 	// copy the packet data into the uIP packet buffer
 	NICRetreivePacketData( uip_buf, packetLength );
 
-//serial_packet(uip_buf, packetLength);
-//serial_tx_str ("eth ");
-//serial_tx_str ("rx ");
-//serial_crlf();
-
+#ifdef DEBUG
+  serial_tx_str ("eth ");
+  serial_tx_str ("rx ");
+  serial_packet(uip_buf, packetLength);
+  serial_crlf();
+#endif
 
 	NICEndPacketRetreive();
 
