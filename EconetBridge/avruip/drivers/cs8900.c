@@ -15,14 +15,7 @@ History:
 #include "cs8900.h"
 #include "delay.h"
 #include "uip.h"
-#include "serial.h"
-#include "eeprom.h"
 #include "globals.h"
-
-/* register asm routines */
-
-extern void serial_tx(uint8_t mask);
-extern void serial_tx_hex(uint8_t mask);
 
 static unsigned char gPrevTxBidFail;
 
@@ -289,8 +282,6 @@ static int8_t cs8900_poll_init(unsigned short duplexMode)
 	unsigned short *ptr;
 	int8_t status;
 
-
-
 	// Information: read Chip Id and Revision
 	chip_type = ReadPPRegister(PP_ChipID);
 	chip_rev = ReadPPRegister(PP_ChipRev);
@@ -319,7 +310,7 @@ static int8_t cs8900_poll_init(unsigned short duplexMode)
     // use a for loop.  If WritePPRegister(PP_IA+i*2, *(ptr+i)) is
     // used, the value of *(ptr+i) is always 0.
     //
-    ptr = (unsigned short *)&eeGlobals.MAC[0];
+    ptr = (unsigned short *)&eeprom.MAC[0];
     cs8900LoadMac(ptr);
 
     //***** step 3: Configure RxCTL to receive good frames for

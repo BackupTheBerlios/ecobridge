@@ -10,8 +10,6 @@
 #ifndef _CS8900_H_
 #define _CS8900_H_
 
-//#include <stdint.h>
-
 #include "serial.h"
 
 
