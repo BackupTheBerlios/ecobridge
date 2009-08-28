@@ -31,7 +31,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: main.c,v 1.28 2009/08/25 19:07:40 markusher Exp $
+ * $Id: main.c,v 1.29 2009/08/28 18:04:28 markusher Exp $
  *
  */
 
@@ -87,6 +87,7 @@ void AVR_init(void)
 	TCCR0 = (1 << WGM01) | (1 << COM00) | (1 << CS00);
 
 	// set up timer 1 to generate Econet clock output
+	/* to do - add the multiplier parameter in CMOS to configure speed */
 	TCCR1A = (1 << WGM11) | (1 << COM1A1);
 	TCCR1B = (1 << WGM13) | (1 << WGM12) | (1 << CS10); // no prescaling
 
@@ -122,7 +123,7 @@ main(void)
   uip_ipaddr_t ipaddr;
   struct timer periodic_timer, arp_timer;
 
-  memcpy (&uip_ethaddr.addr[0], &eeGlobals.MAC[0], 6);
+  memcpy (&uip_ethaddr.addr[0], &eeprom.MAC[0], 6);
 
   AVR_init();
   egpio_init();
@@ -138,11 +139,11 @@ main(void)
   nic_init();
 
 
-  uip_ipaddr(ipaddr, eeGlobals.IPAddr[0],eeGlobals.IPAddr[1],eeGlobals.IPAddr[2],eeGlobals.IPAddr[3]);
+  uip_ipaddr(ipaddr, eeprom.IPAddr[0],eeprom.IPAddr[1],eeprom.IPAddr[2],eeprom.IPAddr[3]);
   uip_sethostaddr(ipaddr);
-  uip_ipaddr(ipaddr, eeGlobals.Gateway[0],eeGlobals.Gateway[1],eeGlobals.Gateway[2],eeGlobals.Gateway[3]);
+  uip_ipaddr(ipaddr, eeprom.Gateway[0],eeprom.Gateway[1],eeprom.Gateway[2],eeprom.Gateway[3]);
   uip_setdraddr(ipaddr);
-  uip_ipaddr(ipaddr, eeGlobals.Subnet[0],eeGlobals.Subnet[1],eeGlobals.Subnet[2],eeGlobals.Subnet[3]);
+  uip_ipaddr(ipaddr, eeprom.Subnet[0],eeprom.Subnet[1],eeprom.Subnet[2],eeprom.Subnet[3]);
   uip_setnetmask(ipaddr);
 
   telnetd_init();

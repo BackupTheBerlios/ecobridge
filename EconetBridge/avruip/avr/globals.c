@@ -4,4 +4,4 @@
 // PUBLIC MODULE VARIABLE DEFINITIONS 
 
 
-    sDefaults_t eeGlobals; 
+    sDefaults_t eeprom; 

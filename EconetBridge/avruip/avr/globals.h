@@ -35,7 +35,7 @@ typedef struct {
 } sDefaults_t; 
 
 
-extern sDefaults_t eeGlobals; 
+extern sDefaults_t eeprom; 
 
 
 

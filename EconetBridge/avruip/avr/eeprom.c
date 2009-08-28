@@ -23,8 +23,8 @@ sDefaults_t INIT =
 void EEPROM_ReadAll(void)
 {
   int i;
-  uint8_t *p = (uint8_t *)&eeGlobals;
-  for (i = 0; i < sizeof (eeGlobals); i++) {
+  uint8_t *p = (uint8_t *)&eeprom;
+  for (i = 0; i < sizeof (eeprom); i++) {
     *(p++) = eeprom_read_byte ((uint8_t *)EEPROM_SAFETY + i);
   }
 }
@@ -34,18 +34,18 @@ void EEPROM_WriteAll(void) __attribute__ ((noinline));
 void EEPROM_WriteAll(void)
 {
   int i;
-  uint8_t *p = (uint8_t *)&eeGlobals;
-  for (i = 0; i < sizeof (eeGlobals); i++) {
+  uint8_t *p = (uint8_t *)&eeprom;
+  for (i = 0; i < sizeof (eeprom); i++) {
     eeprom_write_byte((uint8_t *)EEPROM_SAFETY + i, *(p++));
   }
 }
 
 static void EEPROM_InitCheck(void)
 {
-    eeGlobals.Initialised = eeprom_read_byte((uint8_t *)EEPROM_INITTED);
+    eeprom.Initialised = eeprom_read_byte((uint8_t *)EEPROM_INITTED);
 
-    if (eeGlobals.Initialised != EEPROM_VALID) {
-      memcpy (&eeGlobals, &INIT, sizeof (INIT));
+    if (eeprom.Initialised != EEPROM_VALID) {
+      memcpy (&eeprom, &INIT, sizeof (INIT));
       EEPROM_WriteAll();
     }
 

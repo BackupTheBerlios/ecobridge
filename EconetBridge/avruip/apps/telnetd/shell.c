@@ -28,7 +28,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: shell.c,v 1.8 2009/08/27 21:00:07 markusher Exp $
+ * $Id: shell.c,v 1.9 2009/08/28 17:59:52 markusher Exp $
  *
  */
 
@@ -198,27 +198,27 @@ setvalue(char *str)
 
    if(strncmp(str+4, "sttn", 4)==0){
 //	strlcpy(strvalue, str+10, strlen(str));
-        copy_param(&eeGlobals.Station, str+9, 1, 254);
+        copy_param(&eeprom.Station, str+9, 1, 254);
 /*  }else if(strncmp(str+4, "clck", 4)==0){
-        copy_param(&eeGlobals.ClockMultiplier, str+9, 0, 4); */
+        copy_param(&eeprom.ClockMultiplier, str+9, 0, 4); */
     }else if(strncmp(str+4, "enet", 4)==0){
-        copy_param(&eeGlobals.Econet_Network, str+9, 1, 127);
+        copy_param(&eeprom.Econet_Network, str+9, 1, 127);
     }else if(strncmp(str+4, "aunn", 4)==0){
-        copy_param(&eeGlobals.Ethernet_Network, str+9, 1, 251);
+        copy_param(&eeprom.Ethernet_Network, str+9, 1, 251);
     }else if(strncmp(str+4, "ipad", 4)==0){
-        copy_param_ip(&eeGlobals.IPAddr, str+9);
+        copy_param_ip(&eeprom.IPAddr, str+9);
     }else if(strncmp(str+4, "snet", 4)==0){
-        copy_param_ip(&eeGlobals.Subnet, str+9);
+        copy_param_ip(&eeprom.Subnet, str+9);
     }else if(strncmp(str+4, "gway", 4)==0){
-        copy_param_ip(&eeGlobals.Gateway, str+9);
+        copy_param_ip(&eeprom.Gateway, str+9);
     }else if(strncmp(str+4, "maca", 4)==0){
-        copy_param_mac(&eeGlobals.MAC, str+9);
+        copy_param_mac(&eeprom.MAC, str+9);
     }else if(strncmp(str+4, "ecip", 4)==0){
-        copy_param_ip(&eeGlobals.EconetIP, str+9);
+        copy_param_ip(&eeprom.EconetIP, str+9);
     }else if(strncmp(str+4, "ecsb", 4)==0){
-        copy_param_ip(&eeGlobals.EconetMask, str+9);
+        copy_param_ip(&eeprom.EconetMask, str+9);
     }else if(strncmp(str+4, "ewan", 4)==0){
-        copy_param_ip(&eeGlobals.WANRouter, str+9);
+        copy_param_ip(&eeprom.WANRouter, str+9);
     }else{
       shell_output("Unknown command: ", str+4);
     }
@@ -254,44 +254,44 @@ config(char *str)
 
   uint8_t i;
   for (i = 0; i < 6; i++) {
-    hextostr(addr + (i * 3), eeGlobals.MAC[i]);
+    hextostr(addr + (i * 3), eeprom.MAC[i]);
     addr[((i*3)+2)] = ':';
   }
   addr[17] = 0;
 
 
-  inttostr(outstring,eeGlobals.Econet_Network);
+  inttostr(outstring,eeprom.Econet_Network);
 
   shell_output("\nEconet\r\n======\r\n\nNetwork\t\t: ", outstring);
 
-  inttostr(outstring,eeGlobals.Station);
+  inttostr(outstring,eeprom.Station);
   shell_output("Station\t\t: ", outstring);
 /*
-  inttostr(outstring,eeGlobals.ClockMultiplier);
+  inttostr(outstring,eeprom.ClockMultiplier);
   shell_output("Clock x\t\t: ", outstring);
 */
 
-  inttostr(outstring,eeGlobals.Ethernet_Network);
+  inttostr(outstring,eeprom.Ethernet_Network);
   shell_output("AUN Network\t: ", outstring);
 
   shell_output("\nEthernet\r\n========\r\n\nMAC Address\t: ", addr);
 
-  iptostr(eeGlobals.IPAddr, addr);
+  iptostr(eeprom.IPAddr, addr);
   shell_output("IP Address\t: ", addr);
 
-  iptostr(eeGlobals.Subnet, addr);
+  iptostr(eeprom.Subnet, addr);
   shell_output("Subnet\t\t: ", addr);
 
-  iptostr(eeGlobals.Gateway, addr);
+  iptostr(eeprom.Gateway, addr);
   shell_output("Gateway\t\t: ", addr);
 
-  iptostr(eeGlobals.EconetIP, addr);
+  iptostr(eeprom.EconetIP, addr);
   shell_output("\nEconet WAN\r\n==========\r\n\nIP Address\t: ", addr);
 
-  iptostr(eeGlobals.EconetMask, addr);
+  iptostr(eeprom.EconetMask, addr);
   shell_output("Subnet\t\t: ", addr);
 
-  iptostr(eeGlobals.WANRouter, addr);
+  iptostr(eeprom.WANRouter, addr);
   shell_output("Gateway\t\t: ", addr);
 
 
