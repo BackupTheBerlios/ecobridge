@@ -49,7 +49,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: uip.c,v 1.11 2009/08/24 21:23:54 philb Exp $
+ * $Id: uip.c,v 1.12 2009/08/28 18:02:49 markusher Exp $
  *
  */
 
@@ -707,6 +707,7 @@ uip_process(u8_t flag)
     if((uip_connr->tcpstateflags & UIP_TS_MASK) == UIP_ESTABLISHED &&
        !uip_outstanding(uip_connr)) {
 	uip_flags = UIP_POLL;
+	uip_len = uip_slen = 0; // bug fix - https://list.sics.se/sympa/arc/uip-users/2009-04/msg00011.html
 	UIP_APPCALL();
 	goto appsend;
     }
@@ -883,8 +884,8 @@ uip_process(u8_t flag)
 
   extern uint8_t forward_to_econet (void);
 
-  if (forward_to_econet ())
-    goto drop;
+//  if (forward_to_econet ())
+//    goto drop;
 
 #if !UIP_CONF_IPV6
   /* Check the fragment flag. */
