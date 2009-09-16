@@ -325,16 +325,18 @@ await_tdra:
 	rjmp	abandon_tx
 
 got_tdra:
-        dec     r23
-        cpc     r22, zero_reg
+        cpi     r22, 0
         brne    not_data
+        dec     r23
+	brne	not_data
         adiw    YL, 2
         subi    r21, 2
 	
 not_data:
 	ld	tmp2, Y+
 	dec	r21
-	cpc	XL, zero_reg
+	brne	not_end
+	cpi	XL, 0
 	cpc	XH, zero_reg
 	brne	not_end
 	
