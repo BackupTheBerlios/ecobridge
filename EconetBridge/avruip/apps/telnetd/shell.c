@@ -28,7 +28,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: shell.c,v 1.9 2009/08/28 17:59:52 markusher Exp $
+ * $Id: shell.c,v 1.10 2009/09/30 18:50:49 markusher Exp $
  *
  */
 
@@ -185,9 +185,9 @@ static void
 help(char *str)
 {
 //  shell_output("set clck [0-4]", "");
-  shell_output("\nset sttn [1-254]\r\nset enet [1-127]\r\nset aunn [1-251]\r\nset ipad [a.b.c.d]", "");
+/*  shell_output("\nset sttn [1-254]\r\nset enet [1-127]\r\nset aunn [1-251]\r\nset ipad [a.b.c.d]", "");
   shell_output("\r\nset snet [a.b.c.d]\r\nset gway [a.b.c.d]\r\nset maca [a:b:c:d:e:f]\r\nset ecip [a.b.c.d]\r\nset ecsb [a.b.c.d]\r\nset ewan [a.b.c.d]\n", "");
-
+*/
 //  shell_output("stats   - show network statistics", "");
   shell_output("config  - show configuration\r\nhelp, ? - show help\r\nexit    - exit shell", "");
 }
@@ -195,12 +195,12 @@ help(char *str)
 static void
 setvalue(char *str)
 {
-
+/*
    if(strncmp(str+4, "sttn", 4)==0){
 //	strlcpy(strvalue, str+10, strlen(str));
         copy_param(&eeprom.Station, str+9, 1, 254);
 /*  }else if(strncmp(str+4, "clck", 4)==0){
-        copy_param(&eeprom.ClockMultiplier, str+9, 0, 4); */
+        copy_param(&eeprom.ClockMultiplier, str+9, 0, 4); */ /*
     }else if(strncmp(str+4, "enet", 4)==0){
         copy_param(&eeprom.Econet_Network, str+9, 1, 127);
     }else if(strncmp(str+4, "aunn", 4)==0){
@@ -222,7 +222,7 @@ setvalue(char *str)
     }else{
       shell_output("Unknown command: ", str+4);
     }
-
+*/
 }
 /*---------------------------------------------------------------------------*/
 /*
@@ -270,7 +270,7 @@ config(char *str)
   inttostr(outstring,eeprom.ClockMultiplier);
   shell_output("Clock x\t\t: ", outstring);
 */
-
+/*
   inttostr(outstring,eeprom.Ethernet_Network);
   shell_output("AUN Network\t: ", outstring);
 
@@ -293,7 +293,7 @@ config(char *str)
 
   iptostr(eeprom.WANRouter, addr);
   shell_output("Gateway\t\t: ", addr);
-
+*/
 
 }/*---------------------------------------------------------------------------*/
 static void

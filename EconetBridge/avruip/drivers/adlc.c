@@ -23,6 +23,11 @@ volatile register unsigned char adlc_state	asm("r15");
 #define MACHINE_VER_LOW         0x01
 #define MACHINE_VER_HIGH        0x00
 
+#define DATA_FRAME		0x00
+#define SCOUT_FRAME		0x01
+
+#define DEBUG 1
+
 struct stats
 {
   int frames_in;
@@ -104,7 +109,15 @@ static uint8_t do_tx_packet(struct tx_record *tx)
   }
 
   if (type == BROADCAST) {
-    adlc_tx_frame (tx->mb, 1);
+
+  #ifdef DEBUG
+  serial_tx_str ("eco1");
+  serial_tx_str ("tx ");
+//  serial_packet(tx->mb, 10);
+  #endif
+
+
+    adlc_tx_frame (tx->mb, SCOUT_FRAME);
     adlc_ready_to_receive_scout();
     return TX_OK;
   }
@@ -119,7 +132,17 @@ static uint8_t do_tx_packet(struct tx_record *tx)
 
   memcpy (scout_mbuf.data, tx->mb->data, 6 + extra_len);
   scout_mbuf.length = 6 + extra_len;
-  adlc_tx_frame ((struct mbuf *)&scout_mbuf, 1);
+
+
+#ifdef DEBUG
+  serial_tx_str ("eco2");
+  serial_tx_str ("tx ");
+  serial_packet(&scout_mbuf.data, scout_mbuf.length);
+
+#endif
+
+
+  adlc_tx_frame ((struct mbuf *)&scout_mbuf, SCOUT_FRAME);
 
   unsigned char state;
   do {
@@ -141,7 +164,14 @@ static uint8_t do_tx_packet(struct tx_record *tx)
   }
 
   if (type == NORMAL_PACKET || do_4way) {
-    adlc_tx_frame (mb, 0);
+
+  #ifdef DEBUG
+  serial_tx_str ("eco3");
+  serial_tx_str ("tx ");
+  serial_packet(mb->data, scout_mbuf.length);
+  #endif
+
+    adlc_tx_frame (mb, DATA_FRAME);
 
     do {
       state = get_adlc_state();
@@ -224,7 +254,14 @@ static void make_and_send_scout(void)
 {
   make_scout_acknowledge ();
   scout_mbuf.length = 4;
-  adlc_tx_frame ((struct mbuf *)&scout_mbuf, 1);
+
+  #ifdef DEBUG
+  serial_tx_str ("eco4");
+  serial_tx_str ("tx ");
+  serial_packet(&scout_mbuf.data, scout_mbuf.length+2);
+  #endif
+
+  adlc_tx_frame ((struct mbuf *)&scout_mbuf, SCOUT_FRAME);
 }
 
 static void do_local_immediate (uint8_t cb)
@@ -238,7 +275,14 @@ static void do_local_immediate (uint8_t cb)
     scout_mbuf.data[6] = MACHINE_VER_LOW;
     scout_mbuf.data[7] = MACHINE_VER_HIGH;
     scout_mbuf.length = AUNHDRSIZE;
-    adlc_tx_frame ((struct mbuf *)&scout_mbuf, 1);
+
+#ifdef DEBUG
+  serial_tx_str ("eco5");
+  serial_tx_str ("tx ");
+//  serial_packet(&scout_mbuf->data, scout_mbuf.length);
+#endif
+
+    adlc_tx_frame ((struct mbuf *)&scout_mbuf, SCOUT_FRAME);
     break;
   }
 }
@@ -286,6 +330,14 @@ void adlc_poller(void)
   {
     uint16_t frame_length = get_adlc_rx_ptr() - (int)ECONET_RX_BUF;
     stats.frames_in++;
+     
+    	#ifdef DEBUG
+	  serial_tx_str ("eco ");
+	  serial_tx_str ("rx ");
+	  serial_packet(ECONET_RX_BUF, frame_length);
+	#endif
+
+    
     if (adlc_state == (RX_SCOUT | FRAME_COMPLETE))
     {
       if (frame_length < 6) {
@@ -370,7 +422,14 @@ void adlc_forwarding_complete(uint8_t result, uint8_t *buffer, uint8_t length)
       length = 12;
     memcpy (&scout_mbuf.data[4], buffer, length);
     scout_mbuf.length = 4 + length;
-    adlc_tx_frame ((struct mbuf *)&scout_mbuf, 1);
+
+#ifdef DEBUG
+  serial_tx_str ("eco6");
+  serial_tx_str ("tx ");
+  serial_packet(&scout_mbuf.data, scout_mbuf.length+2);
+#endif
+
+    adlc_tx_frame ((struct mbuf *)&scout_mbuf, SCOUT_FRAME);
   }
 
   adlc_ready_to_receive_scout();

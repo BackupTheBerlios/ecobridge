@@ -21,6 +21,7 @@
 #define IP_TCP_HEADER_LENGTH 40
 #define TOTAL_HEADER_LENGTH (IP_TCP_HEADER_LENGTH + ETHERNET_HEADER_LENGTH)
 
+#define DEBUG 1
 
 void nic_init(void)
 {
@@ -47,13 +48,21 @@ struct mbuf *uip_to_mbufs(void)
 
 static void send_frag(struct mbuf *mb, uint16_t length)
 {
+
+
 #ifdef DEBUG
-  serial_tx_str ("xmit ");
-  serial_tx_hex (length >> 8);
-  serial_tx_hex (length);
+//  serial_tx_str ("xmit ");
+//  serial_tx_hex (length >> 8);
+//  serial_tx_hex (length);
+//  serial_crlf ();
+  serial_tx_str ("eth ");
+  serial_tx_str ("tx ");
+  serial_packet(mb->data+42, length-42);
   serial_crlf ();
-  memset (&mb->data[0], 0xff, 6);
 #endif
+
+  memset (&mb->data[0], 0xff, 6);
+
 	NICBeginPacketSend(length);
         while (length) {
 		uint16_t this_length = mb->length;
@@ -145,8 +154,8 @@ unsigned char nic_poll(void)
 #ifdef DEBUG
   serial_tx_str ("eth ");
   serial_tx_str ("rx ");
-  serial_packet(uip_buf, packetLength);
-  serial_crlf();
+  serial_packet(uip_buf+42, packetLength-42);
+//  serial_crlf();
 #endif
 
 	NICEndPacketRetreive();
