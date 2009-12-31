@@ -59,6 +59,8 @@ static void send_frag(struct mbuf *mb, uint16_t length)
   serial_tx_str ("tx ");
   serial_packet(mb->data+42, length-42);
   serial_crlf ();
+  // memset (&mb->data[0], 0xff, 6);
+
 #endif
 
   memset (&mb->data[0], 0xff, 6);

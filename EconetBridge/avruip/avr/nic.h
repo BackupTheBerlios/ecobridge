@@ -51,11 +51,11 @@
 
 #if NIC_CHOICE == CS8900
 #include "cs8900.h"
-#define NICInit cs8900Init
-#define NICBeginPacketSend cs8900BeginPacketSend
+#define NICInit			cs8900_poll_init
+#define NICBeginPacketSend	cs8900_poll_send
 #define NICSendPacketData cs8900SendPacketData
-#define NICEndPacketSend cs8900EndPacketSend
-#define NICBeginPacketRetreive cs8900BeginPacketRetreive
+#define NICEndPacketSend	cs8900_poll_send_end
+#define NICBeginPacketRetreive	cs8900_poll_retrieve
 #define NICRetreivePacketData cs8900RetreivePacketData
 #define NICEndPacketRetreive() do { } while (0)
 #endif
