@@ -67,7 +67,7 @@ extern volatile short adlc_rx_ptr;
 extern void adlc_forwarding_complete(uint8_t result, uint8_t *buffer, uint8_t length);
 extern uint16_t my_station;
 
-#endif
+#endif /* __ASSEMBLER__ */
 
 #define TX_OK		0
 #define LINE_JAMMED	1
@@ -116,7 +116,7 @@ extern uint16_t my_station;
 
 #ifndef __ASSEMBLER__
 extern unsigned char ECONET_RX_BUF[ECONET_RX_BUF_SIZE];
-#endif
+#endif /* __ASSEMBLER__ */
 
 #endif /* __ADLC_H__ */
 /** @} */
