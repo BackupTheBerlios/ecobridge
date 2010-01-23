@@ -39,6 +39,8 @@ typedef struct {
 
 extern sDefaults_t eeprom; 
 
+extern uint8_t gPrevTxBidFail;
+
 #endif /* __ASSEMBLER__ */
 
 

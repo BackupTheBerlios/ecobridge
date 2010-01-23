@@ -9,7 +9,7 @@
 #define serial_tx_arg		r24
 
 #define tmp1			r18
-#define zero_reg                r1
+#define zero_reg              r1
 
 #define PACKET_Rx 		0x00
 #define CS8900_RX_BUF		0x2000

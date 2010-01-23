@@ -28,7 +28,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: shell.c,v 1.10 2009/09/30 18:50:49 markusher Exp $
+ * $Id: shell.c,v 1.11 2010/01/23 13:26:04 markusher Exp $
  *
  */
 
@@ -48,7 +48,7 @@ struct ptentry {
 #define SHELL_PROMPT "> "
 
 
-#define xtod(c) ((c>='0' && c<='9') ? c-'0' : ((c>='A' && c<='F') ? \ 
+#define xtod(c) ((c>='0' && c<='9') ? c-'0' : ((c>='A' && c<='F') ? \
                 c-'A'+10 : ((c>='a' && c<='f') ? c-'a'+10 : 0))) 
   
 
@@ -69,6 +69,7 @@ parse(register char *str, struct ptentry *t)
 
 }
 /*---------------------------------------------------------------------------*/
+/*
 static void
 copy_param(uint8_t *location, char *strvalue, uint8_t MIN, uint8_t MAX)
 {
@@ -87,7 +88,9 @@ copy_param(uint8_t *location, char *strvalue, uint8_t MIN, uint8_t MAX)
 
 
 }
+*/
 /*---------------------------------------------------------------------------*/
+/*
 static void
 copy_param_ip(uint8_t *location, char *strvalue)
 {
@@ -97,7 +100,7 @@ copy_param_ip(uint8_t *location, char *strvalue)
   *(location+3) = atoi(strtok(NULL, " "));
   EEPROM_WriteAll();
 }
-
+*/
 
 char xtode(char c) 
 { 
@@ -119,6 +122,7 @@ int xstrtoi(char *hex)      // hex string to integer
 } 
 
 /*---------------------------------------------------------------------------*/
+/*
 static void
 copy_param_mac(uint8_t *location, char *strvalue)
 {
@@ -134,6 +138,7 @@ copy_param_mac(uint8_t *location, char *strvalue)
   EEPROM_WriteAll();
 
 }
+*/
 /*---------------------------------------------------------------------------*/
 static void
 inttostr(char *str, uint8_t i)
@@ -185,9 +190,9 @@ static void
 help(char *str)
 {
 //  shell_output("set clck [0-4]", "");
-/*  shell_output("\nset sttn [1-254]\r\nset enet [1-127]\r\nset aunn [1-251]\r\nset ipad [a.b.c.d]", "");
-  shell_output("\r\nset snet [a.b.c.d]\r\nset gway [a.b.c.d]\r\nset maca [a:b:c:d:e:f]\r\nset ecip [a.b.c.d]\r\nset ecsb [a.b.c.d]\r\nset ewan [a.b.c.d]\n", "");
-*/
+//  shell_output("\nset sttn [1-254]\r\nset enet [1-127]\r\nset aunn [1-251]\r\nset ipad [a.b.c.d]", "");
+//  shell_output("\r\nset snet [a.b.c.d]\r\nset gway [a.b.c.d]\r\nset maca [a:b:c:d:e:f]\r\nset ecip [a.b.c.d]\r\nset ecsb [a.b.c.d]\r\nset ewan [a.b.c.d]\n", "");
+
 //  shell_output("stats   - show network statistics", "");
   shell_output("config  - show configuration\r\nhelp, ? - show help\r\nexit    - exit shell", "");
 }
@@ -199,8 +204,8 @@ setvalue(char *str)
    if(strncmp(str+4, "sttn", 4)==0){
 //	strlcpy(strvalue, str+10, strlen(str));
         copy_param(&eeprom.Station, str+9, 1, 254);
-/*  }else if(strncmp(str+4, "clck", 4)==0){
-        copy_param(&eeprom.ClockMultiplier, str+9, 0, 4); */ /*
+  }else if(strncmp(str+4, "clck", 4)==0){
+        copy_param(&eeprom.ClockMultiplier, str+9, 0, 4); 
     }else if(strncmp(str+4, "enet", 4)==0){
         copy_param(&eeprom.Econet_Network, str+9, 1, 127);
     }else if(strncmp(str+4, "aunn", 4)==0){
@@ -225,10 +230,11 @@ setvalue(char *str)
 */
 }
 /*---------------------------------------------------------------------------*/
-/*
+
 static void
 stats(char *str)
 {
+/*
   char outstring[4];
   inttostr(&outstring,0);
 
@@ -245,7 +251,8 @@ stats(char *str)
   shell_output("Tx Line Jammed   : " , outstring);
   shell_output("\n\nhelp, ? - show help", "");
   shell_output("exit    - exit shell", "");
-}*//*---------------------------------------------------------------------------*/
+*/
+}/*---------------------------------------------------------------------------*/
 static void
 config(char *str)
 {
@@ -270,7 +277,7 @@ config(char *str)
   inttostr(outstring,eeprom.ClockMultiplier);
   shell_output("Clock x\t\t: ", outstring);
 */
-/*
+
   inttostr(outstring,eeprom.Ethernet_Network);
   shell_output("AUN Network\t: ", outstring);
 
@@ -293,7 +300,6 @@ config(char *str)
 
   iptostr(eeprom.WANRouter, addr);
   shell_output("Gateway\t\t: ", addr);
-*/
 
 }/*---------------------------------------------------------------------------*/
 static void
@@ -306,7 +312,7 @@ unknown(char *str)
 /*---------------------------------------------------------------------------*/
 static struct ptentry parsetab[] =
   {{"config", config},
-/*   {"stats", stats}, */
+   {"stats", stats}, 
    {"set", setvalue},
    {"exit", shell_quit},
    {"help", help},

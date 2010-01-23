@@ -1,14 +1,43 @@
+ /*
+ *
+ * This file is part of the Econet<>Ethernet firmware.
+ *
+ * $Id: bridge.c,v 1.12 2010/01/23 13:26:04 markusher Exp $
+ *
+ */
+
+/*---- Includes ----------------------------------------------------*/
+#include "bridge.h"
 #include "internet.h"
 #include "adlc.h"
 #include "aun.h"
 #include "serial.h"
 #include <string.h>
 
+/*---- Externals ---------------------------------------------------*/
 extern uint8_t econet_net_nr;
 
-static uint8_t bridge_rxcb;
+/*---- Statics -----------------------------------------------------*/
+// currently unused
+//static uint8_t bridge_rxcb;
+//static unsigned char bcast_buf[8];
 
-static unsigned char bcast_buf[8];
+/*******************************************************************
+*
+* NAME :            
+*
+* DESCRIPTION :
+*
+* INPUTS :
+*
+* OUTPUTS :
+*
+* NOTES :   
+*
+* CHANGES :
+* REF NO    DATE    WHO     DETAIL/
+*
+*/
 
 static void do_bridge_reply(uint8_t stn, uint8_t reply_port)
 {
@@ -26,6 +55,24 @@ static void do_bridge_reply(uint8_t stn, uint8_t reply_port)
   enqueue_tx (mb);
 }
 
+/*******************************************************************
+*
+* NAME :            
+*
+* DESCRIPTION : checks to see if the string "BRIDGE" is contained in 
+* the packet from location 6 onwards.
+*
+* INPUTS : Nothing
+*
+* OUTPUTS : 0 it is isn't. 1 if it is
+*
+* NOTES :   
+*
+* CHANGES :
+* REF NO    DATE    WHO     DETAIL/
+*
+*/
+
 static inline uint8_t is_bridge(void)
 {
   uint8_t *bcast_buf = (ECONET_RX_BUF + 6);
@@ -39,6 +86,23 @@ static inline uint8_t is_bridge(void)
   return 1;
 }
 
+/*******************************************************************
+*
+* NAME :            
+*
+* DESCRIPTION :
+*
+* INPUTS :
+*
+* OUTPUTS :
+*
+* NOTES :   
+*
+* CHANGES :
+* REF NO    DATE    WHO     DETAIL/
+*
+*/
+
 void handle_port_9c(uint16_t length)
 {
   uint8_t *bcast_buf = (ECONET_RX_BUF + 6);
@@ -50,13 +114,13 @@ void handle_port_9c(uint16_t length)
       
     case 0x82: /* what net */
     case 0x83: /* is net */
-      if (!is_bridge()) {
+      if (!is_bridge()) {			// has something other than a bridge sent this?
 	break;
       }
       uint8_t reply_port = bcast_buf[6];
       if (ECONET_RX_BUF[4] == 0x83 && !rTableEthType[bcast_buf[7]])
 	break;
-      do_bridge_reply (ECONET_RX_BUF[2], reply_port);
+      do_bridge_reply (ECONET_RX_BUF[2], reply_port);	// buf[2] = station
       break;
   }
 }
