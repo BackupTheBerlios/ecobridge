@@ -422,7 +422,7 @@ foward_packet(struct wan_packet *w, unsigned short pkt_len, uint8_t type)
 	eh->CB = cb;
 	eh->PORT = port;
 
-	struct mbuf *mb = copy_to_mbufs (eh, pkt_len + 6);
+	struct mbuf *mb = copy_to_mbufs ((uint8_t *)eh, pkt_len + 6);
 	if (type == BROADCAST_DATA_FRAME)
 	  enqueue_tx (mb);
 	else
@@ -453,7 +453,7 @@ foward_packet(struct wan_packet *w, unsigned short pkt_len, uint8_t type)
 */
 
 void 
-aun_send_immediate (struct scout_packet *s, uint32_t dest_ip, uint16_t data_length)
+aun_send_immediate (struct scout_packet *s, uint32_t * dest_ip, uint16_t data_length)
 {
   not_listening();
 }

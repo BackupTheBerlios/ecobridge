@@ -3,8 +3,8 @@
 ; =======================================================================
 
 #define _SFR_ASM_COMPAT 1
-#define __SFR_OFFSET 0     /* Required for port labels to work as expected */
-#include <avr/io.h>        /* Contains I/O port declarations */
+#define __SFR_OFFSET 0	 /* Required for port labels to work as expected */
+#include <avr/io.h>	/* Contains I/O port declarations */
 
 #include "adlc.h"
 #include "egpio.h"
@@ -119,21 +119,21 @@
 #define tmp2			r19
 #define saved_gicr		r20
 
-#define egpio_arg		r24
+#define egpio_arg			r24
 #define serial_tx_arg		r24
 
-#define zero_reg                r1
+#define zero_reg			r1
 
-.section .text             ; Start program section
+.section .text					; Start program section
 
 addr_setup:
 	cbi	PORTD, ADLC_RS0			; clear RS0 on PORTD
 	cbi	PORTD, ADLC_RS1			; clear RS1 on PORTD
 	sbrc	tmp1, 0				; if bit 0 in the address field is not clear
-	sbi	PORTD, ADLC_RS0			;    set bit 0
+	sbi	PORTD, ADLC_RS0			;	set bit 0
 	sbrc	tmp1, 1				; if bit 1 in the address field is not clear
-	sbi	PORTD, ADLC_RS1			;    set bit 1
-        ret
+	sbi	PORTD, ADLC_RS1			;	set bit 1
+	ret
 
 ; -----------------------------------------------------------------------------------------
 ; ADLC Read
@@ -145,7 +145,7 @@ addr_setup:
 adlc_read_rx:
 	ldi	tmp1, ADLC_RX
 adlc_read:
-        rcall   addr_setup
+	rcall   addr_setup
 	sbi	PORTD, ADLC_RnW			; Read from ADLC
 
 	ldi	tmp1, 0x1				; make sure the ADLC_CLK at PB0 stays set
@@ -155,7 +155,7 @@ adlc_read:
 	out	PORTB, tmp1
 	sbi	PORTE, ADLC_D0
 
-        rcall   go_cycle
+	rcall	go_cycle
 
 	bst	tmp1, ADLC_D0			; Store the bit from ADLC_D0 in the T flag
 	bld	tmp2, 0				; load T into bit 0 of tmp2 to leave the byte read in tmp2
@@ -178,7 +178,7 @@ adlc_write_cr1:
 adlc_write_cr2:	
 	ldi	tmp1, ADLC_CR2
 adlc_write:
-        rcall   addr_setup
+	rcall	addr_setup
 
 	cbi	PORTD, ADLC_RnW			; write to ADLC
 
@@ -186,7 +186,7 @@ adlc_write:
 	out	PORTB, tmp2				; put the data on PORT B
 	cbi	PORTE, ADLC_D0			; clear bit 2 on PORT E
 	sbrc	tmp2, 0				; if bit 0 in the data field is not clear
-	sbi	PORTE, ADLC_D0			;    set bit to 1
+	sbi	PORTE, ADLC_D0			;	set bit to 1
 
 go_cycle:
 	clc
@@ -194,50 +194,50 @@ go_cycle:
 	in	saved_gicr, GICR			; save the contents of the General Interrupt Control Register
 	ldi	r24, (1 << INT1)			; External INT1 enable
 adlc_write_prewait:
-        sbic    PIND, 3
-        rjmp    adlc_write_prewait
+	sbic	PIND, 3
+	rjmp	adlc_write_prewait
 	out	GIFR, r24				; write to the General Interrupt Flag Register
 	out	GICR, r24				; write to the General Interrupt Control Register
 
-        brcs    adlc_write_done
-        brcs    adlc_write_done
-        brcs    adlc_write_done
-        brcs    adlc_write_done
+	brcs	adlc_write_done
+	brcs	adlc_write_done
+	brcs	adlc_write_done
+	brcs	adlc_write_done
 
-        brcs    adlc_write_done
-        brcs    adlc_write_done
-        brcs    adlc_write_done
-        brcs    adlc_write_done
+	brcs	adlc_write_done
+	brcs	adlc_write_done
+	brcs	adlc_write_done
+	brcs	adlc_write_done
 
-        brcs    adlc_write_done
-        brcs    adlc_write_done
-        brcs    adlc_write_done
-        brcs    adlc_write_done
+	brcs	adlc_write_done
+	brcs	adlc_write_done
+	brcs	adlc_write_done
+	brcs	adlc_write_done
 
-        brcs    adlc_write_done
-        brcs    adlc_write_done
-        brcs    adlc_write_done
-        brcs    adlc_write_done
+	brcs	adlc_write_done
+	brcs	adlc_write_done
+	brcs	adlc_write_done
+	brcs	adlc_write_done
 
-        brcs    adlc_write_done
-        brcs    adlc_write_done
-        brcs    adlc_write_done
-        brcs    adlc_write_done
+	brcs	adlc_write_done
+	brcs	adlc_write_done
+	brcs	adlc_write_done
+	brcs	adlc_write_done
 
-        brcs    adlc_write_done
-        brcs    adlc_write_done
-        brcs    adlc_write_done
-        brcs    adlc_write_done
+	brcs	adlc_write_done
+	brcs	adlc_write_done
+	brcs	adlc_write_done
+	brcs	adlc_write_done
 
-        brcs    adlc_write_done
-        brcs    adlc_write_done
-        brcs    adlc_write_done
-        brcs    adlc_write_done
+	brcs	adlc_write_done
+	brcs	adlc_write_done
+	brcs	adlc_write_done
+	brcs	adlc_write_done
 
-        brcs    adlc_write_done
-        brcs    adlc_write_done
-        brcs    adlc_write_done
-        brcs    adlc_write_done
+	brcs	adlc_write_done
+	brcs	adlc_write_done
+	brcs	adlc_write_done
+	brcs	adlc_write_done
 
 adlc_write_done:
 	ret
@@ -325,12 +325,12 @@ await_tdra:
 	rjmp	abandon_tx
 
 got_tdra:
-      cpi	r22, 0
-      brne	not_data
-      dec	r23
+	cpi	r22, 0
 	brne	not_data
-      adiw	YL, 2
-      subi	r21, 2
+	dec	r23
+	brne	not_data
+	adiw	YL, 2
+	subi	r21, 2
 	
 not_data:
 	ld	tmp2, Y+
@@ -488,8 +488,8 @@ process_s2rq:
 process_fv:
 	rcall	adlc_rx_flush			; clear remaining bytes in the input buffer
 
-      mov	tmp1, adlc_state
-      ori	tmp1, FRAME_COMPLETE
+	mov	tmp1, adlc_state
+	ori	tmp1, FRAME_COMPLETE
 	mov	adlc_state, tmp1			; set ADLC state to FRAME COMPLETE
 
 	rjmp	adlc_irq_ret			; return from interrupt
@@ -731,8 +731,8 @@ adlc_init:
 ; -----------------------------------------------------------------------------------------
 ;
 ; exit	: adlc_state = 0
-; 		: adlc_rx_ptr    = ECONET RX Buffer LSB
-; 		: adlc_rx_ptr + 1    = ECONET RX Buffer MSB
+; 		: adlc_rx_ptr	= ECONET RX Buffer LSB
+; 		: adlc_rx_ptr + 1	= ECONET RX Buffer MSB
 
 .global	adlc_ready_to_receive_scout
 adlc_ready_to_receive_scout:
@@ -763,7 +763,7 @@ adlc_ready_to_receive:
 ;
 ;  entry: tmp1=network number
 ;  exit:  C set -> do want this frame
-;         Z set -> don't want this frame
+;	 Z set -> don't want this frame
 ;	  C,Z both clear -> need to check station number too 
 
 interesting_network:

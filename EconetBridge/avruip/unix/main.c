@@ -31,7 +31,7 @@
  *
  * This file is part of the uIP TCP/IP stack.
  *
- * $Id: main.c,v 1.30 2010/01/23 13:26:04 markusher Exp $
+ * $Id: main.c,v 1.31 2010/01/23 16:30:25 markusher Exp $
  *
  */
 
@@ -113,7 +113,7 @@ static void maybe_send(void)
   }
 }
 
-int main(void) __attribute__ ((noreturn));
+//int main(void) __attribute__ ((noreturn));
 
 /*---------------------------------------------------------------------------*/
 int
